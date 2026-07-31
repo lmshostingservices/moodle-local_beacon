@@ -9,10 +9,10 @@
         <FIELD NAME="kind" TYPE="char" LENGTH="20" NOTNULL="true" COMMENT="stat, kpi or report"/>
         <FIELD NAME="title" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Requested name."/>
         <FIELD NAME="detail" TYPE="text" NOTNULL="true" COMMENT="What it should show."/>
-        <FIELD NAME="requestername" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Name of the requester."/>
-        <FIELD NAME="requesteremail" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Reply-to email."/>
+        <FIELD NAME="requestername" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" COMMENT="Name of the requester."/>
+        <FIELD NAME="requesteremail" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" COMMENT="Reply-to email."/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Moodle user who submitted it."/>
-        <FIELD NAME="siteurl" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Site the request came from."/>
+        <FIELD NAME="siteurl" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" COMMENT="Site the request came from."/>
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="sent" COMMENT="sent or failed"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
@@ -61,7 +61,7 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Owner."/>
         <FIELD NAME="reportid" TYPE="char" LENGTH="64" NOTNULL="true" COMMENT="Report the view belongs to."/>
-        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="View name."/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" COMMENT="View name."/>
         <FIELD NAME="params" TYPE="text" NOTNULL="true" COMMENT="URL-encoded filter parameters."/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
@@ -78,7 +78,7 @@
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Owner who set it up."/>
         <FIELD NAME="reportid" TYPE="char" LENGTH="64" NOTNULL="true" COMMENT="Report to send."/>
         <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
-        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Delivery name."/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="" COMMENT="Delivery name."/>
         <FIELD NAME="params" TYPE="text" NOTNULL="true" COMMENT="URL-encoded filter parameters."/>
         <FIELD NAME="format" TYPE="char" LENGTH="8" NOTNULL="true" DEFAULT="pdf" COMMENT="pdf or csv."/>
         <FIELD NAME="frequency" TYPE="char" LENGTH="12" NOTNULL="true" DEFAULT="weekly" COMMENT="daily, weekly or monthly."/>
