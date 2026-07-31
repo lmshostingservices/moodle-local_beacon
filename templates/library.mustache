@@ -1,0 +1,172 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+
+    @template local_beacon/library
+
+    The reports library.
+
+    Example context (json):
+    {
+        "contextid": 1, "hasstats": false, "haskpis": false, "hasreports": false,
+        "empty": true, "canrequest": true, "cansettings": true,
+        "requesturl": "#", "settingsurl": "#",
+        "statcount": 0, "kpicount": 0, "reportcount": 0
+    }
+}}
+<div class="bc-root" data-region="beacon-library">
+  <div class="bc-wrap">
+
+    <div class="bc-page-head">
+      <div>
+        <h1 class="bc-h1">{{#str}}libraryheading, local_beacon{{/str}}</h1>
+        <p class="bc-sub">{{#str}}librarysub, local_beacon{{/str}}</p>
+      </div>
+      <div class="bc-head-actions">
+        <button type="button" class="bc-btn bc-btn-ghost bc-theme-toggle" data-role="theme-toggle" aria-label="{{#str}}toggletheme, local_beacon{{/str}}" title="{{#str}}toggletheme, local_beacon{{/str}}">
+          <svg class="bc-ico-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg class="bc-ico-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+        {{#cansettings}}
+          <a class="bc-btn bc-btn-ghost" href="{{settingsurl}}">{{#str}}choosewhatshows, local_beacon{{/str}}</a>
+        {{/cansettings}}
+        {{#canrequest}}
+          <a class="bc-btn bc-btn-primary" href="{{requesturl}}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            {{#str}}requestareport, local_beacon{{/str}}</a>
+        {{/canrequest}}
+      </div>
+    </div>
+
+    {{#iscourse}}
+    <div class="bc-scopebar">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      {{#str}}coursescope, local_beacon{{/str}} — <b>{{scopelabel}}</b>
+    </div>
+    {{/iscourse}}
+
+    {{#empty}}
+      <div class="bc-empty">
+        <div class="bc-empty-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 16l4-5 3.5 3.5L18 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h2>{{#str}}emptyheading, local_beacon{{/str}}</h2>
+        <p>{{#str}}emptybody, local_beacon{{/str}}</p>
+        {{#cansettings}}<a class="bc-btn bc-btn-primary" href="{{settingsurl}}">{{#str}}choosewhatshows, local_beacon{{/str}}</a>{{/cansettings}}
+      </div>
+    {{/empty}}
+
+    {{#hasstats}}
+    <section class="bc-sec">
+      <div class="bc-sec-head"><span class="bc-k">{{#str}}sec_stats, local_beacon{{/str}}</span>
+        <h2>{{#str}}sec_stats_h, local_beacon{{/str}}</h2>
+        <span class="bc-count">{{statcount}}</span><span class="bc-rule"></span></div>
+      <div class="bc-grid bc-grid-stats">
+        {{#stats}}
+          <a class="bc-stat bcfam-{{family}} bc-enter" href="{{url}}">
+            <div class="bc-stat-top">
+              <span class="bc-ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">{{{icon}}}</svg></span>
+              <span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>
+            </div>
+            <div class="bc-val" {{#hasvalue}}data-count="{{rawvalue}}" data-unit="{{unit}}"{{/hasvalue}}>{{value}}<span class="bc-u">{{unit}}</span></div>
+            <div class="bc-name">{{name}}</div>
+            <div class="bc-note">{{note}}</div>
+            <div class="bc-stat-foot">
+              {{#hasdelta}}
+                <span class="bc-delta {{#deltagood}}up{{/deltagood}}{{^deltagood}}down{{/deltagood}}">
+                  {{#deltarising}}<svg viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{/deltarising}}
+                  {{^deltarising}}<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{/deltarising}}
+                  {{delta}}%</span>
+              {{/hasdelta}}
+              {{^hasdelta}}<span class="bc-delta flat">{{#str}}newmetric, local_beacon{{/str}}</span>{{/hasdelta}}
+              {{#hasspark}}
+                <svg class="bc-spark" viewBox="0 0 78 30" aria-hidden="true"><path class="area" d="{{spark.area}}"/><path class="line" d="{{spark.line}}"/></svg>
+              {{/hasspark}}
+            </div>
+          </a>
+        {{/stats}}
+      </div>
+    </section>
+    {{/hasstats}}
+
+    {{#haskpis}}
+    <section class="bc-sec">
+      <div class="bc-sec-head"><span class="bc-k">{{#str}}sec_kpis, local_beacon{{/str}}</span>
+        <h2>{{#str}}sec_kpis_h, local_beacon{{/str}}</h2>
+        <span class="bc-count">{{kpicount}}</span><span class="bc-rule"></span></div>
+      <div class="bc-grid bc-grid-kpis">
+        {{#kpis}}
+          <a class="bc-kpi bcfam-{{family}} bc-enter" href="{{url}}">
+            <div class="bc-kpi-top">
+              <div><div class="bc-title">{{name}}</div><div class="bc-desc">{{desc}}</div></div>
+              <span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>
+            </div>
+            <div class="bc-gauge bc-status-{{status}}">
+              <svg viewBox="0 0 172 104" aria-hidden="true">
+                <path class="bc-gtrack" d="M14 90 A72 72 0 0 1 158 90"/>
+                <path class="bc-gfill" d="M14 90 A72 72 0 0 1 158 90"
+                      stroke-dasharray="{{arclen}}" stroke-dashoffset="{{arcoffset}}" data-off="{{arcoffset}}" data-len="{{arclen}}"/>
+                {{^nodata}}<line x1="{{targetline.x1}}" y1="{{targetline.y1}}" x2="{{targetline.x2}}" y2="{{targetline.y2}}" class="bc-gtarget"/>{{/nodata}}
+              </svg>
+              <div class="bc-gauge-cen">
+                {{#nodata}}<div class="bc-nodata">{{#str}}awaitingdata, local_beacon{{/str}}</div>{{/nodata}}
+                {{^nodata}}<div class="bc-g" data-count="{{rawvalue}}" data-unit="%">{{value}}<span class="bc-u">%</span></div>{{/nodata}}
+              </div>
+            </div>
+            <div class="bc-kpi-foot">
+              <span class="bc-status bc-status-{{status}}"><span class="bc-d"></span>{{statuslabel}}</span>
+              <span class="bc-target">{{#str}}target, local_beacon{{/str}} <b>{{target}}%</b></span>
+            </div>
+          </a>
+        {{/kpis}}
+      </div>
+    </section>
+    {{/haskpis}}
+
+    {{#hasreports}}
+    <section class="bc-sec">
+      <div class="bc-sec-head"><span class="bc-k">{{#str}}sec_reports, local_beacon{{/str}}</span>
+        <h2>{{#str}}sec_reports_h, local_beacon{{/str}}</h2>
+        <span class="bc-count">{{reportcount}}</span><span class="bc-rule"></span></div>
+      <div class="bc-grid bc-grid-reports">
+        {{#reports}}
+          <a class="bc-report bcfam-{{family}} bc-enter" href="{{url}}">
+            <div class="bc-rep-top">
+              <span class="bc-rep-ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">{{{icon}}}</svg></span>
+              <h3>{{name}}</h3>
+            </div>
+            <p class="bc-rep-desc">{{desc}}</p>
+            <div class="bc-rep-meta"><span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span><span class="bc-tag">{{grain}}</span></div>
+            <div class="bc-rep-foot">
+              <span class="bc-open">{{#str}}openreport, local_beacon{{/str}}</span>
+              <span class="bc-go"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            </div>
+          </a>
+        {{/reports}}
+
+        {{#canrequest}}
+        <div class="bc-suggest bc-enter">
+          <span class="bc-si"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.4 5.4L20 9l-4 4 1 6-5-2.8L7 19l1-6-4-4 5.6-.6L12 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span>
+          <div class="bc-suggest-body"><h3>{{#str}}needdifferent, local_beacon{{/str}}</h3><p>{{#str}}needdifferent_desc, local_beacon{{/str}}</p></div>
+          <a class="bc-btn bc-btn-soft" href="{{requesturl}}">{{#str}}requestareport, local_beacon{{/str}}</a>
+        </div>
+        {{/canrequest}}
+      </div>
+    </section>
+    {{/hasreports}}
+
+  </div>
+</div>
+{{#js}}
+require(['local_beacon/ui'], function(UI){ UI.init(); });
+{{/js}}

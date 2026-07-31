@@ -1,0 +1,8 @@
+{
+  "component": "local_beacon",
+  "version": "1.7.3",
+  "numeric_version": "2026073100019",
+  "build_timestamp": "2026-07-31T13:13:00.000Z",
+  "folder": "beacon",
+  "verification": "marketplace-polish-phpcs-clean-changelog-refresh"
+}

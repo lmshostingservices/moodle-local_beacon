@@ -1,0 +1,106 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+
+    @template local_beacon/request
+
+    The request-a-report form and its thank-you state.
+
+    Example context (json):
+    {
+        "backurl": "#", "sent": false, "sesskey": "x", "actionurl": "#",
+        "supportemail": "support@lmshostingservices.com",
+        "kinds": [], "title": "", "detail": "", "email": "",
+        "err_title": "", "err_detail": "", "err_email": "",
+        "sentkind": "", "senttitle": ""
+    }
+}}
+<div class="bc-root" data-region="beacon-request">
+  <div class="bc-wrap">
+    <a class="bc-back" href="{{backurl}}">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      {{#str}}backtoreports, local_beacon{{/str}}</a>
+
+    <div class="bc-form-wrap">
+      <div class="bc-form-card">
+        <div class="bc-form-hero">
+          <div class="bc-si"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.4 5.4L20 9l-4 4 1 6-5-2.8L7 19l1-6-4-4 5.6-.6L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+          <h1>{{#str}}needdifferent, local_beacon{{/str}}</h1>
+          <p>{{#str}}request_intro, local_beacon{{/str}}</p>
+        </div>
+
+        {{#sent}}
+          <div class="bc-thanks">
+            <div class="bc-tick"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h2>{{#str}}thanks_heading, local_beacon{{/str}}</h2>
+            <p>{{#str}}thanks_body, local_beacon, {{senttitle}}{{/str}}</p>
+            <div class="bc-eta"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.9"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>{{#str}}thanks_eta, local_beacon{{/str}}</div>
+            <div class="bc-thanks-act"><a class="bc-btn bc-btn-ghost" href="{{backurl}}">{{#str}}backtoreports, local_beacon{{/str}}</a></div>
+          </div>
+        {{/sent}}
+
+        {{^sent}}
+        <form class="bc-form-body" method="post" action="{{actionurl}}" novalidate>
+          <input type="hidden" name="sesskey" value="{{sesskey}}">
+
+          <div class="bc-field">
+            <label>{{#str}}request_what, local_beacon{{/str}} <span class="bc-req">*</span></label>
+            <div class="bc-type-grid" data-role="typegrid">
+              {{#kinds}}
+                <label class="bc-type-opt {{#selected}}on{{/selected}}">
+                  <input type="radio" name="kind" value="{{value}}" {{#selected}}checked{{/selected}}>
+                  <span class="bc-tt">{{label}}</span>
+                  <span class="bc-td">{{hint}}</span>
+                </label>
+              {{/kinds}}
+            </div>
+          </div>
+
+          <div class="bc-field">
+            <label>{{#str}}request_name, local_beacon{{/str}} <span class="bc-req">*</span></label>
+            <div class="bc-help">{{#str}}request_name_help, local_beacon{{/str}}</div>
+            <input class="bc-control {{#err_title}}bc-invalid{{/err_title}}" type="text" name="title" value="{{title}}" maxlength="255" placeholder="{{#str}}request_name_ph, local_beacon{{/str}}">
+            {{#err_title}}<div class="bc-err">{{err_title}}</div>{{/err_title}}
+          </div>
+
+          <div class="bc-field">
+            <label>{{#str}}request_detail, local_beacon{{/str}} <span class="bc-req">*</span></label>
+            <div class="bc-help">{{#str}}request_detail_help, local_beacon{{/str}}</div>
+            <textarea class="bc-control {{#err_detail}}bc-invalid{{/err_detail}}" name="detail" rows="4" placeholder="{{#str}}request_detail_ph, local_beacon{{/str}}">{{detail}}</textarea>
+            {{#err_detail}}<div class="bc-err">{{err_detail}}</div>{{/err_detail}}
+          </div>
+
+          <div class="bc-field">
+            <label>{{#str}}request_email, local_beacon{{/str}} <span class="bc-req">*</span></label>
+            <div class="bc-help">{{#str}}request_email_help, local_beacon{{/str}}</div>
+            <input class="bc-control {{#err_email}}bc-invalid{{/err_email}}" type="email" name="email" value="{{email}}" placeholder="you@yourorg.com">
+            {{#err_email}}<div class="bc-err">{{err_email}}</div>{{/err_email}}
+          </div>
+
+          <div class="bc-form-foot">
+            <div class="bc-to">{{#str}}request_goesto, local_beacon, {{supportemail}}{{/str}}</div>
+            <button type="submit" class="bc-btn bc-btn-primary">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-7-7 16-2-6-7-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+              {{#str}}request_send, local_beacon{{/str}}</button>
+          </div>
+        </form>
+        {{/sent}}
+      </div>
+    </div>
+  </div>
+</div>
+{{#js}}
+require(['local_beacon/ui'], function(UI){ UI.initRequestForm(); });
+{{/js}}

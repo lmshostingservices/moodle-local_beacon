@@ -1,0 +1,73 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+
+    @template local_beacon/mylibrary
+
+    The learner self-view: personal figures and personal reports.
+}}
+<div class="bc-root" data-region="beacon-mylibrary">
+  <div class="bc-wrap">
+
+    <div class="bc-page-head">
+      <div>
+        <h1 class="bc-h1">{{greeting}}</h1>
+        <p class="bc-sub">{{sub}}</p>
+      </div>
+    </div>
+
+    {{#hastiles}}
+    <div class="bc-tiles bc-my-tiles">
+      {{#tiles}}<div class="bc-tile"><div class="bc-tile-k">{{label}}</div><div class="bc-tile-v" data-count="{{value}}">{{value}}</div></div>{{/tiles}}
+    </div>
+    {{/hastiles}}
+
+    {{#hasreports}}
+    <section class="bc-sec">
+      <div class="bc-sec-head"><span class="bc-k">{{#str}}my_sec, local_beacon{{/str}}</span>
+        <h2>{{#str}}my_sec_h, local_beacon{{/str}}</h2>
+        <span class="bc-rule"></span></div>
+      <div class="bc-grid bc-grid-reports">
+        {{#reports}}
+          <a class="bc-report bcfam-{{family}} bc-enter" href="{{url}}">
+            <div class="bc-rep-top">
+              <span class="bc-rep-ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">{{{icon}}}</svg></span>
+              <h3>{{name}}</h3>
+            </div>
+            <p class="bc-rep-desc">{{desc}}</p>
+            <div class="bc-rep-meta"><span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span><span class="bc-tag">{{grain}}</span></div>
+            <div class="bc-rep-foot">
+              <span class="bc-open">{{#str}}openreport, local_beacon{{/str}}</span>
+              <span class="bc-go"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            </div>
+          </a>
+        {{/reports}}
+      </div>
+    </section>
+    {{/hasreports}}
+
+    {{#isempty}}
+      <div class="bc-empty">
+        <div class="bc-empty-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 16l4-5 3.5 3.5L18 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h2>{{#str}}my_empty_h, local_beacon{{/str}}</h2>
+        <p>{{#str}}my_empty, local_beacon{{/str}}</p>
+      </div>
+    {{/isempty}}
+
+  </div>
+</div>
+{{#js}}
+require(['local_beacon/ui'], function(UI){ UI.init(); });
+{{/js}}

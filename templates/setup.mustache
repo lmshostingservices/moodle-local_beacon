@@ -1,0 +1,121 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+
+    @template local_beacon/setup
+
+    The "set up your library" checklist.
+
+    Example context (json):
+    {
+        "actionurl": "#", "sesskey": "x", "libraryurl": "#",
+        "stats": [], "kpis": [], "reports": [],
+        "statsel": 0, "kpisel": 0, "reportsel": 0
+    }
+}}
+<div class="bc-root" data-region="beacon-setup">
+  <form class="bc-wrap" method="post" action="{{actionurl}}">
+    <input type="hidden" name="sesskey" value="{{sesskey}}">
+
+    <div class="bc-settings-intro">
+      <h1>{{#str}}setup_heading, local_beacon{{/str}}</h1>
+      <p>{{#str}}setup_intro, local_beacon{{/str}}</p>
+      <div class="bc-steps">
+        <div class="bc-step"><span class="bc-n">1</span> {{#str}}sec_stats_h, local_beacon{{/str}}</div>
+        <div class="bc-step"><span class="bc-n">2</span> {{#str}}sec_kpis_h, local_beacon{{/str}}</div>
+        <div class="bc-step"><span class="bc-n">3</span> {{#str}}sec_reports_h, local_beacon{{/str}}</div>
+      </div>
+    </div>
+
+    <div class="bc-tabs" data-role="tabs">
+      <button type="button" class="bc-tab on" data-tab="stats">{{#str}}sec_stats_h, local_beacon{{/str}} <span class="bc-tc" data-count="stats">{{statsel}}</span></button>
+      <button type="button" class="bc-tab" data-tab="kpis">{{#str}}sec_kpis_h, local_beacon{{/str}} <span class="bc-tc" data-count="kpis">{{kpisel}}</span></button>
+      <button type="button" class="bc-tab" data-tab="reports">{{#str}}sec_reports_h, local_beacon{{/str}} <span class="bc-tc" data-count="reports">{{reportsel}}</span></button>
+    </div>
+
+    <div class="bc-tab-panel on" data-panel="stats">
+      <div class="bc-select-bar">
+        <div class="bc-select-lbl"><b data-role="cnt" data-for="stats">{{statsel}}</b> {{#str}}setup_selected, local_beacon{{/str}}</div>
+        <div class="bc-select-acts"><button type="button" class="bc-linkbtn" data-role="all" data-for="stats">{{#str}}setup_selectall, local_beacon{{/str}}</button><button type="button" class="bc-linkbtn" data-role="none" data-for="stats">{{#str}}setup_clearall, local_beacon{{/str}}</button></div>
+      </div>
+      <div class="bc-check-list">
+        {{#stats}}
+          <label class="bc-check bcfam-{{family}} {{#checked}}sel{{/checked}} {{#unavailable}}bc-unavail{{/unavailable}}">
+            <input type="checkbox" name="enabledstats[]" value="{{id}}" data-group="stats" {{#checked}}checked{{/checked}} {{#unavailable}}disabled{{/unavailable}}>
+            <span class="bc-cbox"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-11" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="bc-check-body">
+              <span class="bc-check-h"><span class="bc-ci"><svg viewBox="0 0 24 24" fill="none">{{{icon}}}</svg></span><span class="bc-nm">{{name}}</span><span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>{{#unavailable}}<span class="bc-tag">{{#str}}setup_unavailable, local_beacon{{/str}}</span>{{/unavailable}}</span>
+              <span class="bc-expl">{{expl}}</span>
+              <span class="bc-example"><span class="bc-ex-k">{{#str}}setup_example, local_beacon{{/str}}</span><span class="bc-ex-v">{{example}}</span></span>
+            </span>
+          </label>
+        {{/stats}}
+      </div>
+    </div>
+
+    <div class="bc-tab-panel" data-panel="kpis">
+      <div class="bc-select-bar">
+        <div class="bc-select-lbl"><b data-role="cnt" data-for="kpis">{{kpisel}}</b> {{#str}}setup_selected, local_beacon{{/str}}</div>
+        <div class="bc-select-acts"><button type="button" class="bc-linkbtn" data-role="all" data-for="kpis">{{#str}}setup_selectall, local_beacon{{/str}}</button><button type="button" class="bc-linkbtn" data-role="none" data-for="kpis">{{#str}}setup_clearall, local_beacon{{/str}}</button></div>
+      </div>
+      <div class="bc-check-list">
+        {{#kpis}}
+          <label class="bc-check bcfam-{{family}} {{#checked}}sel{{/checked}} {{#unavailable}}bc-unavail{{/unavailable}}">
+            <input type="checkbox" name="enabledkpis[]" value="{{id}}" data-group="kpis" {{#checked}}checked{{/checked}} {{#unavailable}}disabled{{/unavailable}}>
+            <span class="bc-cbox"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-11" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="bc-check-body">
+              <span class="bc-check-h"><span class="bc-ci"><svg viewBox="0 0 24 24" fill="none">{{{icon}}}</svg></span><span class="bc-nm">{{name}}</span><span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>{{#unavailable}}<span class="bc-tag">{{#str}}setup_unavailable, local_beacon{{/str}}</span>{{/unavailable}}</span>
+              <span class="bc-expl">{{expl}}</span>
+              <span class="bc-example"><span class="bc-ex-k">{{#str}}setup_example, local_beacon{{/str}}</span><span class="bc-ex-v">{{example}}</span></span>
+            </span>
+          </label>
+        {{/kpis}}
+      </div>
+    </div>
+
+    <div class="bc-tab-panel" data-panel="reports">
+      <div class="bc-select-bar">
+        <div class="bc-select-lbl"><b data-role="cnt" data-for="reports">{{reportsel}}</b> {{#str}}setup_selected, local_beacon{{/str}}</div>
+        <div class="bc-select-acts"><button type="button" class="bc-linkbtn" data-role="all" data-for="reports">{{#str}}setup_selectall, local_beacon{{/str}}</button><button type="button" class="bc-linkbtn" data-role="none" data-for="reports">{{#str}}setup_clearall, local_beacon{{/str}}</button></div>
+      </div>
+      <div class="bc-check-list">
+        {{#reports}}
+          <label class="bc-check bcfam-{{family}} {{#checked}}sel{{/checked}} {{#unavailable}}bc-unavail{{/unavailable}}">
+            <input type="checkbox" name="enabledreports[]" value="{{id}}" data-group="reports" {{#checked}}checked{{/checked}} {{#unavailable}}disabled{{/unavailable}}>
+            <span class="bc-cbox"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-11" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="bc-check-body">
+              <span class="bc-check-h"><span class="bc-ci"><svg viewBox="0 0 24 24" fill="none">{{{icon}}}</svg></span><span class="bc-nm">{{name}}</span><span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>{{#unavailable}}<span class="bc-tag">{{#str}}setup_unavailable, local_beacon{{/str}}</span>{{/unavailable}}</span>
+              <span class="bc-expl">{{expl}}</span>
+              <span class="bc-example"><span class="bc-ex-k">{{#str}}setup_example, local_beacon{{/str}}</span><span class="bc-ex-v">{{example}}</span></span>
+            </span>
+          </label>
+        {{/reports}}
+      </div>
+    </div>
+
+    <div class="bc-settings-save">
+      <div class="bc-sum" data-role="summary"></div>
+      <div class="bc-save-actions">
+        <a class="bc-btn bc-btn-ghost" href="{{libraryurl}}">{{#str}}setup_preview, local_beacon{{/str}}</a>
+        <button type="submit" class="bc-btn bc-btn-primary">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {{#str}}setup_save, local_beacon{{/str}}</button>
+      </div>
+    </div>
+  </form>
+</div>
+{{#js}}
+require(['local_beacon/ui'], function(UI){ UI.initSetup(); });
+{{/js}}

@@ -1,0 +1,359 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+
+    @template local_beacon/detail
+
+    A single stat / KPI / report detail page.
+
+    Example context (json):
+    {
+        "backurl": "#", "isreport": false, "iskpi": false,
+        "name": "Active learners", "note": "used the site in the last 30 days",
+        "explanation": "…", "family": "engagement", "familylabel": "Engagement",
+        "value": "3,190", "unit": "", "hasvalue": true, "hasdelta": false, "haschart": false
+    }
+}}
+<div class="bc-root" data-region="beacon-detail">
+  <div class="bc-wrap">
+
+    <a class="bc-back" href="{{backurl}}">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      {{#str}}backtoreports, local_beacon{{/str}}</a>
+
+    {{^isreport}}
+    <div class="bc-detail-hero bcfam-{{family}}">
+      <div class="bc-dh-top">
+        <span class="bc-dh-ico"><svg viewBox="0 0 24 24" fill="none">{{{icon}}}</svg></span>
+        <div><h1>{{name}}</h1><div class="bc-desc">{{note}}</div></div>
+        <div class="bc-spacer"></div>
+        <span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>
+      </div>
+
+      <div class="bc-dh-body">
+        {{#iskpi}}
+          <div class="bc-gauge bc-gauge-lg bc-status-{{status}}">
+            <svg viewBox="0 0 172 104" aria-hidden="true">
+              <path class="bc-gtrack" d="M14 90 A72 72 0 0 1 158 90"/>
+              <path class="bc-gfill" d="M14 90 A72 72 0 0 1 158 90"
+                    stroke-dasharray="{{arclen}}" stroke-dashoffset="{{arcoffset}}" data-off="{{arcoffset}}" data-len="{{arclen}}"/>
+              {{^nodata}}<line x1="{{targetline.x1}}" y1="{{targetline.y1}}" x2="{{targetline.x2}}" y2="{{targetline.y2}}" class="bc-gtarget"/>{{/nodata}}
+            </svg>
+            <div class="bc-gauge-cen">
+              {{#nodata}}<div class="bc-nodata">{{#str}}awaitingdata, local_beacon{{/str}}</div>{{/nodata}}
+              {{^nodata}}<div class="bc-g" data-count="{{rawvalue}}" data-unit="%">{{value}}<span class="bc-u">%</span></div>{{/nodata}}
+            </div>
+          </div>
+          <div class="bc-dh-side">
+            <span class="bc-status bc-status-{{status}}"><span class="bc-d"></span>{{statuslabel}}</span>
+            <p class="bc-meaning">{{meaning}}</p>
+            {{#hascompare}}<p class="bc-compare"><span>{{comparelabel}}</span> <b class="{{#comparegood}}bc-txt-on{{/comparegood}}{{^comparegood}}bc-txt-off{{/comparegood}}">{{^compareflat}}{{#compareup}}▲{{/compareup}}{{^compareup}}▼{{/compareup}} {{/compareflat}}{{comparechange}}</b></p>{{/hascompare}}
+          </div>
+        {{/iskpi}}
+        {{^iskpi}}
+          <div class="bc-dh-figure" {{#hasvalue}}data-count="{{rawvalue}}" data-unit="{{unit}}"{{/hasvalue}}>{{value}}<span class="bc-u">{{unit}}</span></div>
+          <div class="bc-dh-side">
+            {{#hasdelta}}<div class="bc-dh-row">{{#str}}trend, local_beacon{{/str}} <b class="{{#deltagood}}bc-txt-on{{/deltagood}}{{^deltagood}}bc-txt-off{{/deltagood}}">{{#deltarising}}▲{{/deltarising}}{{^deltarising}}▼{{/deltarising}} {{delta}}%</b></div>{{/hasdelta}}
+            <div class="bc-dh-row">{{#str}}healthydirection, local_beacon{{/str}} <b>{{better}}</b></div>
+          </div>
+        {{/iskpi}}
+      </div>
+
+      <p class="bc-dh-expl">{{explanation}}</p>
+
+      {{#hasrelated}}
+        <a class="bc-btn bc-btn-soft bc-dh-related" href="{{relatedurl}}">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {{#str}}viewunderlying, local_beacon, {{relatedname}}{{/str}}</a>
+      {{/hasrelated}}
+    </div>
+
+    {{#hastiles}}
+    <div class="bc-tiles">
+      {{#tiles}}<div class="bc-tile"><div class="bc-tile-k">{{label}}</div><div class="bc-tile-v {{#tone}}bc-txt-{{tone}}{{/tone}}">{{value}}</div></div>{{/tiles}}
+    </div>
+    {{/hastiles}}
+
+    {{#iskpi}}
+      <div class="bc-panel">
+        <div class="bc-panel-head"><h3>{{#str}}wherestands, local_beacon{{/str}}</h3><span class="bc-hint">0% – 100%</span></div>
+        <div class="bc-scale-wrap">
+          <div class="bc-scale">
+            <div class="bc-scale-zone off" style="width:{{zoneoff}}%"></div>
+            <div class="bc-scale-zone near" style="width:{{zonewatch}}%"></div>
+            <div class="bc-scale-zone on" style="width:{{zoneon}}%"></div>
+            {{^nodata}}
+              <div class="bc-scale-target" style="left:{{targetpos}}%"><span class="bc-scale-tt">{{#str}}scale_target, local_beacon{{/str}} · {{target}}%</span></div>
+              <div class="bc-scale-marker" style="left:{{markerpos}}%"><span class="bc-scale-mv">{{value}}%</span></div>
+            {{/nodata}}
+          </div>
+          <div class="bc-scale-legend">
+            <span class="bc-leg off"><span class="bc-d"></span>{{#str}}status_off, local_beacon{{/str}} · &lt;{{amber}}%</span>
+            <span class="bc-leg near"><span class="bc-d"></span>{{#str}}status_near, local_beacon{{/str}} · {{amber}}–{{green}}%</span>
+            <span class="bc-leg on"><span class="bc-d"></span>{{#str}}status_on, local_beacon{{/str}} · {{green}}%+</span>
+          </div>
+        </div>
+      </div>
+    {{/iskpi}}
+
+    {{#haschart}}
+      <div class="bc-panel">
+        <div class="bc-panel-head"><h3>{{#str}}trendtitle, local_beacon{{/str}}</h3><span class="bc-hint">{{#str}}trendhint, local_beacon{{/str}}</span></div>
+        <div class="bc-chart-wrap">
+          <svg class="bc-chart bcfam-{{family}}" viewBox="0 0 760 150" preserveAspectRatio="none">
+            <defs><linearGradient id="bcarea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--fam)" stop-opacity=".22"/><stop offset="1" stop-color="var(--fam)" stop-opacity="0"/></linearGradient></defs>
+            <path d="{{chart.area}}" fill="url(#bcarea)"/>
+            <path class="bc-chart-line" d="{{chart.line}}"/>
+            {{#chart.dots}}<circle class="bc-chart-dot" cx="{{x}}" cy="{{y}}" r="4"/>{{/chart.dots}}
+          </svg>
+        </div>
+      </div>
+    {{/haschart}}
+    {{/isreport}}
+
+    {{#isreport}}
+    <div class="bc-detail-hero bcfam-{{family}}">
+      <div class="bc-dh-top">
+        <span class="bc-dh-ico"><svg viewBox="0 0 24 24" fill="none">{{{icon}}}</svg></span>
+        <div><h1>{{name}}</h1><div class="bc-desc">{{grain}}</div></div>
+        <div class="bc-spacer"></div>
+        <span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>
+      </div>
+      <p class="bc-dh-expl">{{description}}</p>
+    </div>
+
+    {{#actions}}
+    <div class="bc-actionbar" data-region="beacon-actions">
+      <details class="bc-fpill" data-fpill>
+        <summary class="bc-fpill-btn">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M6 4h12a1 1 0 011 1v15l-7-4-7 4V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          <span>{{#str}}savedviews, local_beacon{{/str}}</span>
+          {{#hasviews}}<span class="bc-fpill-count">{{viewcount}}</span>{{/hasviews}}
+          <span class="bc-fpill-caret" aria-hidden="true"></span>
+        </summary>
+        <div class="bc-fpanel bc-apanel">
+          {{#hasviews}}
+          <div class="bc-vlist">
+            {{#views}}
+            <div class="bc-vrow">
+              <a class="bc-vapply" href="{{applyurl}}">{{name}}</a>
+              <form method="post" action="{{saveurl}}" class="bc-inlineform">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="id" value="{{id}}">
+                <input type="hidden" name="reportid" value="{{reportid}}">
+                <input type="hidden" name="contextid" value="{{contextid}}">
+                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                <button type="submit" class="bc-vdel" aria-label="{{#str}}delete, core{{/str}}"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+              </form>
+            </div>
+            {{/views}}
+          </div>
+          {{/hasviews}}
+          <form method="post" action="{{saveurl}}" class="bc-saveform">
+            <input type="hidden" name="action" value="save">
+            <input type="hidden" name="reportid" value="{{reportid}}">
+            <input type="hidden" name="contextid" value="{{contextid}}">
+            <input type="hidden" name="sesskey" value="{{sesskey}}">
+            {{#hidden}}<input type="hidden" name="{{name}}" value="{{value}}">{{/hidden}}
+            <input type="text" name="name" class="bc-fsearch" maxlength="255" required placeholder="{{#str}}savethisview, local_beacon{{/str}}">
+            <button type="submit" class="bc-btn bc-btn-primary bc-btn-sm">{{#str}}savecurrent, local_beacon{{/str}}</button>
+          </form>
+        </div>
+      </details>
+
+      <details class="bc-fpill" data-fpill>
+        <summary class="bc-fpill-btn">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M4 6h16v13a1 1 0 01-1 1H5a1 1 0 01-1-1z" stroke="currentColor" stroke-width="1.8"/><path d="M4 8l8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          <span>{{#str}}emailschedule, local_beacon{{/str}}</span>
+          {{#hasdeliveries}}<span class="bc-fpill-count">{{deliverycount}}</span>{{/hasdeliveries}}
+          <span class="bc-fpill-caret" aria-hidden="true"></span>
+        </summary>
+        <div class="bc-fpanel bc-apanel bc-apanel-wide">
+          {{#hasdeliveries}}
+          <div class="bc-vlist">
+            {{#deliveries}}
+            <div class="bc-vrow">
+              <span class="bc-vmeta"><b>{{name}}</b> · {{freqlabel}} · {{format}}<br><span class="bc-vrcpt">{{recipients}}</span></span>
+              <form method="post" action="{{deliveryurl}}" class="bc-inlineform">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="id" value="{{id}}">
+                <input type="hidden" name="reportid" value="{{reportid}}">
+                <input type="hidden" name="contextid" value="{{contextid}}">
+                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                <button type="submit" class="bc-vdel" aria-label="{{#str}}delete, core{{/str}}"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+              </form>
+            </div>
+            {{/deliveries}}
+          </div>
+          {{/hasdeliveries}}
+          <form method="post" action="{{deliveryurl}}" class="bc-schedform">
+            <input type="hidden" name="action" value="save">
+            <input type="hidden" name="reportid" value="{{reportid}}">
+            <input type="hidden" name="contextid" value="{{contextid}}">
+            <input type="hidden" name="sesskey" value="{{sesskey}}">
+            {{#hidden}}<input type="hidden" name="{{name}}" value="{{value}}">{{/hidden}}
+            <label class="bc-slabel">{{#str}}schedule_name, local_beacon{{/str}}<input type="text" name="name" class="bc-fsearch" maxlength="255" placeholder="{{#str}}schedule_name_ph, local_beacon{{/str}}"></label>
+            <label class="bc-slabel">{{#str}}schedule_recipients, local_beacon{{/str}}<textarea name="recipients" class="bc-fsearch" rows="2" required placeholder="name@example.com, ..."></textarea></label>
+            <div class="bc-srow">
+              <label class="bc-slabel">{{#str}}schedule_format, local_beacon{{/str}}<select name="format" class="bc-fsearch">{{#formats}}<option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>{{/formats}}</select></label>
+              <label class="bc-slabel">{{#str}}schedule_frequency, local_beacon{{/str}}<select name="frequency" class="bc-fsearch">{{#frequencies}}<option value="{{value}}" {{#selected}}selected{{/selected}}>{{label}}</option>{{/frequencies}}</select></label>
+            </div>
+            <div class="bc-fpanel-foot"><button type="submit" class="bc-btn bc-btn-primary bc-btn-sm">{{#str}}schedule_create, local_beacon{{/str}}</button></div>
+          </form>
+        </div>
+      </details>
+    </div>
+    {{/actions}}
+
+    {{#hasfilterbar}}
+    <form class="bc-filterbar" method="get" action="{{filterbar.baseurl}}" data-region="beacon-filterbar">
+      <input type="hidden" name="contextid" value="{{filterbar.contextid}}">
+      <input type="hidden" name="type" value="report">
+      <input type="hidden" name="id" value="{{filterbar.id}}">
+      <div class="bc-fbar-row">
+        <span class="bc-fbar-lead">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          {{#str}}filters, local_beacon{{/str}}</span>
+
+        {{#filterbar.pills}}
+        <details class="bc-fpill {{#active}}on{{/active}}" data-fpill>
+          <summary class="bc-fpill-btn">
+            <span class="bc-fpill-label">{{label}}</span>
+            {{#isdate}}{{#hassummary}}<span class="bc-fpill-sum">{{summary}}</span>{{/hassummary}}{{/isdate}}
+            {{^isdate}}{{#hascount}}<span class="bc-fpill-count">{{count}}</span>{{/hascount}}{{/isdate}}
+            <span class="bc-fpill-caret" aria-hidden="true"></span>
+          </summary>
+          <div class="bc-fpanel">
+            {{#isdate}}
+              {{#hasdatelabel}}<div class="bc-fpanel-note">{{datelabel}}</div>{{/hasdatelabel}}
+              <div class="bc-fpresets">
+                <label class="bc-fpreset {{#custom}}on{{/custom}}"><input type="radio" name="f_preset" value="" {{#custom}}checked{{/custom}} data-fpreset>{{#str}}preset_custom, local_beacon{{/str}}</label>
+                {{#presets}}<label class="bc-fpreset {{#selected}}on{{/selected}}"><input type="radio" name="f_preset" value="{{token}}" {{#selected}}checked{{/selected}} data-fpreset>{{label}}</label>{{/presets}}
+              </div>
+              <div class="bc-fdates">
+                <label>{{#str}}datefrom, local_beacon{{/str}}<input type="date" name="f_from" value="{{from}}" data-fdate></label>
+                <label>{{#str}}dateto, local_beacon{{/str}}<input type="date" name="f_to" value="{{to}}" data-fdate></label>
+              </div>
+            {{/isdate}}
+            {{^isdate}}
+              {{#searchable}}<input type="text" class="bc-fsearch" placeholder="{{#str}}filtervalues, local_beacon{{/str}}" data-fsearch>{{/searchable}}
+              <div class="bc-ffacets">
+                {{#options}}
+                <label class="bc-ffacet"><input type="checkbox" name="{{param}}[]" value="{{value}}" {{#selected}}checked{{/selected}}><span class="bc-ffacet-v">{{label}}</span></label>
+                {{/options}}
+              </div>
+            {{/isdate}}
+            <div class="bc-fpanel-foot">
+              <button type="submit" class="bc-btn bc-btn-primary bc-btn-sm">{{#str}}applyfilters, local_beacon{{/str}}</button>
+            </div>
+          </div>
+        </details>
+        {{/filterbar.pills}}
+
+        <div class="bc-fbar-spacer"></div>
+        {{#filterbar.active}}<a class="bc-btn bc-btn-ghost bc-btn-sm bc-fbar-clear" href="{{filterbar.baseurl}}">{{#str}}clearallfilters, local_beacon{{/str}}</a>{{/filterbar.active}}
+      </div>
+
+      {{#filterbar.haschips}}
+      <div class="bc-fchips">
+        {{#filterbar.chips}}<a class="bc-fchip" href="{{removeurl}}"><span>{{label}}</span><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></a>{{/filterbar.chips}}
+      </div>
+      {{/filterbar.haschips}}
+    </form>
+    {{/hasfilterbar}}
+
+    <div class="bc-panel bc-table-panel" data-region="beacon-table">
+      {{#error}}
+        <div class="bc-tbl-state"><h3>{{#str}}reportfailed, local_beacon{{/str}}</h3><p>{{#str}}reportfailed_desc, local_beacon{{/str}}</p></div>
+      {{/error}}
+      {{^error}}
+        <div class="bc-toolbar">
+          <div class="bc-search">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input type="search" class="bc-search-input" data-role="search" placeholder="{{#str}}searchplaceholder, local_beacon{{/str}}" aria-label="{{#str}}search, local_beacon{{/str}}">
+          </div>
+          <div class="bc-toolbar-spacer"></div>
+          <span class="bc-rowcount" data-role="rowcount">{{shown}} {{#str}}of, local_beacon{{/str}} {{total}}</span>
+          <button type="button" class="bc-btn bc-btn-ghost bc-btn-sm" data-role="clear" hidden>{{#str}}clearfilters, local_beacon{{/str}}</button>
+          <button type="button" class="bc-btn bc-btn-ghost bc-btn-sm" data-role="columns">
+            <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="1.8"/></svg>
+            {{#str}}columns, local_beacon{{/str}}</button>
+          <button type="button" class="bc-btn bc-btn-ghost bc-btn-sm" data-role="export">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {{#str}}exportcsv, local_beacon{{/str}}</button>
+          <a class="bc-btn bc-btn-primary bc-btn-sm" href="{{pdfurl}}">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            {{#str}}downloadpdf, local_beacon{{/str}}</a>
+        </div>
+
+        <div class="bc-chips" data-role="chips"></div>
+
+        <div class="bc-dist" data-role="dist" hidden></div>
+
+        <div class="bc-bulkbar" data-role="bulkbar" hidden>
+          <span class="bc-bulk-count"><b data-role="selcount">0</b> {{#str}}nselected, local_beacon{{/str}}</span>
+          <div class="bc-toolbar-spacer"></div>
+          <button type="button" class="bc-btn bc-btn-soft bc-btn-sm" data-role="exportselected">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {{#str}}exportselected, local_beacon{{/str}}</button>
+          <button type="button" class="bc-btn bc-btn-soft bc-btn-sm" data-role="emailselected">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16v12H4z" stroke="currentColor" stroke-width="1.8"/><path d="M4 7l8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            {{#str}}emailselected, local_beacon{{/str}}</button>
+          <button type="button" class="bc-btn bc-btn-ghost bc-btn-sm" data-role="clearselection">{{#str}}clearselection, local_beacon{{/str}}</button>
+        </div>
+
+        <div class="bc-table-scroll">
+          <table class="bc-data" data-role="table">
+            <thead>
+              <tr>
+                {{#columns}}
+                  <th data-index="{{index}}" data-type="{{type}}" class="{{#numeric}}bc-num{{/numeric}} {{#filterable}}bc-filterable{{/filterable}}">
+                    <span class="bc-th-in">
+                      <button type="button" class="bc-sort" data-role="sort" aria-label="{{#str}}sortby, local_beacon, {{label}}{{/str}}">{{label}}<span class="bc-sort-ico"></span></button>
+                      {{#filterable}}<button type="button" class="bc-filter-btn" data-role="filter" aria-label="{{#str}}filterby, local_beacon, {{label}}{{/str}}"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>{{/filterable}}
+                    </span>
+                  </th>
+                {{/columns}}
+              </tr>
+            </thead>
+            <tbody>
+              {{#rows}}
+                <tr>
+                  {{#cells}}
+                    <td class="{{#numeric}}bc-num{{/numeric}}" data-sort="{{sort}}">
+                      {{#isstatus}}<span class="bc-badge bc-badge-{{badge}}">{{v}}</span>{{/isstatus}}
+                      {{^isstatus}}{{v}}{{/isstatus}}
+                    </td>
+                  {{/cells}}
+                </tr>
+              {{/rows}}
+            </tbody>
+          </table>
+          <div class="bc-tbl-empty" data-role="empty" hidden>
+            <p>{{#str}}nomatches, local_beacon{{/str}}</p>
+          </div>
+        </div>
+
+        {{#isempty}}<div class="bc-tbl-state"><p>{{#str}}reportempty, local_beacon{{/str}}</p></div>{{/isempty}}
+        {{#capped}}<div class="bc-tbl-foot">{{#str}}showingcapped, local_beacon, {{shown}}{{/str}} · {{total}} {{#str}}total, local_beacon{{/str}}</div>{{/capped}}
+      {{/error}}
+    </div>
+    {{/isreport}}
+
+  </div>
+</div>
+{{#js}}
+require(['local_beacon/ui', 'local_beacon/table', 'local_beacon/filterbar'], function(UI, Table, FB){ UI.init(); Table.init(); FB.init(); });
+{{/js}}
