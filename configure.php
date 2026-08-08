@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * "Set up your library" — the checklist that chooses what shows.
@@ -51,12 +51,16 @@ if (data_submitted() && confirm_sesskey()) {
     set_config('enabledstats', implode(',', $stats), 'local_beacon');
     set_config('enabledkpis', implode(',', $kpis), 'local_beacon');
     set_config('enabledreports', implode(',', $reports), 'local_beacon');
-    redirect(new moodle_url('/local/beacon/configure.php'),
-        get_string('setup_saved', 'local_beacon'), null, \core\output\notification::NOTIFY_SUCCESS);
+    redirect(
+        new moodle_url('/local/beacon/configure.php'),
+        get_string('setup_saved', 'local_beacon'),
+        null,
+        \core\output\notification::NOTIFY_SUCCESS
+    );
 }
 
 // Helper: is an item enabled right now (respecting "never configured = default").
-$ison = function(?string $raw, string $id, bool $defaulton): bool {
+$ison = function (?string $raw, string $id, bool $defaulton): bool {
     if ($raw === false || $raw === null) {
         return $defaulton;
     }
@@ -70,7 +74,7 @@ $ison = function(?string $raw, string $id, bool $defaulton): bool {
 // computes a metric live (doing so for all 42 items could exceed the web
 // timeout). Reports are described by their grain; metric figures come from the
 // warmed cache, showing a dash until the scheduled task first fills it.
-$build = function($m, $raw) use ($ison, $context) {
+$build = function ($m, $raw) use ($ison, $context) {
     $isreport = $m instanceof \local_beacon\local\report;
     if ($isreport) {
         $example = $m->grainlabel();

@@ -110,13 +110,13 @@ define('local_beacon/filterbar', [], function() {
                 window.sessionStorage.removeItem('bc-scroll');
                 window.scrollTo(0, parseInt(y, 10) || 0);
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) { /* Ignore */ }
 
         var save = function() {
             try {
                 window.sessionStorage.setItem('bc-scroll',
                     String(window.pageYOffset || window.scrollY || 0));
-            } catch (e) { /* ignore */ }
+            } catch (e) { /* Ignore */ }
         };
 
         // Save on every filter navigation: Apply / preset submits, chip-removal

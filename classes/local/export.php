@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Report exporters: a branded PDF and a plain CSV.
@@ -28,10 +28,11 @@ namespace local_beacon\local;
  * Turns a report's rows into a downloadable file.
  */
 class export {
-
     /** Beacon brand teal, used on the PDF header and table. */
     private const TEAL = '#0E9C7B';
+    /** Darker teal, used for depth on headers and borders. */
     private const TEAL_DEEP = '#0B7C63';
+    /** Pale teal wash, used for zebra striping and table fills. */
     private const WASH = '#E4F5EF';
 
     /**
@@ -105,8 +106,25 @@ class export {
             $savey = $pdf->GetY();
             try {
                 // Right-aligned, ~14mm tall, at the very top of the page.
-                $pdf->Image($logo, '', 11, 0, 14, '', '', 'T', false, 300, 'R',
-                    false, false, 0, false, false, false);
+                $pdf->Image(
+                    $logo,
+                    '',
+                    11,
+                    0,
+                    14,
+                    '',
+                    '',
+                    'T',
+                    false,
+                    300,
+                    'R',
+                    false,
+                    false,
+                    0,
+                    false,
+                    false,
+                    false
+                );
             } catch (\Throwable $e) {
                 debugging('Beacon PDF logo skipped: ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
@@ -242,8 +260,8 @@ class export {
      * @return string
      */
     public static function csv_string(report $report, array $rows): string {
-        $line = function(array $cells): string {
-            return implode(',', array_map(function($v) {
+        $line = function (array $cells): string {
+            return implode(',', array_map(function ($v) {
                 $v = str_replace('"', '""', (string) $v);
                 return preg_match('/[",\n\r]/', $v) ? '"' . $v . '"' : $v;
             }, $cells));

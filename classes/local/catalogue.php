@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * The curated catalogue of metrics and reports.
@@ -29,7 +29,6 @@ namespace local_beacon\local;
  * validated query. Curated to the metrics Moodle admins actually ask for.
  */
 class catalogue {
-
     /** @var metric[]|null */
     private static ?array $metrics = null;
     /** @var report[]|null */
@@ -69,12 +68,12 @@ class catalogue {
         $now = fn() => time();
         $defs = [];
 
-        // ---------------------------------------------------------------- STATS
+        // Stats metrics.
 
         $defs[] = [
             'id' => 'total_learners', 'kind' => 'stat', 'family' => 'people',
             'icon' => 'users', 'format' => 'number', 'better' => 'higher',
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 return [$DB->count_records_select('user', 'deleted = 0 AND suspended = 0 AND id > 2'), null];
             },
         ];
@@ -82,7 +81,7 @@ class catalogue {
         $defs[] = [
             'id' => 'live_enrolments', 'kind' => 'stat', 'family' => 'people',
             'icon' => 'login', 'format' => 'number', 'better' => 'higher',
-            'compute' => function($DB) use ($now) {
+            'compute' => function ($DB) use ($now) {
                 $sql = "SELECT COUNT(*) FROM (" . self::live_enrolments() . ") d";
                 return [$DB->count_records_sql($sql, ['now' => $now()]), null];
             },
@@ -91,17 +90,21 @@ class catalogue {
         $defs[] = [
             'id' => 'active_learners', 'kind' => 'stat', 'family' => 'engagement',
             'icon' => 'pulse', 'format' => 'number', 'better' => 'higher',
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $cut = time() - 30 * DAYSECS;
-                return [$DB->count_records_select('user',
-                    'deleted = 0 AND suspended = 0 AND id > 2 AND lastaccess > :cut', ['cut' => $cut]), null];
+                $count = $DB->count_records_select(
+                    'user',
+                    'deleted = 0 AND suspended = 0 AND id > 2 AND lastaccess > :cut',
+                    ['cut' => $cut]
+                );
+                return [$count, null];
             },
         ];
 
         $defs[] = [
             'id' => 'new_enrolments', 'kind' => 'stat', 'family' => 'progress',
             'icon' => 'plus', 'format' => 'number', 'better' => 'higher',
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $cut = time() - 30 * DAYSECS;
                 $sql = "SELECT COUNT(*)
                           FROM {user_enrolments} ue
@@ -115,7 +118,7 @@ class catalogue {
         $defs[] = [
             'id' => 'completions', 'kind' => 'stat', 'family' => 'progress',
             'icon' => 'flag', 'format' => 'number', 'better' => 'higher',
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $cut = time() - 30 * DAYSECS;
                 $sql = "SELECT COUNT(*)
                           FROM {course_completions} cc
@@ -129,7 +132,7 @@ class catalogue {
         $defs[] = [
             'id' => 'in_progress', 'kind' => 'stat', 'family' => 'progress',
             'icon' => 'play', 'format' => 'number', 'better' => 'higher',
-            'compute' => function($DB) use ($now) {
+            'compute' => function ($DB) use ($now) {
                 $sql = "SELECT COUNT(*) FROM (" . self::live_enrolments(true) . ") enr
                         LEFT JOIN (SELECT DISTINCT userid, course AS courseid
                                      FROM {course_completions}
@@ -143,7 +146,7 @@ class catalogue {
         $defs[] = [
             'id' => 'awaiting_marking', 'kind' => 'stat', 'family' => 'assessment',
             'icon' => 'pen', 'format' => 'number', 'better' => 'lower', 'requirestable' => 'assign_submission',
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $sql = "SELECT COUNT(*)
                           FROM {assign_submission} s
                           JOIN {assign} a ON a.id = s.assignment
@@ -158,7 +161,7 @@ class catalogue {
         $defs[] = [
             'id' => 'average_grade', 'kind' => 'stat', 'family' => 'assessment',
             'icon' => 'star', 'format' => 'percent1', 'better' => 'higher',
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $sql = "SELECT AVG(100.0 * gg.finalgrade / NULLIF(gg.rawgrademax,0))
                           FROM {grade_grades} gg
                           JOIN {grade_items} gi ON gi.id = gg.itemid AND gi.itemtype = 'course'
@@ -172,11 +175,14 @@ class catalogue {
         $defs[] = [
             'id' => 'dormant_learners', 'kind' => 'stat', 'family' => 'engagement',
             'icon' => 'moon', 'format' => 'number', 'better' => 'lower',
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $cut = time() - 90 * DAYSECS;
-                return [$DB->count_records_select('user',
+                $count = $DB->count_records_select(
+                    'user',
                     'deleted = 0 AND suspended = 0 AND id > 2 AND lastaccess > 0 AND lastaccess < :cut',
-                    ['cut' => $cut]), null];
+                    ['cut' => $cut]
+                );
+                return [$count, null];
             },
         ];
 
@@ -184,7 +190,7 @@ class catalogue {
             'id' => 'expiring_soon', 'kind' => 'stat', 'family' => 'compliance',
             'icon' => 'cert', 'format' => 'number', 'better' => 'lower',
             'requirestable' => 'tool_certificate_issues',
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $now = time();
                 $soon = $now + 30 * DAYSECS;
                 $sql = "SELECT COUNT(*)
@@ -195,13 +201,13 @@ class catalogue {
             },
         ];
 
-        // ---------------------------------------------------------------- KPIS
+        // KPI gauges.
 
         $defs[] = [
             'id' => 'course_completion_rate', 'kind' => 'kpi', 'family' => 'progress',
             'icon' => 'gauge', 'format' => 'percent', 'better' => 'higher',
             'target' => 80, 'amber' => 60, 'green' => 78,
-            'compute' => function($DB) use ($now) {
+            'compute' => function ($DB) use ($now) {
                 $sql = "SELECT
                           SUM(CASE WHEN done.userid IS NOT NULL THEN 1 ELSE 0 END) AS num,
                           COUNT(*) AS den
@@ -220,7 +226,7 @@ class catalogue {
             'id' => 'activity_completion_rate', 'kind' => 'kpi', 'family' => 'progress',
             'icon' => 'gauge', 'format' => 'percent', 'better' => 'higher',
             'target' => 75, 'amber' => 55, 'green' => 75,
-            'compute' => function($DB) use ($now) {
+            'compute' => function ($DB) use ($now) {
                 $sql = "SELECT
                           SUM(CASE WHEN act.userid IS NOT NULL THEN 1 ELSE 0 END) AS num,
                           COUNT(*) AS den
@@ -241,11 +247,14 @@ class catalogue {
             'id' => 'monthly_active_rate', 'kind' => 'kpi', 'family' => 'engagement',
             'icon' => 'gauge', 'format' => 'percent', 'better' => 'higher',
             'target' => 60, 'amber' => 45, 'green' => 60,
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $cut = time() - 30 * DAYSECS;
                 $den = $DB->count_records_select('user', 'deleted = 0 AND suspended = 0 AND id > 2');
-                $num = $DB->count_records_select('user',
-                    'deleted = 0 AND suspended = 0 AND id > 2 AND lastaccess > :cut', ['cut' => $cut]);
+                $num = $DB->count_records_select(
+                    'user',
+                    'deleted = 0 AND suspended = 0 AND id > 2 AND lastaccess > :cut',
+                    ['cut' => $cut]
+                );
                 return [$den ? 100.0 * $num / $den : null, $den];
             },
         ];
@@ -254,7 +263,7 @@ class catalogue {
             'id' => 'pass_rate', 'kind' => 'kpi', 'family' => 'assessment',
             'icon' => 'gauge', 'format' => 'percent', 'better' => 'higher',
             'target' => 75, 'amber' => 60, 'green' => 75,
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $sql = "SELECT
                           SUM(CASE WHEN gg.finalgrade >= gi.gradepass AND gi.gradepass > 0 THEN 1 ELSE 0 END) AS num,
                           SUM(CASE WHEN gi.gradepass > 0 THEN 1 ELSE 0 END) AS den
@@ -272,7 +281,7 @@ class catalogue {
             'id' => 'feedback_rate', 'kind' => 'kpi', 'family' => 'assessment',
             'icon' => 'gauge', 'format' => 'percent', 'better' => 'higher',
             'target' => 90, 'amber' => 75, 'green' => 90, 'requirestable' => 'assign_submission',
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $sql = "SELECT
                           SUM(CASE WHEN g.grade IS NOT NULL AND g.grade >= 0 THEN 1 ELSE 0 END) AS num,
                           COUNT(*) AS den
@@ -290,7 +299,7 @@ class catalogue {
             'id' => 'certification_currency', 'kind' => 'kpi', 'family' => 'compliance',
             'icon' => 'gauge', 'format' => 'percent', 'better' => 'higher',
             'target' => 95, 'amber' => 85, 'green' => 95, 'requirestable' => 'tool_certificate_issues',
-            'compute' => function($DB) {
+            'compute' => function ($DB) {
                 $now = time();
                 $sql = "SELECT
                           SUM(CASE WHEN ci.expires = 0 OR ci.expires > :now THEN 1 ELSE 0 END) AS num,
@@ -326,7 +335,7 @@ class catalogue {
             'filters' => ['daterange', 'cohort', 'role', 'auth'], 'datelabel' => 'col_lastaccess',
             'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
                           ['dept', 'col_department', 'text'], ['last', 'col_lastaccess', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'role' => 'u.id', 'auth' => 'u.auth',
                     'daterange' => ['col' => 'u.lastaccess', 'label' => 'col_lastaccess']]);
                 $where = "u.deleted = 0 AND u.suspended = 0 AND u.id > 2 $fw";
@@ -354,7 +363,7 @@ class catalogue {
             'datelabel' => 'col_joined',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['method', 'col_method', 'text'], ['joined', 'col_joined', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id', 'course' => 'e.courseid',
                     'category' => 'e.courseid', 'enrolmethod' => 'e.enrol',
                     'daterange' => ['col' => 'ue.timecreated', 'label' => 'col_joined']]);
@@ -384,7 +393,7 @@ class catalogue {
             'datelabel' => 'col_completed',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['status', 'col_status', 'status'], ['completed', 'col_completed', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'enr.userid', 'group' => 'enr.userid',
                     'course' => 'enr.courseid', 'category' => 'enr.courseid',
                     'daterange' => ['col' => 'cc.timecompleted', 'label' => 'col_completed']]);
@@ -414,7 +423,7 @@ class catalogue {
             'filters' => ['cohort', 'group', 'course', 'category'],
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['done', 'col_done', 'number'], ['total', 'col_oftotal', 'number']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'enr.userid', 'group' => 'enr.userid',
                     'course' => 'enr.courseid', 'category' => 'enr.courseid']);
                 $params = ['now' => time()] + $fp;
@@ -447,7 +456,7 @@ class catalogue {
             'filters' => ['daterange', 'cohort', 'course', 'category'], 'datelabel' => 'col_enrolled',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['enrolled', 'col_enrolled', 'text'], ['status', 'col_status', 'status']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'e.courseid',
                     'category' => 'e.courseid', 'daterange' => ['col' => 'ue.timecreated', 'label' => 'col_enrolled']]);
                 $body = "FROM {user_enrolments} ue
@@ -473,7 +482,7 @@ class catalogue {
             'filters' => ['daterange', 'cohort', 'role', 'idle'], 'datelabel' => 'col_lastaccess',
             'columns' => [['learner', 'col_learner', 'text'], ['first', 'col_firstseen', 'text'],
                           ['last', 'col_lastaccess', 'text'], ['idle', 'col_idle', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'role' => 'u.id', 'idle' => 'u.lastaccess',
                     'daterange' => ['col' => 'u.lastaccess', 'label' => 'col_lastaccess']]);
                 $where = "u.deleted = 0 AND u.suspended = 0 AND u.id > 2 $fw";
@@ -499,7 +508,7 @@ class catalogue {
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['grade', 'col_grade', 'text']],
             'filters' => ['cohort', 'course', 'category', 'gradeband'],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'gi.courseid', 'category' => 'gi.courseid',
                     'gradeband' => '(100.0 * gg.finalgrade / NULLIF(gg.rawgrademax,0))']);
                 $body = "FROM {grade_grades} gg
@@ -527,7 +536,7 @@ class catalogue {
             'filters' => ['cohort', 'course', 'category'],
             'columns' => [['learner', 'col_learner', 'text'], ['attempts', 'col_attempts', 'number'],
                           ['best', 'col_best', 'text'], ['avg', 'col_avg', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'qz.course', 'category' => 'qz.course']);
                 $body = "FROM {quiz_attempts} qa
                           JOIN {quiz} qz ON qz.id = qa.quiz
@@ -559,7 +568,7 @@ class catalogue {
             'filters' => ['daterange', 'cohort', 'course', 'category'], 'datelabel' => 'col_submitted',
             'columns' => [['learner', 'col_learner', 'text'], ['assignment', 'col_assignment', 'text'],
                           ['submitted', 'col_submitted', 'text'], ['waiting', 'col_waiting', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'a.course', 'category' => 'a.course',
                     'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
                 $body = "FROM {assign_submission} s
@@ -591,7 +600,7 @@ class catalogue {
             'columns' => [['learner', 'col_learner', 'text'], ['cert', 'col_certificate', 'text'],
                           ['issued', 'col_issued', 'text'], ['expires', 'col_expires', 'text'],
                           ['status', 'col_status', 'status']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 $now = time();
                 $soon = $now + 30 * DAYSECS;
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'certstatus' => 'ci.expires',
@@ -631,7 +640,7 @@ class catalogue {
             'filters' => ['daterange', 'cohort'], 'datelabel' => 'col_lastpost',
             'columns' => [['learner', 'col_learner', 'text'], ['posts', 'col_posts', 'number'],
                           ['last', 'col_lastpost', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id',
                     'daterange' => ['col' => 'fp.created', 'label' => 'col_lastpost']]);
                 $body = "FROM {forum_posts} fp
@@ -657,7 +666,7 @@ class catalogue {
             'filters' => ['daterange', 'category'], 'datelabel' => 'col_updated',
             'columns' => [['course', 'col_course', 'text'], ['enrolled', 'col_enrolled', 'number'],
                           ['tracks', 'col_tracks', 'status'], ['updated', 'col_updated', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['category' => 'c.id',
                     'daterange' => ['col' => 'c.timemodified', 'label' => 'col_updated']]);
                 $body = "FROM {course} c
@@ -680,14 +689,14 @@ class catalogue {
             },
         ];
 
-        // ---- Learner / people ----
+        // Learner / people.
 
         $defs[] = [
             'id' => 'learner_progress', 'family' => 'progress', 'icon' => 'check', 'grain' => 'learner',
             'filters' => ['cohort', 'role'],
             'columns' => [['learner', 'col_learner', 'text'], ['enrolled', 'col_enrolledn', 'number'],
                           ['completed', 'col_completedn', 'number'], ['grade', 'col_avggrade', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'role' => 'u.id']);
                 $sql = "SELECT u.id, u.firstname, u.lastname,
                                COALESCE(en.cnt, 0) AS enrolled,
@@ -712,10 +721,15 @@ class catalogue {
                 foreach ($recs as $r) {
                     $rows[] = [cell::text(fullname($r)), cell::number((int)$r->enrolled),
                                cell::number((int)$r->completed),
-                               $r->avgpct === null ? cell::text('—') : cell::number(round($r->avgpct, 1), round($r->avgpct, 1) . '%')];
+                               $r->avgpct === null
+                                   ? cell::text('—')
+                                   : cell::number(round($r->avgpct, 1), round($r->avgpct, 1) . '%')];
                 }
-                return [$rows, $DB->count_records_sql(
-                    "SELECT COUNT(*) FROM {user} u WHERE u.deleted = 0 AND u.suspended = 0 AND u.id > 2 $fw", $fp)];
+                $count = $DB->count_records_sql(
+                    "SELECT COUNT(*) FROM {user} u WHERE u.deleted = 0 AND u.suspended = 0 AND u.id > 2 $fw",
+                    $fp
+                );
+                return [$rows, $count];
             },
         ];
 
@@ -724,7 +738,7 @@ class catalogue {
             'filters' => ['cohort', 'idle'],
             'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
                           ['last', 'col_lastaccess', 'date'], ['idle', 'col_idle', 'number']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'idle' => 'u.lastaccess']);
                 $params = ['cut' => time() - 30 * DAYSECS] + $fp;
                 $where = "u.deleted = 0 AND u.suspended = 0 AND u.id > 2
@@ -751,7 +765,7 @@ class catalogue {
             'filters' => ['daterange', 'cohort', 'auth'], 'datelabel' => 'col_created',
             'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
                           ['created', 'col_created', 'date'], ['auth', 'col_auth', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'auth' => 'u.auth',
                     'daterange' => ['col' => 'u.timecreated', 'label' => 'col_created']]);
                 $where = "u.deleted = 0 AND u.suspended = 0 AND u.id > 2 AND u.lastaccess = 0 $fw";
@@ -775,7 +789,7 @@ class catalogue {
             'filters' => ['cohort', 'auth'],
             'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
                           ['created', 'col_created', 'date'], ['auth', 'col_auth', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'auth' => 'u.auth']);
                 $params = ['cut' => time() - 30 * DAYSECS] + $fp;
                 $where = "u.deleted = 0 AND u.id > 2 AND u.timecreated > :cut $fw";
@@ -799,7 +813,7 @@ class catalogue {
             'filters' => ['daterange', 'cohortid'], 'datelabel' => 'col_added',
             'columns' => [['learner', 'col_learner', 'text'], ['cohort', 'col_cohort', 'text'],
                           ['added', 'col_added', 'date']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohortid' => 'cm.cohortid',
                     'daterange' => ['col' => 'cm.timeadded', 'label' => 'col_added']]);
                 $body = "FROM {cohort_members} cm
@@ -823,7 +837,7 @@ class catalogue {
             'filters' => ['roleid', 'contextlevel'],
             'columns' => [['learner', 'col_learner', 'text'], ['role', 'col_role', 'text'],
                           ['scope', 'col_scope', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['roleid' => 'ra.roleid', 'contextlevel' => 'ctx.contextlevel']);
                 $body = "FROM {role_assignments} ra
                           JOIN {role} r ON r.id = ra.roleid
@@ -843,14 +857,14 @@ class catalogue {
             },
         ];
 
-        // ---- Progress ----
+        // Progress.
 
         $defs[] = [
             'id' => 'course_progress', 'family' => 'progress', 'icon' => 'play', 'grain' => 'enrolment',
             'filters' => ['cohort', 'group', 'course', 'category', 'progressband'],
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['progress', 'col_progress', 'number']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'enr.userid', 'group' => 'enr.userid',
                     'course' => 'enr.courseid', 'category' => 'enr.courseid',
                     'progressband' => 'CASE WHEN COALESCE(t.cnt,0) > 0 THEN 100.0 * COALESCE(d.cnt,0) / t.cnt ELSE 0 END']);
@@ -890,7 +904,7 @@ class catalogue {
             'filters' => ['cohort', 'proficiency'],
             'columns' => [['learner', 'col_learner', 'text'], ['competency', 'col_competency', 'text'],
                           ['status', 'col_status', 'status']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'proficiency' => 'uc.proficiency']);
                 $body = "FROM {competency_usercomp} uc
                           JOIN {competency} comp ON comp.id = uc.competencyid
@@ -910,7 +924,7 @@ class catalogue {
             },
         ];
 
-        // ---- Assessment ----
+        // Assessment.
 
         $defs[] = [
             'id' => 'quiz_grades', 'family' => 'assessment', 'icon' => 'star', 'grain' => 'quiz',
@@ -919,7 +933,7 @@ class catalogue {
             'columns' => [['quiz', 'col_quiz', 'text'], ['course', 'col_course', 'text'],
                           ['attempts', 'col_attempts', 'number'], ['learners', 'col_learners', 'number'],
                           ['avg', 'col_avg', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['course' => 'qz.course', 'category' => 'qz.course']);
                 $body = "FROM {quiz} qz
                           JOIN {course} c ON c.id = qz.course
@@ -950,7 +964,7 @@ class catalogue {
             'columns' => [['assignment', 'col_assignment', 'text'], ['course', 'col_course', 'text'],
                           ['submitted', 'col_submitted_n', 'number'], ['graded', 'col_graded', 'number'],
                           ['pending', 'col_pending', 'number']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['course' => 'a.course', 'category' => 'a.course']);
                 $sql = "SELECT a.id, a.name AS assignment, c.fullname AS course,
                           (SELECT COUNT(*) FROM {assign_submission} s
@@ -983,7 +997,7 @@ class catalogue {
             'filters' => ['cohort', 'course', 'category'],
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['scorm', 'col_scorm', 'text'], ['attempts', 'col_attempts', 'number']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 's.course', 'category' => 's.course']);
                 // Moodle 4.3+ SCORM tracking schema: one {scorm_attempt} row per attempt.
                 // Only the columns proven to exist on the target schema are used
@@ -1007,14 +1021,14 @@ class catalogue {
             },
         ];
 
-        // ---- Operations ----
+        // Operations.
 
         $defs[] = [
             'id' => 'course_summary', 'family' => 'operations', 'icon' => 'grid', 'grain' => 'course',
             'filters' => ['category'],
             'columns' => [['course', 'col_course', 'text'], ['enrolled', 'col_enrolledn', 'number'],
                           ['completed', 'col_completedn', 'number'], ['grade', 'col_avggrade', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['category' => 'c.id']);
                 $sql = "SELECT c.id, c.fullname,
                                COALESCE(en.cnt, 0) AS enrolled,
@@ -1038,13 +1052,15 @@ class catalogue {
                 foreach ($recs as $c) {
                     $rows[] = [cell::text(format_string($c->fullname)), cell::number((int)$c->enrolled),
                                cell::number((int)$c->completed),
-                               $c->avgpct === null ? cell::text('—') : cell::number(round($c->avgpct, 1), round($c->avgpct, 1) . '%')];
+                               $c->avgpct === null
+                                   ? cell::text('—')
+                                   : cell::number(round($c->avgpct, 1), round($c->avgpct, 1) . '%')];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) FROM {course} c WHERE c.id > 1 $fw", $fp)];
             },
         ];
 
-        // ---- Compliance / engagement extras ----
+        // Compliance / engagement extras.
 
         $defs[] = [
             'id' => 'badges_awarded', 'family' => 'engagement', 'icon' => 'star', 'grain' => 'badge',
@@ -1052,7 +1068,7 @@ class catalogue {
             'filters' => ['daterange', 'cohort'], 'datelabel' => 'col_issued',
             'columns' => [['learner', 'col_learner', 'text'], ['badge', 'col_badge', 'text'],
                           ['issued', 'col_issued', 'date']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id',
                     'daterange' => ['col' => 'bi.dateissued', 'label' => 'col_issued']]);
                 $body = "FROM {badge_issued} bi
@@ -1076,7 +1092,7 @@ class catalogue {
             'filters' => ['daterange', 'cohort', 'policystatus'], 'datelabel' => 'col_agreed',
             'columns' => [['learner', 'col_learner', 'text'], ['policy', 'col_policy', 'text'],
                           ['status', 'col_status', 'status'], ['when', 'col_agreed', 'date']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'policystatus' => 'pa.status',
                     'daterange' => ['col' => 'pa.timemodified', 'label' => 'col_agreed']]);
                 $body = "FROM {tool_policy_acceptances} pa
@@ -1145,7 +1161,7 @@ class catalogue {
             'id' => 'my_courses', 'family' => 'progress', 'icon' => 'play', 'grain' => 'course',
             'columns' => [['course', 'col_course', 'text'], ['progress', 'col_progress', 'number'],
                           ['status', 'col_status', 'status'], ['last', 'col_lastaccess', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 global $USER;
                 $now = time();
                 $sql = "SELECT c.id, c.fullname AS course,
@@ -1190,7 +1206,7 @@ class catalogue {
         $defs[] = [
             'id' => 'my_completions', 'family' => 'progress', 'icon' => 'flag', 'grain' => 'course',
             'columns' => [['course', 'col_course', 'text'], ['completed', 'col_completed', 'date']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 global $USER;
                 $sql = "SELECT cc.id, c.fullname AS course, cc.timecompleted
                           FROM {course_completions} cc
@@ -1209,7 +1225,7 @@ class catalogue {
         $defs[] = [
             'id' => 'my_grades', 'family' => 'assessment', 'icon' => 'doc', 'grain' => 'course',
             'columns' => [['course', 'col_course', 'text'], ['grade', 'col_grade', 'text']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 global $USER;
                 $sql = "SELECT gg.id, c.fullname AS course,
                                (100.0 * gg.finalgrade / NULLIF(gg.rawgrademax,0)) AS pct
@@ -1235,7 +1251,7 @@ class catalogue {
             'requirestable' => 'tool_certificate_issues',
             'columns' => [['cert', 'col_certificate', 'text'], ['issued', 'col_issued', 'date'],
                           ['expires', 'col_expires', 'text'], ['status', 'col_status', 'status']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 global $USER;
                 $now = time();
                 $soon = $now + 30 * DAYSECS;
@@ -1268,7 +1284,7 @@ class catalogue {
             'id' => 'my_badges', 'family' => 'engagement', 'icon' => 'star', 'grain' => 'badge',
             'requirestable' => 'badge_issued',
             'columns' => [['badge', 'col_badge', 'text'], ['issued', 'col_issued', 'date']],
-            'run' => function($DB, $q, $limit) {
+            'run' => function ($DB, $q, $limit) {
                 global $USER;
                 $sql = "SELECT bi.id, b.name AS badge, bi.dateissued
                           FROM {badge_issued} bi
@@ -1317,15 +1333,22 @@ class catalogue {
             "SELECT COUNT(DISTINCT e.courseid) FROM {user_enrolments} ue
                JOIN {enrol} e ON e.id = ue.enrolid
               WHERE ue.userid = :me AND ue.status = 0 AND e.status = 0
-                AND (ue.timeend = 0 OR ue.timeend > :now)", $me + ['now' => $now]);
-        $completed = (int) $DB->count_records_select('course_completions',
-            'userid = :me AND timecompleted IS NOT NULL', $me);
+                AND (ue.timeend = 0 OR ue.timeend > :now)",
+            $me + ['now' => $now]
+        );
+        $completed = (int) $DB->count_records_select(
+            'course_completions',
+            'userid = :me AND timecompleted IS NOT NULL',
+            $me
+        );
         $inprogress = max(0, $enrolled - $completed);
         $avg = $DB->get_field_sql(
             "SELECT AVG(100.0 * gg.finalgrade / NULLIF(gg.rawgrademax,0))
                FROM {grade_grades} gg
                JOIN {grade_items} gi ON gi.id = gg.itemid AND gi.itemtype = 'course'
-              WHERE gg.userid = :me AND gg.finalgrade IS NOT NULL AND gg.hidden = 0", $me);
+              WHERE gg.userid = :me AND gg.finalgrade IS NOT NULL AND gg.hidden = 0",
+            $me
+        );
 
         return [
             ['label' => get_string('my_enrolled', 'local_beacon'), 'value' => number_format($enrolled)],

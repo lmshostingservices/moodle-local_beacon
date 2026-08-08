@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * The learner self-view ("My reports") page renderable.
@@ -34,7 +34,6 @@ use renderer_base;
  * A learner's personal dashboard: their own headline figures and reports.
  */
 class mylibrary implements renderable, templatable {
-
     /**
      * Export for template.
      *
@@ -58,8 +57,10 @@ class mylibrary implements renderable, templatable {
                 'familylabel' => get_string('family_' . $r->family, 'local_beacon'),
                 'icon'        => icons::svg($r->icon),
                 'grain'       => $r->grainlabel(),
-                'url'         => (new \moodle_url('/local/beacon/view.php',
-                    ['type' => 'mine', 'id' => $r->id]))->out(false),
+                'url'         => (new \moodle_url(
+                    '/local/beacon/view.php',
+                    ['type' => 'mine', 'id' => $r->id]
+                ))->out(false),
             ];
         }
 

@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Display helpers: value formatting and trend history.
@@ -28,7 +28,6 @@ namespace local_beacon\local;
  * Formatting and trend lookups, kept out of the query and output layers.
  */
 class present {
-
     /**
      * The unit suffix for a format.
      *
@@ -73,8 +72,14 @@ class present {
     public static function series(string $metricid, int $contextid, int $points = 14): array {
         global $DB;
         try {
-            $rows = $DB->get_records('local_beacon_snapshot',
-                ['metric' => $metricid, 'contextid' => $contextid], 'daykey ASC', 'id, value', 0, 200);
+            $rows = $DB->get_records(
+                'local_beacon_snapshot',
+                ['metric' => $metricid, 'contextid' => $contextid],
+                'daykey ASC',
+                'id, value',
+                0,
+                200
+            );
         } catch (\dml_exception $e) {
             return [];
         }
@@ -109,10 +114,15 @@ class present {
         global $DB;
         $target = (int) userdate(time() - $daysago * DAYSECS, '%Y%m%d');
         try {
-            $rows = $DB->get_records_select('local_beacon_snapshot',
+            $rows = $DB->get_records_select(
+                'local_beacon_snapshot',
                 'metric = :m AND contextid = :c AND daykey <= :d',
                 ['m' => $metricid, 'c' => $contextid, 'd' => $target],
-                'daykey DESC', 'id, value', 0, 1);
+                'daykey DESC',
+                'id, value',
+                0,
+                1
+            );
         } catch (\dml_exception $e) {
             return null;
         }

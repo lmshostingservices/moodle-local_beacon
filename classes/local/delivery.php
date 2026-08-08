@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Scheduled email delivery of a report (with saved filters) to recipients.
@@ -28,7 +28,6 @@ namespace local_beacon\local;
  * Persists delivery schedules and sends them when due.
  */
 class delivery {
-
     /** The frequencies a delivery may use. */
     public const FREQUENCIES = ['daily', 'weekly', 'monthly'];
     /** The export formats a delivery may use. */
@@ -43,8 +42,11 @@ class delivery {
      */
     public static function for_user(int $userid, string $reportid): array {
         global $DB;
-        return $DB->get_records('local_beacon_delivery',
-            ['userid' => $userid, 'reportid' => $reportid], 'name ASC');
+        return $DB->get_records(
+            'local_beacon_delivery',
+            ['userid' => $userid, 'reportid' => $reportid],
+            'name ASC'
+        );
     }
 
     /**
@@ -60,8 +62,16 @@ class delivery {
      * @param string $recipients Raw recipient list.
      * @return int New id.
      */
-    public static function create(int $userid, string $reportid, int $contextid, string $name,
-            array $params, string $format, string $frequency, string $recipients): int {
+    public static function create(
+        int $userid,
+        string $reportid,
+        int $contextid,
+        string $name,
+        array $params,
+        string $format,
+        string $frequency,
+        string $recipients
+    ): int {
         global $DB;
         $format = in_array($format, self::FORMATS, true) ? $format : 'pdf';
         $frequency = in_array($frequency, self::FREQUENCIES, true) ? $frequency : 'weekly';
@@ -101,8 +111,12 @@ class delivery {
      */
     public static function due(int $now): array {
         global $DB;
-        return $DB->get_records_select('local_beacon_delivery',
-            'nextrun > 0 AND nextrun <= :now', ['now' => $now], 'nextrun ASC');
+        return $DB->get_records_select(
+            'local_beacon_delivery',
+            'nextrun > 0 AND nextrun <= :now',
+            ['now' => $now],
+            'nextrun ASC'
+        );
     }
 
     /**
@@ -181,7 +195,7 @@ class delivery {
         $tmpdir = make_temp_directory('local_beacon');
         $abspath = $tmpdir . '/' . uniqid('bc_', true) . '.' . $ext;
         file_put_contents($abspath, $content);
-        // email_to_user wants a path relative to dataroot where possible.
+        // The email_to_user function wants a path relative to dataroot where possible.
         $attach = (strpos($abspath, $CFG->dataroot . '/') === 0)
             ? substr($abspath, strlen($CFG->dataroot . '/')) : $abspath;
         $attachname = export::filename_for($report) . '.' . $ext;

@@ -54,12 +54,12 @@ define('local_beacon/table', [], function() {
             }).join('  ')};
         });
         this.query = '';
-        this.filters = {};        // index -> array of selected values
-        this.hiddenCols = {};     // index -> true when hidden
+        this.filters = {}; // Index -> array of selected values
+        this.hiddenCols = {}; // Index -> true when hidden
         this.pinned = false;
-        this.selected = new Set(); // selected row objects
+        this.selected = new Set(); // Selected row objects
         this.sortIndex = -1;
-        this.sortDir = 0;         // 1 asc, -1 desc
+        this.sortDir = 0; // 1 asc, -1 desc
         this.openMenu = null;
         this.injectSelectColumn();
         this.markDrillCells();
@@ -147,7 +147,7 @@ define('local_beacon/table', [], function() {
 
     Table.prototype.toggleSort = function(index, th) {
         if (this.sortIndex === index) {
-            this.sortDir = this.sortDir === 1 ? -1 : (this.sortDir === -1 ? 0 : 1);
+            this.sortDir = this.sortDir === 1 ? -1 : (this.sortDir === -1 ? 0 : 1); // eslint-disable-line no-nested-ternary
         } else {
             this.sortIndex = index;
             this.sortDir = 1;
@@ -186,18 +186,18 @@ define('local_beacon/table', [], function() {
         });
 
         if (this.sortIndex >= 0 && this.sortDir !== 0) {
-            var idx = this.sortIndex, dir = this.sortDir;
+            var idx = this.sortIndex, dir = this.sortDir; // eslint-disable-line one-var-declaration-per-line
             var numeric = this.headers[idx] &&
                 (this.headers[idx].getAttribute('data-type') === 'number' ||
                  this.headers[idx].getAttribute('data-type') === 'date');
             visible.sort(function(a, b) {
-                var av = a.cells[idx].sort, bv = b.cells[idx].sort;
+                var av = a.cells[idx].sort, bv = b.cells[idx].sort; // eslint-disable-line one-var-declaration-per-line
                 if (numeric) {
                     return (parseFloat(av || 0) - parseFloat(bv || 0)) * dir;
                 }
                 av = (av || a.cells[idx].lower);
                 bv = (bv || b.cells[idx].lower);
-                return av < bv ? -dir : (av > bv ? dir : 0);
+                return av < bv ? -dir : (av > bv ? dir : 0); // eslint-disable-line no-nested-ternary
             });
         }
 
@@ -529,7 +529,7 @@ define('local_beacon/table', [], function() {
             }
         }
         for (var j = 0; j < this.headers.length; j++) {
-            var hit = this.rows.some(function(r) {
+            var hit = this.rows.some(function(r) { // eslint-disable-line no-loop-func
                 return r.cells[j] && /@/.test(r.cells[j].text);
             });
             if (hit) {
@@ -587,7 +587,7 @@ define('local_beacon/table', [], function() {
         }
         var idx = this.emailColumnIndex();
         if (idx === -1) {
-            window.alert('This report has no email column to build a message from.');
+            window.alert('This report has no email column to build a message from.'); // eslint-disable-line no-alert
             return;
         }
         var emails = [];

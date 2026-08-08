@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Core callbacks.
@@ -21,8 +21,6 @@
  * @copyright  2026 LMS Hosting Services
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
 
 /**
  * Map Beacon's pix icon onto Font Awesome so any theme renders it.
@@ -70,7 +68,7 @@ function local_beacon_extend_navigation(global_navigation $navigation): void {
     $raw = get_config('local_beacon', 'navplacement');
     $places = ($raw === false || $raw === null || $raw === '') ? ['nav'] : explode(',', $raw);
 
-    $addto = function(string $parentkey) use ($navigation, $label, $url, $key, $icon) {
+    $addto = function (string $parentkey) use ($navigation, $label, $url, $key, $icon) {
         $parent = $navigation->find($parentkey, null);
         if ($parent) {
             $parent->add($label, $url, navigation_node::TYPE_CUSTOM, null, $key . '_' . $parentkey, $icon);
@@ -100,8 +98,11 @@ function local_beacon_extend_navigation(global_navigation $navigation): void {
  * @param context_course $context The course context.
  * @return void
  */
-function local_beacon_extend_navigation_course(navigation_node $navigation,
-        stdClass $course, context_course $context): void {
+function local_beacon_extend_navigation_course(
+    navigation_node $navigation,
+    stdClass $course,
+    context_course $context
+): void {
     if (!has_capability('local/beacon:view', $context)) {
         return;
     }

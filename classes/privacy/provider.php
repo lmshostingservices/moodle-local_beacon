@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Privacy provider.
@@ -35,10 +35,9 @@ use core_privacy\local\request\writer;
  * Beacon stores report requests, which reference the submitting user.
  */
 class provider implements
-        \core_privacy\local\metadata\provider,
-        \core_privacy\local\request\core_userlist_provider,
-        \core_privacy\local\request\plugin\provider {
-
+    \core_privacy\local\metadata\provider,
+    \core_privacy\local\request\core_userlist_provider,
+    \core_privacy\local\request\plugin\provider {
     /**
      * Describe the data this plugin stores and shares.
      *
@@ -46,32 +45,48 @@ class provider implements
      * @return collection
      */
     public static function get_metadata(collection $collection): collection {
-        $collection->add_database_table('local_beacon_request', [
-            'userid'         => 'privacy:metadata:local_beacon_request:userid',
-            'requesteremail' => 'privacy:metadata:local_beacon_request:requesteremail',
-            'detail'         => 'privacy:metadata:local_beacon_request:detail',
-            'timecreated'    => 'privacy:metadata:local_beacon_request:timecreated',
-        ], 'privacy:metadata:local_beacon_request');
+        $collection->add_database_table(
+            'local_beacon_request',
+            [
+                'userid'         => 'privacy:metadata:local_beacon_request:userid',
+                'requesteremail' => 'privacy:metadata:local_beacon_request:requesteremail',
+                'detail'         => 'privacy:metadata:local_beacon_request:detail',
+                'timecreated'    => 'privacy:metadata:local_beacon_request:timecreated',
+            ],
+            'privacy:metadata:local_beacon_request'
+        );
 
-        $collection->add_external_location_link('support', [
-            'title'  => 'privacy:metadata:support:title',
-            'detail' => 'privacy:metadata:support:detail',
-            'email'  => 'privacy:metadata:support:email',
-        ], 'privacy:metadata:support');
+        $collection->add_external_location_link(
+            'support',
+            [
+                'title'  => 'privacy:metadata:support:title',
+                'detail' => 'privacy:metadata:support:detail',
+                'email'  => 'privacy:metadata:support:email',
+            ],
+            'privacy:metadata:support'
+        );
 
-        $collection->add_database_table('local_beacon_savedview', [
-            'userid'      => 'privacy:metadata:local_beacon_savedview:userid',
-            'name'        => 'privacy:metadata:local_beacon_savedview:name',
-            'params'      => 'privacy:metadata:local_beacon_savedview:params',
-            'timecreated' => 'privacy:metadata:local_beacon_savedview:timecreated',
-        ], 'privacy:metadata:local_beacon_savedview');
+        $collection->add_database_table(
+            'local_beacon_savedview',
+            [
+                'userid'      => 'privacy:metadata:local_beacon_savedview:userid',
+                'name'        => 'privacy:metadata:local_beacon_savedview:name',
+                'params'      => 'privacy:metadata:local_beacon_savedview:params',
+                'timecreated' => 'privacy:metadata:local_beacon_savedview:timecreated',
+            ],
+            'privacy:metadata:local_beacon_savedview'
+        );
 
-        $collection->add_database_table('local_beacon_delivery', [
-            'userid'      => 'privacy:metadata:local_beacon_delivery:userid',
-            'name'        => 'privacy:metadata:local_beacon_delivery:name',
-            'recipients'  => 'privacy:metadata:local_beacon_delivery:recipients',
-            'timecreated' => 'privacy:metadata:local_beacon_delivery:timecreated',
-        ], 'privacy:metadata:local_beacon_delivery');
+        $collection->add_database_table(
+            'local_beacon_delivery',
+            [
+                'userid'      => 'privacy:metadata:local_beacon_delivery:userid',
+                'name'        => 'privacy:metadata:local_beacon_delivery:name',
+                'recipients'  => 'privacy:metadata:local_beacon_delivery:recipients',
+                'timecreated' => 'privacy:metadata:local_beacon_delivery:timecreated',
+            ],
+            'privacy:metadata:local_beacon_delivery'
+        );
 
         return $collection;
     }
@@ -85,9 +100,11 @@ class provider implements
     public static function get_contexts_for_userid(int $userid): contextlist {
         $contextlist = new contextlist();
         global $DB;
-        if ($DB->record_exists('local_beacon_request', ['userid' => $userid])
-                || $DB->record_exists('local_beacon_savedview', ['userid' => $userid])
-                || $DB->record_exists('local_beacon_delivery', ['userid' => $userid])) {
+        if (
+            $DB->record_exists('local_beacon_request', ['userid' => $userid])
+            || $DB->record_exists('local_beacon_savedview', ['userid' => $userid])
+            || $DB->record_exists('local_beacon_delivery', ['userid' => $userid])
+        ) {
             $contextlist->add_system_context();
         }
         return $contextlist;
@@ -150,7 +167,8 @@ class provider implements
             if ($data || $views || $deliveries) {
                 writer::with_context($context)->export_data(
                     [get_string('pluginname', 'local_beacon')],
-                    (object) ['requests' => $data, 'savedviews' => $views, 'deliveries' => $deliveries]);
+                    (object) ['requests' => $data, 'savedviews' => $views, 'deliveries' => $deliveries]
+                );
             }
         }
     }

@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Precomputed metric values, so the library never computes on page load.
@@ -35,7 +35,6 @@ namespace local_beacon\local;
  * heals itself into the fast path.
  */
 class metric_cache {
-
     /** @var array<int,array<string,array>> In-request memo, keyed by contextid then metric id. */
     private static array $mem = [];
 
@@ -86,8 +85,10 @@ class metric_cache {
         // If prefetch ran and the metric is absent, it is genuinely uncached.
         if (!isset(self::$mem[$contextid])) {
             try {
-                $row = $DB->get_record('local_beacon_metric_cache',
-                    ['metric' => $m->id, 'contextid' => $contextid]);
+                $row = $DB->get_record(
+                    'local_beacon_metric_cache',
+                    ['metric' => $m->id, 'contextid' => $contextid]
+                );
             } catch (\dml_exception $e) {
                 return $m->compute($context);
             }
@@ -126,8 +127,10 @@ class metric_cache {
         }
         global $DB;
         try {
-            $row = $DB->get_record('local_beacon_metric_cache',
-                ['metric' => $m->id, 'contextid' => $contextid]);
+            $row = $DB->get_record(
+                'local_beacon_metric_cache',
+                ['metric' => $m->id, 'contextid' => $contextid]
+            );
         } catch (\dml_exception $e) {
             return null;
         }
@@ -150,8 +153,11 @@ class metric_cache {
     public static function computed_at(string $metricid, int $contextid): int {
         global $DB;
         try {
-            return (int) $DB->get_field('local_beacon_metric_cache', 'timecomputed',
-                ['metric' => $metricid, 'contextid' => $contextid]);
+            return (int) $DB->get_field(
+                'local_beacon_metric_cache',
+                'timecomputed',
+                ['metric' => $metricid, 'contextid' => $contextid]
+            );
         } catch (\dml_exception $e) {
             return 0;
         }
@@ -179,8 +185,11 @@ class metric_cache {
         ];
 
         try {
-            $existing = $DB->get_record('local_beacon_metric_cache',
-                ['metric' => $metricid, 'contextid' => $contextid], 'id');
+            $existing = $DB->get_record(
+                'local_beacon_metric_cache',
+                ['metric' => $metricid, 'contextid' => $contextid],
+                'id'
+            );
             if ($existing) {
                 $record->id = $existing->id;
                 $DB->update_record('local_beacon_metric_cache', $record);

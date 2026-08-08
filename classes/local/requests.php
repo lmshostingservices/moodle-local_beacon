@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Handles "build me a report" requests: stored, then emailed to support.
@@ -28,7 +28,6 @@ namespace local_beacon\local;
  * Persists a request and notifies the support inbox.
  */
 class requests {
-
     /** Where new-report requests are delivered. */
     public const SUPPORT_EMAIL = 'support@lmshostingservices.com';
 
@@ -43,8 +42,13 @@ class requests {
      * @param string $email Reply-to address.
      * @return void
      */
-    public static function submit(\context $context, string $kind, string $title,
-            string $detail, string $email): void {
+    public static function submit(
+        \context $context,
+        string $kind,
+        string $title,
+        string $detail,
+        string $email
+    ): void {
         global $DB, $USER, $CFG, $SITE;
 
         $record = (object) [
@@ -107,8 +111,18 @@ class requests {
         $html = text_to_html($text, false, false, true);
 
         try {
-            return email_to_user($to, $from, $subject, $text, $html, '', '', true,
-                $record->requesteremail, $record->requestername);
+            return email_to_user(
+                $to,
+                $from,
+                $subject,
+                $text,
+                $html,
+                '',
+                '',
+                true,
+                $record->requesteremail,
+                $record->requestername
+            );
         } catch (\Throwable $e) {
             debugging('Beacon request email failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
             return false;

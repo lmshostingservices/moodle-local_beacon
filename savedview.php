@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Save or delete a report's saved view, then return to the report.
@@ -46,8 +46,10 @@ if ($report === null || !$report->is_available()) {
     throw new moodle_exception('itemnotfound', 'local_beacon');
 }
 
-$reporturl = new moodle_url('/local/beacon/view.php',
-    ['contextid' => $contextid, 'type' => 'report', 'id' => $reportid]);
+$reporturl = new moodle_url(
+    '/local/beacon/view.php',
+    ['contextid' => $contextid, 'type' => 'report', 'id' => $reportid]
+);
 
 if ($action === 'save') {
     $name = trim(required_param('name', PARAM_TEXT));
@@ -56,15 +58,23 @@ if ($action === 'save') {
         savedview::create((int) $USER->id, $reportid, $name, $filters->url_params());
     }
     // Return with the saved filters applied so the result is visible.
-    redirect(new moodle_url($reporturl, $filters->url_params()),
-        get_string('view_saved', 'local_beacon'), null, \core\output\notification::NOTIFY_SUCCESS);
+    redirect(
+        new moodle_url($reporturl, $filters->url_params()),
+        get_string('view_saved', 'local_beacon'),
+        null,
+        \core\output\notification::NOTIFY_SUCCESS
+    );
 }
 
 if ($action === 'delete') {
     $id = required_param('id', PARAM_INT);
     savedview::delete($id, (int) $USER->id);
-    redirect($reporturl, get_string('view_deleted', 'local_beacon'), null,
-        \core\output\notification::NOTIFY_SUCCESS);
+    redirect(
+        $reporturl,
+        get_string('view_deleted', 'local_beacon'),
+        null,
+        \core\output\notification::NOTIFY_SUCCESS
+    );
 }
 
 redirect($reporturl);

@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Upgrade steps.
@@ -21,8 +21,6 @@
  * @copyright  2026 LMS Hosting Services
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
 
 /**
  * Upgrade the plugin.
@@ -38,7 +36,6 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
     // builder with its own tables; this release replaces that model entirely.
     // Retire the obsolete tables and install the two this version needs.
     if ($oldversion < 2026073000001) {
-
         $obsolete = [
             'local_beacon_report', 'local_beacon_view', 'local_beacon_element',
             'local_beacon_element_role', 'local_beacon_schedule', 'local_beacon_recipient',
@@ -68,7 +65,9 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
     if ($oldversion < 2026073000002) {
         if (!$dbman->table_exists(new xmldb_table('local_beacon_metric_cache'))) {
             $dbman->install_one_table_from_xmldb_file(
-                $CFG->dirroot . '/local/beacon/db/install.xml', 'local_beacon_metric_cache');
+                $CFG->dirroot . '/local/beacon/db/install.xml',
+                'local_beacon_metric_cache'
+            );
         }
         upgrade_plugin_savepoint(true, 2026073000002, 'local', 'beacon');
     }
@@ -109,25 +108,25 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
     }
 
     if ($oldversion < 2026073100011) {
-        // v1.6.2: Maintenance version bump. No DB schema changes.
+        // Version 1.6.2: Maintenance version bump. No DB schema changes.
         upgrade_plugin_savepoint(true, 2026073100011, 'local', 'beacon');
     }
 
     if ($oldversion < 2026073100012) {
-        // v1.6.3: setup.php renamed to configure.php to bypass host firewall block.
+        // Version 1.6.3: setup.php renamed to configure.php to bypass host firewall block.
         // No DB schema changes.
         upgrade_plugin_savepoint(true, 2026073100012, 'local', 'beacon');
     }
 
     if ($oldversion < 2026073100013) {
-        // v1.6.4: Version bump to force Moodle upgrade detection after v1.6.3
+        // Version 1.6.4: Version bump to force Moodle upgrade detection after v1.6.3
         // savepoint was missed on sites where 2026073100012 was already recorded.
         // No DB schema changes.
         upgrade_plugin_savepoint(true, 2026073100013, 'local', 'beacon');
     }
 
     if ($oldversion < 2026073100014) {
-        // v1.6.5: Plugin-wide hover / selected-state contrast firewall.
+        // Version 1.6.5: Plugin-wide hover / selected-state contrast firewall.
         // No DB schema changes.
         upgrade_plugin_savepoint(true, 2026073100014, 'local', 'beacon');
     }

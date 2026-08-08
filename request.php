@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * "Request a report" — a styled form that emails support and thanks the user.
@@ -41,8 +41,10 @@ $PAGE->set_secondary_navigation(false);
 $PAGE->set_title(get_string('requestareport', 'local_beacon'));
 $PAGE->set_heading(format_string($SITE->fullname));
 $PAGE->add_body_class('local-beacon');
-$PAGE->navbar->add(get_string('pluginname', 'local_beacon'),
-    new moodle_url('/local/beacon/index.php', ['contextid' => $contextid]));
+$PAGE->navbar->add(
+    get_string('pluginname', 'local_beacon'),
+    new moodle_url('/local/beacon/index.php', ['contextid' => $contextid])
+);
 $PAGE->navbar->add(get_string('requestareport', 'local_beacon'));
 
 $backurl = (new moodle_url('/local/beacon/index.php', ['contextid' => $contextid]))->out(false);
@@ -77,11 +79,23 @@ if (data_submitted() && confirm_sesskey()) {
 }
 
 $kinds = [
-    ['value' => 'stat',   'label' => get_string('kind_stat', 'local_beacon'),   'hint' => get_string('kind_stat_hint', 'local_beacon'),   'selected' => $values['kind'] === 'stat'],
-    ['value' => 'kpi',    'label' => get_string('kind_kpi', 'local_beacon'),    'hint' => get_string('kind_kpi_hint', 'local_beacon'),    'selected' => $values['kind'] === 'kpi'],
     [
-        'value' => 'report', 'label' => get_string('kind_report', 'local_beacon'),
-        'hint' => get_string('kind_report_hint', 'local_beacon'), 'selected' => $values['kind'] === 'report',
+        'value'    => 'stat',
+        'label'    => get_string('kind_stat', 'local_beacon'),
+        'hint'     => get_string('kind_stat_hint', 'local_beacon'),
+        'selected' => $values['kind'] === 'stat',
+    ],
+    [
+        'value'    => 'kpi',
+        'label'    => get_string('kind_kpi', 'local_beacon'),
+        'hint'     => get_string('kind_kpi_hint', 'local_beacon'),
+        'selected' => $values['kind'] === 'kpi',
+    ],
+    [
+        'value'    => 'report',
+        'label'    => get_string('kind_report', 'local_beacon'),
+        'hint'     => get_string('kind_report_hint', 'local_beacon'),
+        'selected' => $values['kind'] === 'report',
     ],
 ];
 

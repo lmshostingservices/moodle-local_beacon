@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Language strings.
@@ -34,7 +34,7 @@ $string['itemnotfound'] = 'That report or metric is not available.';
 $string['myreports'] = 'My reports';
 $string['my_greeting'] = 'Hi {$a}';
 $string['my_sub'] = 'Your own learning at a glance — only you can see this.';
-$string['my_sec'] = 'YOUR LEARNING';
+$string['my_sec'] = 'Your learning';
 $string['my_sec_h'] = 'My reports';
 $string['my_empty_h'] = 'Nothing to show yet';
 $string['my_empty'] = 'Once you are enrolled in courses, your progress, grades and achievements will appear here.';

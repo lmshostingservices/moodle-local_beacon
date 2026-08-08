@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Administration links.
@@ -25,7 +25,6 @@
 defined('MOODLE_INTERNAL') || die();
 
 if ($hassiteconfig) {
-
     // The reports page itself, under Site administration > Reports.
     $ADMIN->add('reports', new admin_externalpage(
         'local_beacon_reports',
@@ -43,8 +42,10 @@ if ($hassiteconfig) {
     ));
 
     // Settings: where the Beacon link appears in navigation.
-    $settings = new admin_settingpage('local_beacon_settings',
-        get_string('settings_menu', 'local_beacon'));
+    $settings = new admin_settingpage(
+        'local_beacon_settings',
+        get_string('settings_menu', 'local_beacon')
+    );
     $settings->add(new admin_setting_configmulticheckbox(
         'local_beacon/navplacement',
         get_string('navplacement', 'local_beacon'),

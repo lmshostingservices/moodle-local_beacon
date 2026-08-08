@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Version details.
@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026073100019;   // YYYYMMDDNNN — 31 Jul 2026, sequence 019.
+$plugin->version   = 2026080800020;   // YYYYMMDDNNN — 08 Aug 2026.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.7.3';         // Marketplace polish: phpcs clean, drop stray build file, refresh changelog.
-$plugin->release_prev = '1.7.2';      // Previous release.
+$plugin->release   = '1.7.4';         // Marketplace CI fixes: phpcs/lint clean, AMD rebuilt.
+$plugin->release_prev = '1.7.3';      // Previous release.

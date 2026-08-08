@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Tests for the Beacon catalogue and report engine.
@@ -27,13 +27,12 @@ namespace local_beacon;
 use local_beacon\local\catalogue;
 use local_beacon\local\filterset;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
+ * Tests for the Beacon catalogue.
+ *
  * @covers \local_beacon\local\catalogue
  */
 final class catalogue_test extends \advanced_testcase {
-
     /**
      * The catalogue defines metrics, reports and personal reports.
      */

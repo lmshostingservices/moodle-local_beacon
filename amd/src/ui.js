@@ -40,7 +40,7 @@ define('local_beacon/ui', [], function() {
         if (reduce) {
             return;
         }
-        var dur = 1100, start = null;
+        var dur = 1100, start = null; // eslint-disable-line one-var-declaration-per-line
         var step = function(ts) {
             if (!start) {
                 start = ts;
@@ -116,6 +116,9 @@ define('local_beacon/ui', [], function() {
     /**
      * Light / dark theme. Default follows the OS via a CSS media query; an
      * explicit user choice is remembered and applied to every Beacon surface.
+     *
+     * @param {string} key Storage key.
+     * @param {*} val Value to store.
      */
     var store = function(key, val) {
         try {

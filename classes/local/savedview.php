@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Saved views: a named filter set a user can reopen in one click.
@@ -28,7 +28,6 @@ namespace local_beacon\local;
  * CRUD for a user's saved report views. Views are private to their owner.
  */
 class savedview {
-
     /**
      * A user's saved views for a report, alphabetical.
      *
@@ -38,8 +37,11 @@ class savedview {
      */
     public static function for_user(int $userid, string $reportid): array {
         global $DB;
-        return $DB->get_records('local_beacon_savedview',
-            ['userid' => $userid, 'reportid' => $reportid], 'name ASC');
+        return $DB->get_records(
+            'local_beacon_savedview',
+            ['userid' => $userid, 'reportid' => $reportid],
+            'name ASC'
+        );
     }
 
     /**

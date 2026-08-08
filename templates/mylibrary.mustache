@@ -17,6 +17,22 @@
     @template local_beacon/mylibrary
 
     The learner self-view: personal figures and personal reports.
+
+    Example context (json):
+    {
+        "greeting": "Hi, Jamie", "sub": "Your progress at a glance",
+        "hastiles": true,
+        "tiles": [ { "label": "Courses", "value": 3 } ],
+        "hasreports": true,
+        "reports": [
+            {
+                "family": "progress", "familylabel": "Progress", "grain": "learner",
+                "url": "#", "icon": "<path d=\"M5 12l4 4 10-10\"/>",
+                "name": "My progress", "desc": "Your completion across courses."
+            }
+        ],
+        "isempty": false
+    }
 }}
 <div class="bc-root" data-region="beacon-mylibrary">
   <div class="bc-wrap">
@@ -69,5 +85,7 @@
   </div>
 </div>
 {{#js}}
-require(['local_beacon/ui'], function(UI){ UI.init(); });
+require(['local_beacon/ui'], function(UI) {
+    UI.init();
+});
 {{/js}}

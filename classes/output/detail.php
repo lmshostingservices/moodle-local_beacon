@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * A single stat / KPI / report detail page renderable.
@@ -40,7 +40,6 @@ use renderer_base;
  * The detail page for one item, with a back link to the library.
  */
 class detail implements renderable, templatable {
-
     /** @var \context Context. */
     protected \context $context;
     /** @var string Type: stat, kpi or report. */
@@ -154,8 +153,10 @@ class detail implements renderable, templatable {
             $rows[] = ['cells' => $rendered];
         }
 
-        $pdfurl = (new \moodle_url('/local/beacon/download.php',
-            ['id' => $rep->id, 'type' => 'mine', 'format' => 'pdf']))->out(false);
+        $pdfurl = (new \moodle_url(
+            '/local/beacon/download.php',
+            ['id' => $rep->id, 'type' => 'mine', 'format' => 'pdf']
+        ))->out(false);
 
         $shown = count($rows);
         return [
@@ -341,8 +342,10 @@ class detail implements renderable, templatable {
         if ($rep === null || !$rep->is_available()) {
             return [null, null];
         }
-        $url = (new \moodle_url('/local/beacon/view.php',
-            ['contextid' => $this->context->id, 'type' => 'report', 'id' => $rep->id]))->out(false);
+        $url = (new \moodle_url(
+            '/local/beacon/view.php',
+            ['contextid' => $this->context->id, 'type' => 'report', 'id' => $rep->id]
+        ))->out(false);
         return [$url, $rep->name()];
     }
 
@@ -407,8 +410,10 @@ class detail implements renderable, templatable {
 
         // Active filters ride along on the branded PDF so what you see downloads.
         $extra = $filters->url_params();
-        $pdfurl = (new \moodle_url('/local/beacon/download.php',
-            ['contextid' => $this->context->id, 'id' => $rep->id, 'format' => 'pdf'] + $extra))->out(false);
+        $pdfurl = (new \moodle_url(
+            '/local/beacon/download.php',
+            ['contextid' => $this->context->id, 'id' => $rep->id, 'format' => 'pdf'] + $extra
+        ))->out(false);
 
         return [
             'name'        => $rep->name(),
@@ -443,8 +448,10 @@ class detail implements renderable, templatable {
     private function build_actions(report $rep, filterset $filters): array {
         global $USER;
         $ctxid = $this->context->id;
-        $reporturl = new \moodle_url('/local/beacon/view.php',
-            ['contextid' => $ctxid, 'type' => 'report', 'id' => $rep->id]);
+        $reporturl = new \moodle_url(
+            '/local/beacon/view.php',
+            ['contextid' => $ctxid, 'type' => 'report', 'id' => $rep->id]
+        );
 
         // Current filters as hidden form inputs (so save/schedule capture them).
         $hidden = [];
@@ -531,8 +538,10 @@ class detail implements renderable, templatable {
      * @return array
      */
     private function build_filterbar(report $rep, filterset $filters): array {
-        $base = new \moodle_url('/local/beacon/view.php',
-            ['contextid' => $this->context->id, 'type' => 'report', 'id' => $rep->id]);
+        $base = new \moodle_url(
+            '/local/beacon/view.php',
+            ['contextid' => $this->context->id, 'type' => 'report', 'id' => $rep->id]
+        );
         $pills = [];
         $chips = [];
 
@@ -613,8 +622,10 @@ class detail implements renderable, templatable {
      * @return array{line:string,area:string,dots:array}
      */
     private static function chart_path(array $series): array {
-        $w = 760; $h = 150;
-        $min = min($series); $max = max($series);
+        $w = 760;
+        $h = 150;
+        $min = min($series);
+        $max = max($series);
         $range = ($max - $min) ?: 1;
         $n = count($series);
         $pts = [];

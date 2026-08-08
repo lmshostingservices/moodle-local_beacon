@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Records today's value of each enabled metric, building trend history.
@@ -31,7 +31,6 @@ use local_beacon\local\metric_cache;
  * records the daily trend snapshot — computing each metric exactly once.
  */
 class record_snapshots extends \core\task\scheduled_task {
-
     /**
      * Name shown in the scheduled tasks report.
      *
@@ -62,8 +61,10 @@ class record_snapshots extends \core\task\scheduled_task {
                 continue;
             }
 
-            $existing = $DB->get_record('local_beacon_snapshot',
-                ['metric' => $metricid, 'contextid' => $context->id, 'daykey' => $daykey]);
+            $existing = $DB->get_record(
+                'local_beacon_snapshot',
+                ['metric' => $metricid, 'contextid' => $context->id, 'daykey' => $daykey]
+            );
 
             if ($existing) {
                 $existing->value = $result['value'];
@@ -81,7 +82,10 @@ class record_snapshots extends \core\task\scheduled_task {
         }
 
         // Keep history bounded: drop snapshots older than ~13 months.
-        $DB->delete_records_select('local_beacon_snapshot',
-            'daykey < :cut', ['cut' => (int) userdate($now - 400 * DAYSECS, '%Y%m%d')]);
+        $DB->delete_records_select(
+            'local_beacon_snapshot',
+            'daykey < :cut',
+            ['cut' => (int) userdate($now - 400 * DAYSECS, '%Y%m%d')]
+        );
     }
 }

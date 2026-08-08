@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Turns catalogue objects into template-ready arrays.
@@ -29,10 +29,11 @@ namespace local_beacon\local;
  * identical wherever it appears.
  */
 class build {
-
-    /** Gauge geometry. */
+    /** @var int Gauge radius. */
     private const G_R = 72;
+    /** @var int Gauge centre X. */
     private const G_CX = 86;
+    /** @var int Gauge centre Y. */
     private const G_CY = 90;
 
     /**
@@ -44,8 +45,10 @@ class build {
      * @return string
      */
     public static function detail_url(int $contextid, string $type, string $id): string {
-        return (new \moodle_url('/local/beacon/view.php',
-            ['contextid' => $contextid, 'type' => $type, 'id' => $id]))->out(false);
+        return (new \moodle_url(
+            '/local/beacon/view.php',
+            ['contextid' => $contextid, 'type' => $type, 'id' => $id]
+        ))->out(false);
     }
 
     /**
@@ -193,8 +196,10 @@ class build {
      * @return array{line:string,area:string}
      */
     public static function spark_path(array $series): array {
-        $w = 78; $h = 30;
-        $min = min($series); $max = max($series);
+        $w = 78;
+        $h = 30;
+        $min = min($series);
+        $max = max($series);
         $range = ($max - $min) ?: 1;
         $n = count($series);
         $pts = [];

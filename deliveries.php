@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Create or delete a scheduled email delivery, then return to the report.
@@ -46,8 +46,10 @@ if ($report === null || !$report->is_available()) {
     throw new moodle_exception('itemnotfound', 'local_beacon');
 }
 
-$reporturl = new moodle_url('/local/beacon/view.php',
-    ['contextid' => $contextid, 'type' => 'report', 'id' => $reportid]);
+$reporturl = new moodle_url(
+    '/local/beacon/view.php',
+    ['contextid' => $contextid, 'type' => 'report', 'id' => $reportid]
+);
 
 if ($action === 'save') {
     $name       = trim(required_param('name', PARAM_TEXT));
@@ -57,23 +59,43 @@ if ($action === 'save') {
 
     $emails = delivery::recipient_list($recipients);
     if (empty($emails)) {
-        redirect($reporturl, get_string('delivery_norecipients', 'local_beacon'), null,
-            \core\output\notification::NOTIFY_ERROR);
+        redirect(
+            $reporturl,
+            get_string('delivery_norecipients', 'local_beacon'),
+            null,
+            \core\output\notification::NOTIFY_ERROR
+        );
     }
 
     $filters = filterset::from_request($context);
-    delivery::create((int) $USER->id, $reportid, (int) $context->id,
-        $name !== '' ? $name : $report->name(), $filters->url_params(), $format, $frequency, $recipients);
+    delivery::create(
+        (int) $USER->id,
+        $reportid,
+        (int) $context->id,
+        $name !== '' ? $name : $report->name(),
+        $filters->url_params(),
+        $format,
+        $frequency,
+        $recipients
+    );
 
-    redirect($reporturl, get_string('delivery_saved', 'local_beacon', count($emails)), null,
-        \core\output\notification::NOTIFY_SUCCESS);
+    redirect(
+        $reporturl,
+        get_string('delivery_saved', 'local_beacon', count($emails)),
+        null,
+        \core\output\notification::NOTIFY_SUCCESS
+    );
 }
 
 if ($action === 'delete') {
     $id = required_param('id', PARAM_INT);
     delivery::delete($id, (int) $USER->id);
-    redirect($reporturl, get_string('delivery_deleted', 'local_beacon'), null,
-        \core\output\notification::NOTIFY_SUCCESS);
+    redirect(
+        $reporturl,
+        get_string('delivery_deleted', 'local_beacon'),
+        null,
+        \core\output\notification::NOTIFY_SUCCESS
+    );
 }
 
 redirect($reporturl);

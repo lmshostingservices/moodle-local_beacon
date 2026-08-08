@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * The server-side report filter engine.
@@ -39,7 +39,6 @@ namespace local_beacon\local;
  *   single-column bands   idle · certstatus · policystatus · proficiency · contextlevel
  */
 class filterset {
-
     /** @var \context The report context. */
     public \context $context;
 
@@ -92,11 +91,11 @@ class filterset {
      * @return self
      */
     public static function from_request(\context $context): self {
-        $ints = function(string $name): array {
+        $ints = function (string $name): array {
             $vals = optional_param_array($name, [], PARAM_INT);
             return array_values(array_unique(array_filter($vals, fn($v) => $v > 0)));
         };
-        $strs = function(string $name): array {
+        $strs = function (string $name): array {
             $vals = optional_param_array($name, [], PARAM_ALPHANUMEXT);
             return array_values(array_unique(array_filter($vals, fn($v) => $v !== '')));
         };
@@ -116,12 +115,12 @@ class filterset {
      * @return self
      */
     public static function from_params(\context $context, array $src): self {
-        $ints = function(string $name) use ($src): array {
+        $ints = function (string $name) use ($src): array {
             $vals = is_array($src[$name] ?? null) ? $src[$name] : [];
             $vals = array_map(fn($v) => (int) clean_param((string) $v, PARAM_INT), $vals);
             return array_values(array_unique(array_filter($vals, fn($v) => $v > 0)));
         };
-        $strs = function(string $name) use ($src): array {
+        $strs = function (string $name) use ($src): array {
             $vals = is_array($src[$name] ?? null) ? $src[$name] : [];
             $vals = array_map(fn($v) => clean_param((string) $v, PARAM_ALPHANUMEXT), $vals);
             return array_values(array_unique(array_filter($vals, fn($v) => $v !== '')));
@@ -144,12 +143,26 @@ class filterset {
      * @param string $toraw Raw custom "to" date.
      * @return self
      */
-    private static function assemble(\context $context, callable $ints, callable $strs,
-            string $preset, string $fromraw, string $toraw): self {
+    private static function assemble(
+        \context $context,
+        callable $ints,
+        callable $strs,
+        string $preset,
+        string $fromraw,
+        string $toraw
+    ): self {
         $active = [];
-        foreach (['cohort' => 'f_cohort', 'cohortid' => 'f_cohortid', 'group' => 'f_group',
-                  'course' => 'f_course', 'category' => 'f_cat', 'role' => 'f_role',
-                  'roleid' => 'f_roleid'] as $type => $param) {
+        foreach (
+            [
+            'cohort' => 'f_cohort',
+            'cohortid' => 'f_cohortid',
+            'group' => 'f_group',
+            'course' => 'f_course',
+            'category' => 'f_cat',
+            'role' => 'f_role',
+            'roleid' => 'f_roleid',
+            ] as $type => $param
+        ) {
             $v = $ints($param);
             if ($v) {
                 $active[$type] = $v;
@@ -195,8 +208,14 @@ class filterset {
         if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', trim($s), $m)) {
             return null;
         }
-        $ts = make_timestamp((int) $m[1], (int) $m[2], (int) $m[3], $endofday ? 23 : 0,
-            $endofday ? 59 : 0, $endofday ? 59 : 0);
+        $ts = make_timestamp(
+            (int) $m[1],
+            (int) $m[2],
+            (int) $m[3],
+            $endofday ? 23 : 0,
+            $endofday ? 59 : 0,
+            $endofday ? 59 : 0
+        );
         return $ts ?: null;
     }
 
@@ -326,8 +345,10 @@ class filterset {
         if ($type === 'daterange') {
             unset($active['daterange']);
         } else if (isset($active[$type])) {
-            $active[$type] = array_values(array_filter($active[$type],
-                fn($v) => (string) $v !== (string) $value));
+            $active[$type] = array_values(array_filter(
+                $active[$type],
+                fn($v) => (string) $v !== (string) $value
+            ));
             if (empty($active[$type])) {
                 unset($active[$type]);
             }
@@ -456,7 +477,7 @@ class filterset {
                         $or[] = "($col > :$a AND $col <= :$b)";
                         $params[$a] = $now;
                         $params[$b] = $now + 30 * DAYSECS;
-                    } else { // lapsed.
+                    } else { // Lapsed.
                         $p = 'bcf' . ($this->seq++);
                         $or[] = "($col > 0 AND $col <= :$p)";
                         $params[$p] = $now;
@@ -484,22 +505,22 @@ class filterset {
                     $params[$p] = (int) $t;
                     break;
                 case 'gradeband':
-                    // $col is a percentage expression; thresholds are constants.
+                    // Column $col is a percentage expression; thresholds are constants.
                     if ($t === 'high') {
                         $or[] = "$col >= 80";
                     } else if ($t === 'mid') {
                         $or[] = "($col >= 50 AND $col < 80)";
-                    } else { // low.
+                    } else { // Low.
                         $or[] = "$col < 50";
                     }
                     break;
                 case 'progressband':
-                    // $col is a 0–100 progress expression; thresholds are constants.
+                    // Column $col is a 0–100 progress expression; thresholds are constants.
                     if ($t === 'complete') {
                         $or[] = "$col >= 100";
                     } else if ($t === 'inprogress') {
                         $or[] = "($col > 0 AND $col < 100)";
-                    } else { // notstarted.
+                    } else { // Not started.
                         $or[] = "$col = 0";
                     }
                     break;
@@ -508,7 +529,7 @@ class filterset {
         return [$or ? '(' . implode(' OR ', $or) . ')' : '', $params];
     }
 
-    // ------------------------------------------------------------------ OPTIONS
+    // Options.
 
     /**
      * The option list (id/token => label) for a filter type.
@@ -532,8 +553,14 @@ class filterset {
             case 'group':
                 // When locked to a course, only that course's groups are offered.
                 if ($this->lockedcourse !== null) {
-                    foreach ($DB->get_records('groups', ['courseid' => $this->lockedcourse],
-                            'name ASC', 'id, name') as $r) {
+                    foreach (
+                        $DB->get_records(
+                            'groups',
+                            ['courseid' => $this->lockedcourse],
+                            'name ASC',
+                            'id, name'
+                        ) as $r
+                    ) {
                         $opts[$r->id] = format_string($r->name);
                     }
                     break;
@@ -546,8 +573,15 @@ class filterset {
                 }
                 break;
             case 'course':
-                $recs = $DB->get_records_select('course', 'id > 1', null,
-                    'fullname ASC', 'id, fullname', 0, 1000);
+                $recs = $DB->get_records_select(
+                    'course',
+                    'id > 1',
+                    null,
+                    'fullname ASC',
+                    'id, fullname',
+                    0,
+                    1000
+                );
                 foreach ($recs as $r) {
                     $opts[$r->id] = format_string($r->fullname);
                 }
@@ -565,8 +599,10 @@ class filterset {
                 }
                 break;
             case 'auth':
-                foreach ($DB->get_records_sql("SELECT DISTINCT auth FROM {user}
-                          WHERE deleted = 0 AND auth <> '' ORDER BY auth") as $r) {
+                foreach (
+                    $DB->get_records_sql("SELECT DISTINCT auth FROM {user}
+                          WHERE deleted = 0 AND auth <> '' ORDER BY auth") as $r
+                ) {
                     $opts[$r->auth] = get_string('pluginname', 'auth_' . $r->auth) !== '[[pluginname]]'
                         ? get_string('pluginname', 'auth_' . $r->auth) : $r->auth;
                 }

@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * The reports library.
@@ -32,10 +32,12 @@ if ($context instanceof context_course) {
     require_login($context->instanceid);
 }
 // Learners (no staff dashboard access) are sent to their own self-view.
-if (!has_capability('local/beacon:view', $context)
-        && $context instanceof context_system
-        && !isguestuser()
-        && has_capability('local/beacon:viewmine', $context)) {
+if (
+    !has_capability('local/beacon:view', $context)
+    && $context instanceof context_system
+    && !isguestuser()
+    && has_capability('local/beacon:viewmine', $context)
+) {
     redirect(new moodle_url('/local/beacon/myreports.php'));
 }
 require_capability('local/beacon:view', $context);

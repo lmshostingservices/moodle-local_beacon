@@ -8,11 +8,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * A single stat / KPI / report detail page.
@@ -56,8 +56,10 @@ if (!$page->is_valid()) {
     throw new moodle_exception('itemnotfound', 'local_beacon');
 }
 
-$url = new moodle_url('/local/beacon/view.php',
-    ['contextid' => $contextid, 'type' => $type, 'id' => $id]);
+$url = new moodle_url(
+    '/local/beacon/view.php',
+    ['contextid' => $contextid, 'type' => $type, 'id' => $id]
+);
 $PAGE->set_url($url);
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('report');
