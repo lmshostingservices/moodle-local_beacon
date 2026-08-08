@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026080800021;   // YYYYMMDDNNN — 08 Aug 2026.
+$plugin->version   = 2026080800022;   // YYYYMMDDNNN — 08 Aug 2026.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.7.5';         // CI green: lang order, test path, css validator.
-$plugin->release_prev = '1.7.4';      // Previous release.
+$plugin->release   = '1.7.6';         // CI green: AMD build rebuilt with locked toolchain.
+$plugin->release_prev = '1.7.5';      // Previous release.
