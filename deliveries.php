@@ -55,7 +55,7 @@ if ($action === 'save') {
     $name       = trim(required_param('name', PARAM_TEXT));
     $format     = required_param('format', PARAM_ALPHA);
     $frequency  = required_param('frequency', PARAM_ALPHA);
-    $recipients = required_param('recipients', PARAM_RAW_TRIMMED);
+    $recipients = required_param('recipients', PARAM_TEXT);
 
     $emails = delivery::recipient_list($recipients);
     if (empty($emails)) {
