@@ -24,16 +24,7 @@
  * @copyright  2026 LMS Hosting Services
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-define('local_beacon/table', ['core/str'], function(Str) {
-
-    // Module-level translated strings. Populated before any Table is constructed.
-    // Fallback values are English so the table still works if get_strings fails.
-    var STR = {
-        drilltofilter: 'Filter to this',
-        removefilter:  'Remove filter',
-        clearselection: 'Clear',
-        applyfilters:   'Apply',
-    };
+define('local_beacon/table', [], function() {
 
     var esc = function(s) {
         return String(s).replace(/[&<>"]/g, function(c) {
@@ -259,7 +250,7 @@ define('local_beacon/table', ['core/str'], function(Str) {
             self.filters[idx].forEach(function(val) {
                 var chip = document.createElement('span');
                 chip.className = 'bc-chip';
-                chip.innerHTML = esc(val) + '<button type="button" aria-label="' + esc(STR.removefilter) + '">' +
+                chip.innerHTML = esc(val) + '<button type="button" aria-label="remove">' +
                     '<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" ' +
                     'stroke-width="2.4" stroke-linecap="round"/></svg></button>';
                 chip.querySelector('button').addEventListener('click', function() {
@@ -329,8 +320,8 @@ define('local_beacon/table', ['core/str'], function(Str) {
                 '</span><span class="bc-facet-c">' + counts[v] + '</span></label>';
         });
         html += '</div><div class="bc-filter-foot">' +
-            '<button type="button" class="bc-filter-clear" data-act="none">' + esc(STR.clearselection) + '</button>' +
-            '<button type="button" class="bc-filter-apply" data-act="apply">' + esc(STR.applyfilters) + '</button></div>';
+            '<button type="button" class="bc-filter-clear" data-act="none">Clear</button>' +
+            '<button type="button" class="bc-filter-apply" data-act="apply">Apply</button></div>';
         menu.innerHTML = html;
 
         // Anchor inside .bc-root so the menu inherits Beacon's design tokens and
@@ -628,7 +619,7 @@ define('local_beacon/table', ['core/str'], function(Str) {
                     return;
                 }
                 c.el.classList.add('bc-drill');
-                c.el.title = STR.drilltofilter;
+                c.el.title = 'Filter to this';
                 c.el.addEventListener('click', function() {
                     if (window.getSelection && String(window.getSelection()).length) {
                         return; // Don't hijack a text selection.
@@ -740,28 +731,10 @@ define('local_beacon/table', ['core/str'], function(Str) {
     };
 
     var init = function() {
-        Str.get_strings([
-            {key: 'drilltofilter',  component: 'local_beacon'},
-            {key: 'removefilter',   component: 'local_beacon'},
-            {key: 'clearselection', component: 'local_beacon'},
-            {key: 'applyfilters',   component: 'local_beacon'},
-        ]).then(function(s) {
-            STR.drilltofilter  = s[0];
-            STR.removefilter   = s[1];
-            STR.clearselection = s[2];
-            STR.applyfilters   = s[3];
-            document.querySelectorAll('[data-region="beacon-table"]').forEach(function(root) {
-                if (root.querySelector('[data-role="table"]')) {
-                    new Table(root);
-                }
-            });
-        }).catch(function() {
-            // If string loading fails, fall back to English defaults and still init.
-            document.querySelectorAll('[data-region="beacon-table"]').forEach(function(root) {
-                if (root.querySelector('[data-role="table"]')) {
-                    new Table(root);
-                }
-            });
+        document.querySelectorAll('[data-region="beacon-table"]').forEach(function(root) {
+            if (root.querySelector('[data-role="table"]')) {
+                new Table(root);
+            }
         });
     };
 

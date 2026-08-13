@@ -100,8 +100,8 @@ class filterset {
             return array_values(array_unique(array_filter($vals, fn($v) => $v !== '')));
         };
         $preset = optional_param('f_preset', '', PARAM_ALPHANUMEXT);
-        $fromraw = optional_param('f_from', '', PARAM_TEXT);
-        $toraw = optional_param('f_to', '', PARAM_TEXT);
+        $fromraw = optional_param('f_from', '', PARAM_RAW);
+        $toraw = optional_param('f_to', '', PARAM_RAW);
 
         return self::assemble($context, $ints, $strs, $preset, $fromraw, $toraw);
     }

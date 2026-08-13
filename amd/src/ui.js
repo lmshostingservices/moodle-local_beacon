@@ -23,7 +23,7 @@
  * @copyright  2026 LMS Hosting Services
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-define('local_beacon/ui', ['core/str'], function(Str) {
+define('local_beacon/ui', [], function() {
 
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -206,16 +206,8 @@ define('local_beacon/ui', ['core/str'], function(Str) {
             });
             var sum = root.querySelector('[data-role="summary"]');
             if (sum) {
-                Str.get_string('dashboard_summary', 'local_beacon', {
-                    stats: counts.stats,
-                    kpis: counts.kpis,
-                    reports: counts.reports,
-                }).then(function(s) {
-                    sum.textContent = s;
-                }).catch(function() {
-                    sum.textContent = 'Showing ' + counts.stats + ' stat cards, ' +
-                        counts.kpis + ' KPI gauges and ' + counts.reports + ' reports on your dashboard.';
-                });
+                sum.innerHTML = 'Showing <b>' + counts.stats + '</b> stat cards, <b>' + counts.kpis +
+                    '</b> KPI gauges and <b>' + counts.reports + '</b> reports on your dashboard.';
             }
         };
 
