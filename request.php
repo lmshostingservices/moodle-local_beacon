@@ -57,7 +57,7 @@ if (data_submitted() && confirm_sesskey()) {
     $values['kind']   = optional_param('kind', 'stat', PARAM_ALPHA);
     $values['title']  = trim(optional_param('title', '', PARAM_TEXT));
     $values['detail'] = trim(optional_param('detail', '', PARAM_TEXT));
-    $values['email']  = trim(optional_param('email', '', PARAM_RAW_TRIMMED));
+    $values['email']  = trim(optional_param('email', '', PARAM_TEXT));
 
     if (!in_array($values['kind'], ['stat', 'kpi', 'report'], true)) {
         $values['kind'] = 'stat';

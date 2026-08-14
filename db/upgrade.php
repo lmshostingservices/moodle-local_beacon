@@ -35,7 +35,7 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
     // 1.0.0 is a complete rebuild. The 0.2.x generation shipped a recipe/report
     // builder with its own tables; this release replaces that model entirely.
     // Retire the obsolete tables and install the two this version needs.
-    if ($oldversion < 2026073000001) {
+    if ($oldversion < 2026073001) {
         $obsolete = [
             'local_beacon_report', 'local_beacon_view', 'local_beacon_element',
             'local_beacon_element_role', 'local_beacon_schedule', 'local_beacon_recipient',
@@ -57,25 +57,25 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
             }
         }
 
-        upgrade_plugin_savepoint(true, 2026073000001, 'local', 'beacon');
+        upgrade_plugin_savepoint(true, 2026073001, 'local', 'beacon');
     }
 
     // 1.1.0 — performance: precomputed metric cache so the library never
     // computes on page load.
-    if ($oldversion < 2026073000002) {
+    if ($oldversion < 2026073002) {
         if (!$dbman->table_exists(new xmldb_table('local_beacon_metric_cache'))) {
             $dbman->install_one_table_from_xmldb_file(
                 $CFG->dirroot . '/local/beacon/db/install.xml',
                 'local_beacon_metric_cache'
             );
         }
-        upgrade_plugin_savepoint(true, 2026073000002, 'local', 'beacon');
+        upgrade_plugin_savepoint(true, 2026073002, 'local', 'beacon');
     }
 
     // 1.1.2 — all 26 reports (and every stat/KPI) are now on by default. Enable
     // the full set on existing sites so nothing curated at install stays hidden;
     // admins can still untick any of them under "Choose what shows".
-    if ($oldversion < 2026073000004) {
+    if ($oldversion < 2026073004) {
         $stats = [];
         $kpis = [];
         foreach (\local_beacon\local\catalogue::metrics() as $m) {
@@ -93,42 +93,42 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         set_config('enabledkpis', implode(',', $kpis), 'local_beacon');
         set_config('enabledreports', implode(',', $reports), 'local_beacon');
 
-        upgrade_plugin_savepoint(true, 2026073000004, 'local', 'beacon');
+        upgrade_plugin_savepoint(true, 2026073004, 'local', 'beacon');
     }
 
     // 1.5.0 — Saved views and scheduled email delivery each get a table.
-    if ($oldversion < 2026073000008) {
+    if ($oldversion < 2026073008) {
         $xmlfile = $CFG->dirroot . '/local/beacon/db/install.xml';
         foreach (['local_beacon_savedview', 'local_beacon_delivery'] as $tablename) {
             if (!$dbman->table_exists(new xmldb_table($tablename))) {
                 $dbman->install_one_table_from_xmldb_file($xmlfile, $tablename);
             }
         }
-        upgrade_plugin_savepoint(true, 2026073000008, 'local', 'beacon');
+        upgrade_plugin_savepoint(true, 2026073008, 'local', 'beacon');
     }
 
-    if ($oldversion < 2026073100011) {
+    if ($oldversion < 2026073111) {
         // Version 1.6.2: Maintenance version bump. No DB schema changes.
-        upgrade_plugin_savepoint(true, 2026073100011, 'local', 'beacon');
+        upgrade_plugin_savepoint(true, 2026073111, 'local', 'beacon');
     }
 
-    if ($oldversion < 2026073100012) {
+    if ($oldversion < 2026073112) {
         // Version 1.6.3: setup.php renamed to configure.php to bypass host firewall block.
         // No DB schema changes.
-        upgrade_plugin_savepoint(true, 2026073100012, 'local', 'beacon');
+        upgrade_plugin_savepoint(true, 2026073112, 'local', 'beacon');
     }
 
-    if ($oldversion < 2026073100013) {
+    if ($oldversion < 2026073113) {
         // Version 1.6.4: Version bump to force Moodle upgrade detection after v1.6.3
-        // savepoint was missed on sites where 2026073100012 was already recorded.
+        // savepoint was missed on sites where 2026073112 was already recorded.
         // No DB schema changes.
-        upgrade_plugin_savepoint(true, 2026073100013, 'local', 'beacon');
+        upgrade_plugin_savepoint(true, 2026073113, 'local', 'beacon');
     }
 
-    if ($oldversion < 2026073100014) {
+    if ($oldversion < 2026073114) {
         // Version 1.6.5: Plugin-wide hover / selected-state contrast firewall.
         // No DB schema changes.
-        upgrade_plugin_savepoint(true, 2026073100014, 'local', 'beacon');
+        upgrade_plugin_savepoint(true, 2026073114, 'local', 'beacon');
     }
 
     return true;
