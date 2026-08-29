@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026081100;      // YYYYMMDDXX — 11 Aug 2026, sequence 00. 10-digit Marketplace format. > highest savepoint 2026073114.
+$plugin->version   = 2026082901;      // YYYYMMDDXX — 11 Aug 2026, sequence 00. 10-digit Marketplace format. > highest savepoint 2026073114.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.7.7';         // Forward from 1.7.6 (Marketplace review). Compliance: PARAM_TEXT, single-line lang strings, cachedef_reports, core/str JS i18n.
+$plugin->release   = '1.7.8'; // RELEASE RECOVERY: Republished the reviewed authoritative source under a new immutable tag because the historical tag contained a different source tree. No functional changes.
 $plugin->release_prev = '1.7.6';      // Previous release (submitted to Moodle Marketplace).
