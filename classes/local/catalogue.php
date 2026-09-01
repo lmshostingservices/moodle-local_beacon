@@ -57,6 +57,25 @@ class catalogue {
     }
 
     /**
+     * Full name for a result row with every Moodle name field present, so
+     * fullname() never emits "missing name fields" developer debugging.
+     *
+     * @param object $r Row containing at least firstname and lastname.
+     * @return string
+     */
+    private static function fullname_of($r): string {
+        $user = (object) [
+            'firstname' => $r->firstname ?? '',
+            'lastname' => $r->lastname ?? '',
+            'firstnamephonetic' => $r->firstnamephonetic ?? '',
+            'lastnamephonetic' => $r->lastnamephonetic ?? '',
+            'middlename' => $r->middlename ?? '',
+            'alternatename' => $r->alternatename ?? '',
+        ];
+        return fullname($user);
+    }
+
+    /**
      * All metrics, keyed by id.
      *
      * @return metric[]
@@ -347,7 +366,7 @@ class catalogue {
                 $rows = [];
                 foreach ($recs as $u) {
                     $rows[] = [
-                        cell::text(fullname($u)),
+                        cell::text(self::fullname_of($u)),
                         cell::text($u->email),
                         cell::text($u->department ?: '—'),
                         cell::when($u->lastaccess),
@@ -380,7 +399,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text($r->course),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
                                cell::text(ucfirst($r->method)), cell::when($r->timecreated)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
@@ -403,13 +422,13 @@ class catalogue {
                           JOIN {course} c ON c.id = enr.courseid
                      LEFT JOIN {course_completions} cc ON cc.userid = enr.userid AND cc.course = enr.courseid
                          WHERE 1 = 1 $fw";
-                $sql = "SELECT enr.userid, enr.courseid, u.firstname, u.lastname, c.fullname AS course,
+                $sql = "SELECT " . $DB->sql_concat('enr.userid', "'-'", 'enr.courseid') . " AS bcrowid, enr.userid, enr.courseid, u.firstname, u.lastname, c.fullname AS course,
                                cc.timecompleted $body ORDER BY cc.timecompleted DESC, c.fullname";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
                     $done = !empty($r->timecompleted);
-                    $rows[] = [cell::text(fullname($r)), cell::text($r->course),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
                                $done ? cell::status(get_string('status_complete', 'local_beacon'), 'g')
                                      : cell::status(get_string('status_inprogress', 'local_beacon'), 'w'),
                                cell::when($r->timecompleted)];
@@ -439,12 +458,12 @@ class catalogue {
                                  WHERE completion > 0 AND deletioninprogress = 0
                               GROUP BY course) t ON t.course = enr.courseid
                          WHERE 1 = 1 $fw";
-                $sql = "SELECT enr.userid, enr.courseid, u.firstname, u.lastname, c.fullname AS course,
+                $sql = "SELECT " . $DB->sql_concat('enr.userid', "'-'", 'enr.courseid') . " AS bcrowid, enr.userid, enr.courseid, u.firstname, u.lastname, c.fullname AS course,
                                COALESCE(d.cnt, 0) AS done, COALESCE(t.cnt, 0) AS total $body ORDER BY c.fullname";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text($r->course),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
                                cell::text((string)(int)$r->done), cell::text((string)(int)$r->total)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
@@ -470,7 +489,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text($r->course), cell::when($r->timecreated),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course), cell::when($r->timecreated),
                                cell::status(get_string('status_neveropened', 'local_beacon'), 'b')];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
@@ -496,7 +515,7 @@ class catalogue {
                 foreach ($recs as $u) {
                     $idle = $u->lastaccess ? floor(($now - $u->lastaccess) / DAYSECS) . ' ' .
                             get_string('days', 'local_beacon') : '—';
-                    $rows[] = [cell::text(fullname($u)), cell::when($u->firstaccess),
+                    $rows[] = [cell::text(self::fullname_of($u)), cell::when($u->firstaccess),
                                cell::when($u->lastaccess), cell::text($idle)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) FROM {user} u WHERE $where", $fp)];
@@ -523,7 +542,7 @@ class catalogue {
                 foreach ($recs as $r) {
                     $pct = $r->pct === null ? '—' : round($r->pct, 1) . '%';
                     $badge = $r->pct === null ? null : ($r->pct >= 50 ? 'g' : 'b');
-                    $rows[] = [cell::text(fullname($r)), cell::text($r->course),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
                                $badge ? cell::status($pct, $badge) : cell::text($pct)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
@@ -552,7 +571,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text((string)(int)$r->attempts),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text((string)(int)$r->attempts),
                                cell::text($r->best === null ? '—' : round($r->best) . '%'),
                                cell::text($r->av === null ? '—' : round($r->av) . '%')];
                 }
@@ -586,7 +605,7 @@ class catalogue {
                 foreach ($recs as $r) {
                     $wait = $r->timemodified ? floor(($now - $r->timemodified) / DAYSECS) . ' ' .
                             get_string('days', 'local_beacon') : '—';
-                    $rows[] = [cell::text(fullname($r)), cell::text($r->assignment),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->assignment),
                                cell::when($r->timemodified), cell::status($wait, 'w')];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
@@ -624,7 +643,7 @@ class catalogue {
                     } else {
                         $status = cell::status(get_string('cert_current', 'local_beacon'), 'g');
                     }
-                    $rows[] = [cell::text(fullname($r)), cell::text($r->template ?: '—'),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->template ?: '—'),
                                cell::when($r->timecreated),
                                cell::text($r->expires ? userdate($r->expires, get_string('strftimedate', 'langconfig'))
                                     : get_string('cert_noexpiry', 'local_beacon')),
@@ -653,7 +672,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text((string)(int)$r->posts),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text((string)(int)$r->posts),
                                cell::when($r->lastpost)];
                 }
                 $total = $DB->count_records_sql("SELECT COUNT(DISTINCT fp.userid) $body", $fp);
@@ -719,7 +738,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::number((int)$r->enrolled),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::number((int)$r->enrolled),
                                cell::number((int)$r->completed),
                                $r->avgpct === null
                                    ? cell::text('—')
@@ -752,7 +771,7 @@ class catalogue {
                 $now = time();
                 foreach ($recs as $u) {
                     $days = (int) floor(($now - $u->lastaccess) / DAYSECS);
-                    $rows[] = [cell::text(fullname($u)), cell::text($u->email), cell::when($u->lastaccess),
+                    $rows[] = [cell::text(self::fullname_of($u)), cell::text($u->email), cell::when($u->lastaccess),
                                cell::number($days, $days . ' ' . get_string('days', 'local_beacon'))];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) FROM {user} u WHERE $where", $params)];
@@ -776,7 +795,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $u) {
-                    $rows[] = [cell::text(fullname($u)), cell::text($u->email), cell::when($u->timecreated),
+                    $rows[] = [cell::text(self::fullname_of($u)), cell::text($u->email), cell::when($u->timecreated),
                                cell::text($u->auth)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) FROM {user} u WHERE $where", $fp)];
@@ -800,7 +819,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $u) {
-                    $rows[] = [cell::text(fullname($u)), cell::text($u->email), cell::when($u->timecreated),
+                    $rows[] = [cell::text(self::fullname_of($u)), cell::text($u->email), cell::when($u->timecreated),
                                cell::text($u->auth)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) FROM {user} u WHERE $where", $params)];
@@ -825,7 +844,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text(format_string($r->cohort)), cell::when($r->timeadded)];
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text(format_string($r->cohort)), cell::when($r->timeadded)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
             },
@@ -850,7 +869,7 @@ class catalogue {
                 $levels = [10 => 'System', 40 => 'Category', 50 => 'Course', 70 => 'Activity', 30 => 'User'];
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text(ucfirst($r->role)),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text(ucfirst($r->role)),
                                cell::text($levels[(int)$r->contextlevel] ?? (string)$r->contextlevel)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
@@ -881,7 +900,7 @@ class catalogue {
                                  WHERE completion > 0 AND deletioninprogress = 0
                               GROUP BY course) t ON t.course = enr.courseid
                          WHERE 1 = 1 $fw";
-                $sql = "SELECT enr.userid, enr.courseid, u.firstname, u.lastname, c.fullname AS course,
+                $sql = "SELECT " . $DB->sql_concat('enr.userid', "'-'", 'enr.courseid') . " AS bcrowid, enr.userid, enr.courseid, u.firstname, u.lastname, c.fullname AS course,
                                COALESCE(d.cnt, 0) AS done, COALESCE(t.cnt, 0) AS total $body ORDER BY c.fullname";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
@@ -889,7 +908,7 @@ class catalogue {
                     $total = (int) $r->total;
                     $pct = $total ? round(100 * (int)$r->done / $total) : 0;
                     $badge = $pct >= 100 ? 'g' : ($pct > 0 ? 'w' : 'b');
-                    $rows[] = [cell::text(fullname($r)), cell::text($r->course),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
                                cell::number($pct, $pct . '%')];
                     $rows[count($rows) - 1][2]['badge'] = $badge;
                     $rows[count($rows) - 1][2]['isstatus'] = true;
@@ -915,7 +934,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text(format_string($r->competency)),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text(format_string($r->competency)),
                                $r->proficiency
                                    ? cell::status(get_string('comp_proficient', 'local_beacon'), 'g')
                                    : cell::status(get_string('comp_notyet', 'local_beacon'), 'w')];
@@ -1014,7 +1033,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text($r->course), cell::text(format_string($r->scorm)),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course), cell::text(format_string($r->scorm)),
                                cell::number((int)$r->attempts)];
                 }
                 return [$rows, count($rows)];
@@ -1080,7 +1099,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text(format_string($r->badge)), cell::when($r->dateissued)];
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text(format_string($r->badge)), cell::when($r->dateissued)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
             },
@@ -1104,7 +1123,7 @@ class catalogue {
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(fullname($r)), cell::text($r->policy ? format_string($r->policy) : '—'),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->policy ? format_string($r->policy) : '—'),
                                (int)$r->status === 1
                                    ? cell::status(get_string('policy_accepted', 'local_beacon'), 'g')
                                    : cell::status(get_string('policy_declined', 'local_beacon'), 'b'),

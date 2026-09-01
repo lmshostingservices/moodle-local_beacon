@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.8 — Report correctness fixes (11 Aug 2026)
+- Fixed developer debugging warnings ("missing name fields") that appeared once per
+  row on every report: all fullname() calls now receive a user object carrying every
+  Moodle name field.
+- Fixed silent under-reporting in the per-enrolment reports (course completion,
+  activity completion, course progress): each row now has a unique key, so learners
+  enrolled in more than one course are no longer collapsed into a single row.
+
+
 ## 1.7.3 — Marketplace-ready polish (31 Jul 2026)
 - Wrapped all PHP lines to ≤180 characters for a clean Moodle CodeSniffer (phpcs) run.
 - Removed a stray, non-standard build-metadata file from the package.
