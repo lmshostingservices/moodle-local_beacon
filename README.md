@@ -10,7 +10,7 @@
 
 # Beacon — Reports & Analytics for Moodle
 
-**Version:** 1.7.6 · **Component:** `local_beacon` · **Maturity:** Stable  
+**Version:** 1.8.1 · **Component:** `local_beacon` · **Maturity:** Stable  
 **Price:** $50 USD one-time per site · lifetime updates · no subscription  
 **Compatibility:** Moodle™ 4.4 – 5.1 · PHP 8.2+
 
@@ -18,10 +18,11 @@
 
 ## What is Beacon?
 
-Beacon is a curated reporting and analytics plugin for Moodle. It ships with 26 hand-written, grain-aware SQL reports covering learner progress, course completion, quiz performance, attendance, grades, and enrolment — all rendered in a clean dashboard with server-side filters, CSV/PDF export, and scheduled email delivery.
+Beacon is a curated reporting and analytics plugin for Moodle. It ships with 28 hand-written, grain-aware SQL reports covering learner progress, course completion, quiz performance, participation, attendance, grades, and enrolment — all rendered in a clean dashboard with server-side filters, CSV/PDF export, and scheduled email delivery.
 
 **Key features:**
-- 26 pre-built reports covering the full Moodle data model
+- 28 pre-built reports covering the full Moodle data model
+- Funding participation evidence — durable proof of ongoing engagement for funding audits, built from completion, submission and attempt records that persist beyond log retention
 - Role-aware views: admins see site-wide data; teachers are hard-locked to their course; learners see only their own data
 - Server-side filter engine with active-filter chips and per-facet counts
 - Scheduled report delivery via Moodle's built-in SMTP (no external service)
@@ -81,7 +82,7 @@ You receive the source under the GPL and may redistribute it freely. The $50 USD
 - Every other Moodle reporting plugin runs JOIN-heavy queries that multiply rows silently. A learner with 3 quiz attempts appears 3 times, inflating completion rates to 200%+ with no warning. Beacon's grain engine is different: it knows whether your question is about people (learner grain), learner×course pairs (enrolment grain), or course-level rollups (course grain), and writes the SQL accordingly. Row-multiplication is architecturally impossible.
 - Hard role isolation enforced inside every SQL query — not just in the UI. Teachers are hard-locked to their course via filterset::lock_course() baked into the WHERE clause. A teacher cannot reach another course's data even by constructing a URL manually.
 - Per-user cache key (‌_u{userid}) prevents cross-user data bleed from shared application caches. Personal report caches are always user-scoped; user A can never receive user B's cached result.
-- 26 hand-written, audited SQL reports — not a drag-and-drop query builder generating arbitrary SQL. Every report was designed for a specific question a Moodle administrator or RTO actually asks.
+- 28 hand-written, audited SQL reports — not a drag-and-drop query builder generating arbitrary SQL. Every report was designed for a specific question a Moodle administrator or RTO actually asks.
 
 ## Support
 

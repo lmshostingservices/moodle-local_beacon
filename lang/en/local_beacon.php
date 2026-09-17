@@ -457,3 +457,23 @@ $string['view_saved'] = 'View saved.';
 $string['viewunderlying'] = 'View the {$a} report';
 $string['vsperiod'] = 'vs 30 days ago';
 $string['wherestands'] = 'Where it stands';
+
+// Funding participation evidence (report, stat card, KPI gauge).
+$string['r_funding_participation'] = 'Funding participation evidence';
+$string['r_funding_participation_desc'] = 'Long-term proof of participation for funding audits. For each enrolled learner in a course: their first and last activity, the number of distinct days they were active, and how many activities they engaged with — built from durable completion, submission, quiz-attempt and forum records that persist for the life of the course, so it keeps working beyond the site log-retention window. Where the standard log is still available, recent course views are shown too.';
+$string['col_activedays'] = 'Active days';
+$string['col_courseviews'] = 'Course views (12 mo)';
+$string['col_events'] = 'Total activity';
+$string['m_fp_active_learners'] = 'Participating learners';
+$string['m_fp_active_learners_note'] = 'active in a course in the last 30 days';
+$string['m_fp_active_learners_expl'] = 'Enrolled learners who completed an activity, submitted work, attempted a quiz or posted in the last 30 days — participation drawn from durable activity records, so it is unaffected by log retention.';
+$string['m_fp_participation_rate'] = 'Participation rate';
+$string['m_fp_participation_rate_note'] = 'enrolments active in the last 30 days';
+$string['m_fp_participation_rate_expl'] = 'The share of live enrolments where the learner completed an activity, submitted, attempted a quiz or posted in the last 30 days — a funding-facing participation measure built from durable activity records, not the purgeable site log.';
+
+// Durable participation columns + recent course-access report (v1.8.0).
+$string['col_firstact'] = 'First activity';
+$string['col_lastact'] = 'Last activity';
+$string['col_activities'] = 'Activities';
+$string['r_course_access'] = 'Course access (recent)';
+$string['r_course_access_desc'] = 'Recent course access from the site log (about the last 12 months, depending on retention): for each enrolled learner, first and last access, the days they were active, course views and total logged activity. Captures passive viewing that the durable Funding participation evidence report does not. Requires the standard log store.';

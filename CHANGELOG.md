@@ -2,6 +2,29 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v1.8.1] - 2026-09-17
+- New participation feature (this is the released form of the work drafted as the
+  unreleased 1.8.0): **Funding participation evidence** report (durable — completion,
+  submission, quiz-attempt and forum records, works beyond log retention), **Course
+  access (recent)** report (standard log), plus **Participating learners** stat card and
+  **Participation rate** KPI gauge. Report/stat/KPI SQL validated against PostgreSQL.
+- Documentation aligned: README version and report count (28) updated to match the
+  release.
+
+## [v1.8.0] - 2026-09-17
+- New **Funding participation evidence** report (Compliance): one row per enrolled learner
+  per course showing first/last activity, distinct active days and activities engaged —
+  built from durable completion, submission, quiz-attempt and forum records, so it works
+  for the full life of a course, beyond the site log-retention window. Where the standard
+  log is still present it also shows recent course views. Full feature parity (filters,
+  saved views, scheduled email, CSV/PDF, search/sort).
+- New **Course access (recent)** report (Engagement): recent access from the standard log
+  (first/last access, active days, course views, total events) — captures passive viewing
+  the durable report does not; requires the standard log store.
+- New **Participating learners** stat card and **Participation rate** KPI gauge, both drawn
+  from the same durable activity records (log-independent). All new items are enabled on
+  existing sites by the upgrade step. Report/stat/KPI SQL validated against PostgreSQL.
+
 ## [v1.7.9] - 2026-08-11
 - Release version bump to resolve an immutable v1.7.8 Git tag conflict. Plugin code is
   identical to 1.7.8: the fullname() name-fields fix (no per-row debugging) and the

@@ -131,5 +131,29 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026073114, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026091700) {
+        // Version 1.8.0: new Funding participation evidence report, stat card and KPI.
+        // Enable them on existing sites (fresh installs get them from each item's
+        // defaulton flag). Only append when the set has already been configured.
+        $additions = [
+            'enabledreports' => ['funding_participation', 'course_access'],
+            'enabledstats' => ['fp_active_learners'],
+            'enabledkpis' => ['fp_participation_rate'],
+        ];
+        foreach ($additions as $key => $newids) {
+            $cur = get_config('local_beacon', $key);
+            if ($cur === false || $cur === '') {
+                continue;
+            }
+            foreach ($newids as $newid) {
+                if (strpos(',' . $cur . ',', ',' . $newid . ',') === false) {
+                    $cur .= ',' . $newid;
+                }
+            }
+            set_config($key, $cur, 'local_beacon');
+        }
+        upgrade_plugin_savepoint(true, 2026091700, 'local', 'beacon');
+    }
+
     return true;
 }

@@ -76,6 +76,46 @@ class catalogue {
     }
 
     /**
+     * A UNION of durable, non-purgeable activity records as (userid, courseid, ts).
+     *
+     * Unlike the standard log (retained only for loglifetime), completion,
+     * submission, attempt and post records persist for the life of the course, so
+     * a report built on them works as long-term funding-participation evidence.
+     * Only sources whose tables exist on this site are included.
+     *
+     * @param \moodle_database $DB Database.
+     * @return string A SQL sub-select producing columns userid, courseid, ts.
+     */
+    private static function activity_union(\moodle_database $DB): string {
+        $man = $DB->get_manager();
+        $parts = [];
+        // Activity completions — core, always present.
+        $parts[] = "SELECT cmc.userid, cm.course AS courseid, cmc.timemodified AS ts
+                      FROM {course_modules_completion} cmc
+                      JOIN {course_modules} cm ON cm.id = cmc.coursemoduleid
+                     WHERE cmc.completionstate >= 1 AND cmc.timemodified > 0";
+        if ($man->table_exists('assign_submission')) {
+            $parts[] = "SELECT s.userid, a.course AS courseid, s.timemodified AS ts
+                          FROM {assign_submission} s
+                          JOIN {assign} a ON a.id = s.assignment
+                         WHERE s.status = 'submitted' AND s.timemodified > 0";
+        }
+        if ($man->table_exists('quiz_attempts')) {
+            $parts[] = "SELECT qa.userid, q.course AS courseid, qa.timefinish AS ts
+                          FROM {quiz_attempts} qa
+                          JOIN {quiz} q ON q.id = qa.quiz
+                         WHERE qa.timefinish > 0";
+        }
+        if ($man->table_exists('forum_posts')) {
+            $parts[] = "SELECT fp.userid, fd.course AS courseid, fp.created AS ts
+                          FROM {forum_posts} fp
+                          JOIN {forum_discussions} fd ON fd.id = fp.discussion
+                         WHERE fp.created > 0";
+        }
+        return implode("\n                UNION ALL\n                ", $parts);
+    }
+
+    /**
      * All metrics, keyed by id.
      *
      * @return metric[]
@@ -328,6 +368,45 @@ class catalogue {
                 $r = $DB->get_record_sql($sql, ['now' => $now]);
                 $den = (int) ($r->den ?? 0);
                 return [$den ? 100.0 * (int)$r->num / $den : null, $den];
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'fp_active_learners', 'kind' => 'stat', 'family' => 'compliance',
+            'icon' => 'pulse', 'format' => 'number', 'better' => 'higher',
+            'compute' => function ($DB) {
+                $cut = time() - 30 * DAYSECS;
+                $union = self::activity_union($DB);
+                $sql = "SELECT COUNT(DISTINCT act.userid)
+                          FROM ($union) act
+                         WHERE act.ts > :cut AND act.courseid > 1 AND act.userid > 0
+                           AND EXISTS (SELECT 1 FROM {user_enrolments} ue
+                                         JOIN {enrol} e ON e.id = ue.enrolid
+                                         JOIN {user} u ON u.id = ue.userid AND u.deleted = 0 AND u.suspended = 0
+                                        WHERE ue.userid = act.userid AND e.courseid = act.courseid
+                                          AND ue.status = 0 AND e.status = 0)";
+                return [$DB->count_records_sql($sql, ['cut' => $cut]), null];
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'fp_participation_rate', 'kind' => 'kpi', 'family' => 'compliance',
+            'icon' => 'gauge', 'format' => 'percent', 'better' => 'higher',
+            'target' => 80, 'amber' => 55, 'green' => 75,
+            'compute' => function ($DB) use ($now) {
+                $cut = time() - 30 * DAYSECS;
+                $union = self::activity_union($DB);
+                $sql = "SELECT
+                          SUM(CASE WHEN a.userid IS NOT NULL THEN 1 ELSE 0 END) AS num,
+                          COUNT(*) AS den
+                        FROM (" . self::live_enrolments() . ") enr
+                        LEFT JOIN (SELECT DISTINCT act.userid, act.courseid
+                                     FROM ($union) act
+                                    WHERE act.ts > :cut) a
+                               ON a.userid = enr.userid AND a.courseid = enr.courseid";
+                $r = $DB->get_record_sql($sql, ['now' => $now(), 'cut' => $cut]);
+                $den = (int) ($r->den ?? 0);
+                return [$den ? 100.0 * (int) $r->num / $den : null, $den];
             },
         ];
 
@@ -1130,6 +1209,100 @@ class catalogue {
                                cell::when($r->timemodified)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'funding_participation', 'family' => 'compliance', 'icon' => 'pulse', 'grain' => 'enrolment',
+            'defaulton' => true,
+            'filters' => ['cohort', 'group', 'course', 'category', 'daterange'], 'datelabel' => 'col_lastact',
+            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+                          ['firstact', 'col_firstact', 'text'], ['lastact', 'col_lastact', 'text'],
+                          ['activedays', 'col_activedays', 'number'], ['activities', 'col_activities', 'number'],
+                          ['views', 'col_courseviews', 'number']],
+            'run' => function ($DB, $q, $limit) {
+                [$fw, $fp] = $q->where(['cohort' => 'act.userid', 'group' => 'act.userid',
+                    'course' => 'act.courseid', 'category' => 'act.courseid',
+                    'daterange' => ['col' => 'act.ts', 'label' => 'col_lastact']]);
+                $union = self::activity_union($DB);
+                $rk = $DB->sql_concat('act.userid', "'-'", 'act.courseid');
+                $joins = "FROM ($union) act
+                          JOIN {user} u ON u.id = act.userid AND u.deleted = 0
+                          JOIN {course} c ON c.id = act.courseid";
+                $countbody = "$joins WHERE act.courseid > 1 AND act.userid > 0 $fw";
+                $haslog = $DB->get_manager()->table_exists('logstore_standard_log');
+                $vsel = '0';
+                $vjoin = '';
+                $params = $fp;
+                if ($haslog) {
+                    $vsel = 'MAX(COALESCE(v.vc, 0))';
+                    $vjoin = "LEFT JOIN (SELECT l.userid, l.courseid, COUNT(*) AS vc
+                                           FROM {logstore_standard_log} l
+                                          WHERE l.eventname = :cvevent AND l.timecreated > :logcut
+                                          GROUP BY l.userid, l.courseid) v
+                                     ON v.userid = act.userid AND v.courseid = act.courseid";
+                    $params = ['cvevent' => '\\core\\event\\course_viewed',
+                               'logcut' => time() - 365 * DAYSECS] + $fp;
+                }
+                $body = "$joins $vjoin WHERE act.courseid > 1 AND act.userid > 0 $fw";
+                $days = "COUNT(DISTINCT FLOOR(act.ts / 86400.0))";
+                $sql = "SELECT $rk AS bcrowid, act.userid, act.courseid, u.firstname, u.lastname, c.fullname AS course,
+                               MIN(act.ts) AS firstact, MAX(act.ts) AS lastact,
+                               $days AS activedays, COUNT(*) AS activities, $vsel AS views $body
+                          GROUP BY act.userid, act.courseid, u.firstname, u.lastname, c.fullname
+                          ORDER BY activedays DESC, lastact DESC";
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+                $rows = [];
+                foreach ($recs as $r) {
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
+                               cell::when((int) $r->firstact), cell::when((int) $r->lastact),
+                               cell::number((int) $r->activedays), cell::number((int) $r->activities),
+                               cell::number((int) $r->views)];
+                }
+                $total = $DB->count_records_sql("SELECT COUNT(DISTINCT $rk) $countbody", $fp);
+                return [$rows, $total];
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'course_access', 'family' => 'engagement', 'icon' => 'clock', 'grain' => 'enrolment',
+            'defaulton' => true, 'requirestable' => 'logstore_standard_log',
+            'filters' => ['cohort', 'group', 'course', 'category', 'daterange'], 'datelabel' => 'col_lastaccess',
+            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+                          ['firstseen', 'col_firstseen', 'text'], ['lastseen', 'col_lastaccess', 'text'],
+                          ['activedays', 'col_activedays', 'number'], ['views', 'col_courseviews', 'number'],
+                          ['events', 'col_events', 'number']],
+            'run' => function ($DB, $q, $limit) {
+                [$fw, $fp] = $q->where(['cohort' => 'l.userid', 'group' => 'l.userid',
+                    'course' => 'l.courseid', 'category' => 'l.courseid',
+                    'daterange' => ['col' => 'l.timecreated', 'label' => 'col_lastaccess']]);
+                $rk = $DB->sql_concat('l.userid', "'-'", 'l.courseid');
+                $body = "FROM {logstore_standard_log} l
+                          JOIN {user} u ON u.id = l.userid AND u.deleted = 0
+                          JOIN {course} c ON c.id = l.courseid
+                         WHERE l.courseid > 1 AND l.userid > 0
+                           AND EXISTS (SELECT 1 FROM {user_enrolments} ue
+                                         JOIN {enrol} e ON e.id = ue.enrolid
+                                        WHERE ue.userid = l.userid AND e.courseid = l.courseid
+                                          AND ue.status = 0 AND e.status = 0) $fw";
+                $views = "SUM(CASE WHEN l.eventname = :cvevent THEN 1 ELSE 0 END)";
+                $sql = "SELECT $rk AS bcrowid, l.userid, l.courseid, u.firstname, u.lastname, c.fullname AS course,
+                               MIN(l.timecreated) AS firstseen, MAX(l.timecreated) AS lastseen,
+                               COUNT(DISTINCT FLOOR(l.timecreated / 86400.0)) AS activedays,
+                               $views AS views, COUNT(*) AS events $body
+                          GROUP BY l.userid, l.courseid, u.firstname, u.lastname, c.fullname
+                          ORDER BY activedays DESC, lastseen DESC";
+                $params = ['cvevent' => '\\core\\event\\course_viewed'] + $fp;
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+                $rows = [];
+                foreach ($recs as $r) {
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
+                               cell::when((int) $r->firstseen), cell::when((int) $r->lastseen),
+                               cell::number((int) $r->activedays), cell::number((int) $r->views),
+                               cell::number((int) $r->events)];
+                }
+                $total = $DB->count_records_sql("SELECT COUNT(DISTINCT $rk) $body", $fp);
+                return [$rows, $total];
             },
         ];
 
