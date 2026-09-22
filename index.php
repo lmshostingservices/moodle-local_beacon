@@ -48,8 +48,10 @@ $PAGE->set_context($context);
 $PAGE->set_pagelayout('report');
 $PAGE->set_secondary_navigation(false);
 $PAGE->set_title(get_string('pluginname', 'local_beacon'));
-$PAGE->set_heading($context instanceof context_course
-    ? format_string($COURSE->fullname) : format_string($SITE->fullname));
+$PAGE->set_heading(
+    $context instanceof context_course
+        ? format_string($COURSE->fullname) : format_string($SITE->fullname)
+);
 $PAGE->add_body_class('local-beacon');
 
 $output = $PAGE->get_renderer('local_beacon');

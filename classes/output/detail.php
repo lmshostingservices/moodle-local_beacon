@@ -125,14 +125,18 @@ class detail implements renderable, templatable {
         $rep = catalogue::personal_report($this->id);
         $result = $rep->run(new filterset($this->context, []), 500);
 
+        $firstcells = $result['rows'][0] ?? [];
         $columns = [];
         foreach ($rep->columns as $i => $c) {
             $type = $c[2];
+            $isnum = in_array($type, ['number'], true) || !empty($firstcells[$i]['numeric']);
+            $isdate = in_array($type, ['date'], true) || !empty($firstcells[$i]['datey']);
             $columns[] = [
                 'index'      => $i,
                 'label'      => get_string($c[1], 'local_beacon'),
                 'type'       => $type,
-                'numeric'    => in_array($type, ['number'], true),
+                'numeric'    => $isnum,
+                'datey'      => $isdate && !$isnum,
                 'filterable' => in_array($type, ['text', 'status'], true),
             ];
         }
@@ -147,6 +151,7 @@ class detail implements renderable, templatable {
                     'isstatus' => !empty($cell['isstatus']),
                     'hasbadge' => !empty($cell['badge']),
                     'numeric'  => !empty($cell['numeric']),
+                    'datey'    => !empty($cell['datey']) && empty($cell['numeric']),
                     'sort'     => is_string($sort) ? $sort : (string) $sort,
                 ];
             }
@@ -385,6 +390,11 @@ class detail implements renderable, templatable {
         $limit = self::ROWCAP;
         $result = $rep->run($filters, $limit);
 
+        // Peek the first data row so a column's header alignment matches the
+        // alignment of the cells beneath it, even when a report declares a
+        // date column with the generic 'text' type (the cells still carry the
+        // numeric/datey flags that drive centring).
+        $firstcells = $result['rows'][0] ?? [];
         $columns = [];
         $sm = get_string_manager();
         foreach ($rep->columns as $i => $c) {
@@ -394,11 +404,14 @@ class detail implements renderable, templatable {
             $helpkey = $c[1] . '_help';
             $help = $sm->string_exists($helpkey, 'local_beacon')
                 ? get_string($helpkey, 'local_beacon') : '';
+            $isnum = in_array($type, ['number'], true) || !empty($firstcells[$i]['numeric']);
+            $isdate = in_array($type, ['date'], true) || !empty($firstcells[$i]['datey']);
             $columns[] = [
                 'index'      => $i,
                 'label'      => get_string($c[1], 'local_beacon'),
                 'type'       => $type,
-                'numeric'    => in_array($type, ['number'], true),
+                'numeric'    => $isnum,
+                'datey'      => $isdate && !$isnum,
                 // Text and status columns get a faceted value filter; number/date get sort only.
                 'filterable' => in_array($type, ['text', 'status'], true),
                 'help'       => $help,
@@ -417,6 +430,7 @@ class detail implements renderable, templatable {
                     'isstatus' => !empty($cell['isstatus']),
                     'hasbadge' => !empty($cell['badge']),
                     'numeric'  => !empty($cell['numeric']),
+                    'datey'    => !empty($cell['datey']) && empty($cell['numeric']),
                     'sort'     => is_string($sort) ? $sort : (string) $sort,
                 ];
             }

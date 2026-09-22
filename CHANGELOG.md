@@ -2,6 +2,29 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v1.9.8] - 2026-09-22
+- **Participation table now backfills itself right after upgrade/install.** The
+  durable participation table starts empty and used to stay empty — every
+  Activities count showing 0 and the Student-activity drill-down showing nothing
+  — until the hourly harvest task first ran (up to an hour later). A one-off
+  background harvest is now queued the moment the table exists, so the evidence
+  appears at the next cron pass with no admin action. It re-queues itself while a
+  large historic backlog remains, and never double-counts (per-source high-water
+  marks). Admins can still force it immediately via **Site administration →
+  Server → Tasks → Scheduled tasks → Harvest activity participation → Run now**.
+- **Number and date columns are now centre-aligned** across every report table
+  (text columns stay left-aligned). Headers follow their column's data, so header
+  and cell alignment always match — even where a date column was declared with the
+  generic text type.
+- **The "Trainer" filter is now labelled "Teacher / Non-Editing Teacher"** so it
+  is recognisable on the Marking queue and My marking queue reports (it remains a
+  site-admin-only picker of the teachers/non-editing teachers involved).
+
+## [v1.9.7] - 2026-09-22
+- Coding-style only (no behaviour change): reformatted a few multi-line function
+  calls so the first argument starts on its own line, and capitalised one comment
+  block, to satisfy the Moodle CodeSniffer (phpcs) checks.
+
 ## [v1.9.6] - 2026-09-22
 - **Legacy H5P ("Interactive content", mod_hvp) now covered.** Its durable xAPI
   event store (`hvp_events`) is harvested for participation dates, so historic

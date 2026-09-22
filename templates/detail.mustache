@@ -321,7 +321,7 @@
             <thead>
               <tr>
                 {{#columns}}
-                  <th data-index="{{index}}" data-type="{{type}}" class="{{#numeric}}bc-num{{/numeric}} {{#filterable}}bc-filterable{{/filterable}}" {{#hashelp}}title="{{help}}"{{/hashelp}}>
+                  <th data-index="{{index}}" data-type="{{type}}" class="{{#numeric}}bc-num{{/numeric}}{{#datey}}bc-date{{/datey}} {{#filterable}}bc-filterable{{/filterable}}" {{#hashelp}}title="{{help}}"{{/hashelp}}>
                     <span class="bc-th-in">
                       <button type="button" class="bc-sort" data-role="sort" {{#hashelp}}title="{{help}}"{{/hashelp}} aria-label="{{#str}}sortby, local_beacon, {{label}}{{/str}}">{{label}}<span class="bc-sort-ico"></span></button>
                       {{#hashelp}}<span class="bc-th-help" tabindex="0" role="img" title="{{help}}" aria-label="{{help}}">?</span>{{/hashelp}}
@@ -335,7 +335,7 @@
               {{#rows}}
                 <tr>
                   {{#cells}}
-                    <td class="{{#numeric}}bc-num{{/numeric}}{{#url}} bc-has-link{{/url}}" data-sort="{{sort}}">
+                    <td class="{{#numeric}}bc-num{{/numeric}}{{#datey}}bc-date{{/datey}}{{#url}} bc-has-link{{/url}}" data-sort="{{sort}}">
                       {{#isstatus}}<span class="bc-badge bc-badge-{{badge}}">{{v}}</span>{{/isstatus}}
                       {{^isstatus}}{{#url}}<a class="bc-cell-link" href="{{url}}">{{v}}</a>{{/url}}{{^url}}{{v}}{{/url}}{{/isstatus}}
                     </td>

@@ -96,8 +96,7 @@ class catalogue {
         $course = $courseid ? (new \moodle_url('/course/view.php', ['id' => $courseid]))->out(false) : null;
         $assign = $cmid ? (new \moodle_url('/mod/assign/view.php', ['id' => $cmid]))->out(false) : null;
         $grade = ($cmid && $userid)
-            ? (new \moodle_url('/mod/assign/view.php',
-                ['id' => $cmid, 'action' => 'grader', 'userid' => $userid]))->out(false)
+            ? (new \moodle_url('/mod/assign/view.php', ['id' => $cmid, 'action' => 'grader', 'userid' => $userid]))->out(false)
             : null;
         return [$profile, $course, $assign, $grade];
     }
@@ -876,11 +875,11 @@ class catalogue {
                     } else {
                         $status = cell::status(get_string('cert_current', 'local_beacon'), 'g');
                     }
+                    $expiry = $r->expires
+                        ? userdate($r->expires, get_string('strftimedate', 'langconfig'))
+                        : get_string('cert_noexpiry', 'local_beacon');
                     $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->template ?: '—'),
-                               cell::when($r->timecreated),
-                               cell::text($r->expires ? userdate($r->expires, get_string('strftimedate', 'langconfig'))
-                                    : get_string('cert_noexpiry', 'local_beacon')),
-                               $status];
+                               cell::when($r->timecreated), cell::text($expiry), $status];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
             },
@@ -1424,9 +1423,10 @@ class catalogue {
                 foreach ($recs as $r) {
                     // The activities count drills into the durable Student activity
                     // report for this learner in this course.
-                    $saurl = (new \moodle_url('/local/beacon/view.php',
-                        ['type' => 'report', 'id' => 'student_activity',
-                         'userid' => (int) $r->userid, 'courseid' => (int) $r->courseid]))->out(false);
+                    $saurl = (new \moodle_url(
+                        '/local/beacon/view.php',
+                        ['type' => 'report', 'id' => 'student_activity', 'userid' => (int) $r->userid, 'courseid' => (int) $r->courseid]
+                    ))->out(false);
                     $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
                                cell::when((int) $r->firstact), cell::when((int) $r->lastact),
                                cell::number((int) $r->activedays),
@@ -1769,9 +1769,11 @@ class catalogue {
                     } else {
                         $st = cell::status(get_string('cert_current', 'local_beacon'), 'g');
                     }
+                    $expiry = $r->expires
+                        ? userdate($r->expires, get_string('strftimedate', 'langconfig'))
+                        : get_string('cert_noexpiry', 'local_beacon');
                     $rows[] = [cell::text($r->template ?: '—'), cell::when($r->timecreated),
-                               cell::text($r->expires ? userdate($r->expires, get_string('strftimedate', 'langconfig'))
-                                    : get_string('cert_noexpiry', 'local_beacon')), $st];
+                               cell::text($expiry), $st];
                 }
                 return [$rows, count($rows)];
             },

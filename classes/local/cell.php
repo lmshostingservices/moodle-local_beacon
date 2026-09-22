@@ -82,12 +82,13 @@ class cell {
      */
     public static function when(?int $timestamp, ?string $url = null): array {
         if (empty($timestamp)) {
-            return ['v' => '—', 'badge' => '', 'sort' => 0];
+            return ['v' => '—', 'badge' => '', 'sort' => 0, 'datey' => true];
         }
         $cell = [
             'v'    => userdate($timestamp, get_string('strftimedate', 'langconfig')),
             'badge' => '',
             'sort' => (int) $timestamp,
+            'datey' => true,
         ];
         if ($url !== null && $url !== '') {
             $cell['url'] = $url;

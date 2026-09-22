@@ -2331,8 +2331,9 @@ th[data-sortdir="desc"] .bc-sort-ico::before {
     font-weight: 650;
     color: var(--bc-ink);
 }
-.bc-data .bc-num {
-    text-align: right;
+.bc-data .bc-num,
+.bc-data .bc-date {
+    text-align: center;
     font-variant-numeric: tabular-nums;
 }
 .bc-data tbody tr {

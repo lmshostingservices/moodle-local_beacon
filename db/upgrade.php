@@ -220,10 +220,22 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
                 'local_beacon_participation'
             );
         }
-        // student_activity is a hidden drill-down report (opened from the Funding
-        // participation Activities count), so it is deliberately NOT added to the
-        // enabled-reports list — it should not appear as a card in the library.
+        // The student_activity report is a hidden drill-down (opened from the
+        // Funding participation Activities count), so it is deliberately NOT added
+        // to the enabled-reports list — it should not appear as a card.
         upgrade_plugin_savepoint(true, 2026092207, 'local', 'beacon');
+    }
+
+    if ($oldversion < 2026092215) {
+        // Version 1.9.8: on sites that already have the durable participation
+        // table but have never run the hourly harvest, the Activities counts and
+        // the Student activity drill-down read as empty until that task first
+        // fires (up to an hour away). Queue a one-off background backfill now so
+        // the evidence appears at the very next cron pass instead.
+        if ($dbman->table_exists(new xmldb_table('local_beacon_participation'))) {
+            \core\task\manager::queue_adhoc_task(new \local_beacon\task\backfill_participation());
+        }
+        upgrade_plugin_savepoint(true, 2026092215, 'local', 'beacon');
     }
 
     return true;

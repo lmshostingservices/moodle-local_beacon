@@ -393,8 +393,10 @@ class participation_harvester {
      */
     public static function for_user_course(int $userid, int $courseid): array {
         global $DB;
-        $rows = $DB->get_records('local_beacon_participation',
-            ['userid' => $userid, 'courseid' => $courseid]);
+        $rows = $DB->get_records(
+            'local_beacon_participation',
+            ['userid' => $userid, 'courseid' => $courseid]
+        );
         $out = [];
         foreach ($rows as $r) {
             $out[(int) $r->cmid] = $r;

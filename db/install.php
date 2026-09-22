@@ -52,5 +52,10 @@ function xmldb_local_beacon_install(): bool {
     set_config('enabledkpis', implode(',', $kpis), 'local_beacon');
     set_config('enabledreports', implode(',', $reports), 'local_beacon');
 
+    // Kick off the first participation harvest in the background so the durable
+    // table is populated at the next cron pass, rather than staying empty until
+    // the hourly scheduled task first runs.
+    \core\task\manager::queue_adhoc_task(new \local_beacon\task\backfill_participation());
+
     return true;
 }
