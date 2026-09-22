@@ -139,7 +139,21 @@
         <span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>
       </div>
       <p class="bc-dh-expl">{{description}}</p>
+      {{#hassubject}}
+      <div class="bc-subject" data-subject="{{subject.exportline}}">
+        {{#subject.hasstudent}}<span class="bc-subject-pill"><span class="bc-subject-k">{{#str}}col_learner, local_beacon{{/str}}</span><span class="bc-subject-v">{{subject.student}}</span></span>{{/subject.hasstudent}}
+        {{#subject.hascourse}}<span class="bc-subject-pill"><span class="bc-subject-k">{{#str}}col_course, local_beacon{{/str}}</span><span class="bc-subject-v">{{subject.course}}</span></span>{{/subject.hascourse}}
+      </div>
+      {{/hassubject}}
     </div>
+
+    {{#hasscope}}
+    <div class="bc-scope" role="status">
+      <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      {{#scope.none}}<span>{{#str}}scope_none, local_beacon{{/str}}</span>{{/scope.none}}
+      {{^scope.none}}<span>{{#str}}scope_courses, local_beacon, {{scope.count}}{{/str}} <strong>{{scope.courses}}</strong></span>{{/scope.none}}
+    </div>
+    {{/hasscope}}
 
     {{#actions}}
     <div class="bc-actionbar" data-region="beacon-actions">
@@ -231,6 +245,7 @@
       <input type="hidden" name="contextid" value="{{filterbar.contextid}}">
       <input type="hidden" name="type" value="report">
       <input type="hidden" name="id" value="{{filterbar.id}}">
+      <input type="hidden" name="f_touched" value="1">
       <div class="bc-fbar-row">
         <span class="bc-fbar-lead">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -258,6 +273,12 @@
             {{/isdate}}
             {{^isdate}}
               {{#searchable}}<input type="text" class="bc-fsearch" placeholder="{{#str}}filtervalues, local_beacon{{/str}}" data-fsearch>{{/searchable}}
+              {{#hasmany}}
+              <div class="bc-facettools">
+                <button type="button" class="bc-facettool" data-facetall>{{#str}}selectall, local_beacon{{/str}}</button>
+                <button type="button" class="bc-facettool" data-facetnone>{{#str}}clearselection, local_beacon{{/str}}</button>
+              </div>
+              {{/hasmany}}
               <div class="bc-ffacets">
                 {{#options}}
                 <label class="bc-ffacet" {{#hasparent}}data-parent="{{parent}}"{{/hasparent}}><input type="checkbox" name="{{param}}[]" value="{{value}}" {{#selected}}checked{{/selected}}><span class="bc-ffacet-v">{{label}}</span></label>
@@ -272,7 +293,7 @@
         {{/filterbar.pills}}
 
         <div class="bc-fbar-spacer"></div>
-        {{#filterbar.active}}<a class="bc-btn bc-btn-ghost bc-btn-sm bc-fbar-clear" href="{{filterbar.baseurl}}">{{#str}}clearallfilters, local_beacon{{/str}}</a>{{/filterbar.active}}
+        {{#filterbar.active}}<a class="bc-btn bc-btn-ghost bc-btn-sm bc-fbar-clear" href="{{filterbar.clearurl}}">{{#str}}clearallfilters, local_beacon{{/str}}</a>{{/filterbar.active}}
       </div>
 
       {{#filterbar.haschips}}

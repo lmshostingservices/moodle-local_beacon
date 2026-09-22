@@ -718,7 +718,16 @@ define('local_beacon/table', ['core/str'], function(Str) {
             var b = th.querySelector('[data-role="sort"]');
             return (b ? b.textContent : th.textContent).trim();
         });
-        var lines = [head];
+        var lines = [];
+        // Name the student and course this drill-down is for, so an exported CSV
+        // stands on its own (the rows only list activities).
+        var subjEl = document.querySelector('[data-subject]');
+        var subj = subjEl ? (subjEl.getAttribute('data-subject') || '').trim() : '';
+        if (subj) {
+            lines.push([subj]);
+            lines.push([]);
+        }
+        lines.push(head);
         (this.visibleRows || this.rows).forEach(function(r) {
             lines.push(r.cells.map(function(c) {
                 return c.text;

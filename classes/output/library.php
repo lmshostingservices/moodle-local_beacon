@@ -71,11 +71,13 @@ class library implements renderable, templatable {
             }
         }
 
-        // Inside a course, only offer reports that can actually scope to it.
-        $scopeable = ['course', 'category', 'group'];
+        // Inside a course — or for any non-admin teacher, at any context — only
+        // offer reports that can actually be scoped (to the course, or to the
+        // teacher's own learners). Site-wide reports stay admin-only.
+        $seesall = has_capability('local/beacon:viewall', \context_system::instance());
         $reports = [];
         foreach (config::reports() as $r) {
-            if ($iscourse && empty(array_intersect($scopeable, $r->filters))) {
+            if (($iscourse || !$seesall) && !$r->scopeable_for_teacher()) {
                 continue;
             }
             $reports[] = build::report_card($r, $ctxid);

@@ -56,6 +56,17 @@ if (!$page->is_valid()) {
     throw new moodle_exception('itemnotfound', 'local_beacon');
 }
 
+// A non-admin teacher may only open reports that can be scoped to their own
+// learners (or the per-learner drill-down, which enforces its own access). A
+// site-wide report — a people directory, role or policy list — is admin-only, so
+// it cannot be reached by editing the URL.
+if ($type === 'report' && !has_capability('local/beacon:viewall', context_system::instance())) {
+    $rep = \local_beacon\local\catalogue::report($id);
+    if ($rep !== null && !$rep->requestscoped && !$rep->scopeable_for_teacher()) {
+        throw new moodle_exception('nopermissions', 'error', '', get_string('pluginname', 'local_beacon'));
+    }
+}
+
 $url = new moodle_url(
     '/local/beacon/view.php',
     ['contextid' => $contextid, 'type' => $type, 'id' => $id]

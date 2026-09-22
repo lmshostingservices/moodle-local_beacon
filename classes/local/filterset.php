@@ -270,6 +270,21 @@ class filterset {
     }
 
     /**
+     * Pre-select values for a filter type when the viewer has not chosen any —
+     * used to tick all of a teacher's own groups by default on first load. Never
+     * overrides an explicit selection (or an explicit "cleared all").
+     *
+     * @param string $type Filter type.
+     * @param array $ids Values to pre-select.
+     * @return void
+     */
+    public function default_select(string $type, array $ids): void {
+        if (!empty($ids) && !isset($this->active[$type])) {
+            $this->active[$type] = array_values($ids);
+        }
+    }
+
+    /**
      * HARD-lock the filter set to a single course. Unlike scope_to_course this
      * OVERRIDES any user-supplied course/category filter and cannot be removed,
      * so a teacher opening Beacon in their course can only ever see that
@@ -309,6 +324,41 @@ class filterset {
         $this->scopeoptions = true;
     }
 
+    /** @var int|null When set, rows are hard-restricted to this viewer's learners. */
+    private ?int $viewerscopeuid = null;
+
+    /**
+     * Hard-scope the report's ROWS (not just the option lists) to the learners a
+     * non-admin viewer teaches — applied automatically on every load, before any
+     * filter is chosen, so a teacher never sees a course they don't teach. A
+     * viewer who holds local/beacon:viewall (managers/admins) is never scoped.
+     *
+     * @param int $userid The viewer.
+     * @return void
+     */
+    public function enable_viewer_scope(int $userid): void {
+        $this->viewerscopeuid = $userid;
+    }
+
+    /**
+     * Whether row-level viewer scoping is in force for this run.
+     *
+     * @return bool
+     */
+    public function viewer_scope_active(): bool {
+        return $this->viewerscopeuid !== null && !$this->viewer_sees_all();
+    }
+
+    /**
+     * The ids of the courses the scoped viewer teaches (for the "you are seeing
+     * only these courses" banner).
+     *
+     * @return int[]
+     */
+    public function viewer_scope_courseids(): array {
+        return $this->viewer_course_ids();
+    }
+
     /**
      * Whether the current viewer sees the full, unscoped option lists.
      *
@@ -316,6 +366,24 @@ class filterset {
      */
     private function viewer_sees_all(): bool {
         return has_capability('local/beacon:viewall', \context_system::instance());
+    }
+
+    /**
+     * A bound WHERE fragment restricting a course-id column to the scoped viewer's
+     * taught courses — the fallback row scope for a report that has a course
+     * column but no (learner, course) trainer binding.
+     *
+     * @param string $col Course-id column.
+     * @return array{0:string,1:array}
+     */
+    private function viewer_course_fragment(string $col): array {
+        global $DB;
+        $ids = $this->viewer_course_ids();
+        if (!$ids) {
+            return ['1 = 0', []];
+        }
+        [$insql, $params] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, 'vscope' . ($this->seq++) . '_');
+        return ["$col $insql", $params];
     }
 
     /**
@@ -497,6 +565,10 @@ class filterset {
                 }
             }
         }
+        // Sentinel marking that the viewer has interacted with the filters, so a
+        // deliberate "clear all" is respected and not re-defaulted (e.g. the
+        // default pre-tick of a teacher's own groups on first load).
+        $out['f_touched'] = 1;
         return $out;
     }
 
@@ -626,6 +698,35 @@ class filterset {
                     break;
             }
             $params += $inparams;
+        }
+
+        // Automatic viewer scope: a non-admin viewer is hard-limited to the
+        // learners they teach on EVERY load, before any filter is chosen. Applied
+        // through the report's own trainer binding (learner + course columns); a
+        // report that has only a course column is limited to their taught courses.
+        // This is the security floor — the visible filters can only narrow within
+        // it, never widen past it.
+        if ($this->viewerscopeuid !== null && !$this->viewer_sees_all()) {
+            if (isset($map['trainer']) && is_array($map['trainer'])) {
+                $ucol = $map['trainer']['user'] ?? '';
+                $ccol = $map['trainer']['course'] ?? '';
+                if ($ucol !== '' && $ccol !== '') {
+                    [$vf, $vp] = $this->trainer_fragment($ucol, $ccol, [$this->viewerscopeuid]);
+                    $frags[] = $vf;
+                    $params += $vp;
+                }
+            } else if (isset($map['course']) || isset($map['category'])) {
+                // Fall back to the report's course-id column (both the course and
+                // category filters bind the same course-id column in every report),
+                // limiting it to the viewer's taught courses.
+                $binding = $map['course'] ?? $map['category'];
+                $ccol = is_array($binding) ? ($binding['col'] ?? '') : $binding;
+                if ($ccol !== '') {
+                    [$cf, $cp] = $this->viewer_course_fragment($ccol);
+                    $frags[] = $cf;
+                    $params += $cp;
+                }
+            }
         }
 
         $where = $frags ? ' AND (' . implode(') AND (', $frags) . ')' : '';

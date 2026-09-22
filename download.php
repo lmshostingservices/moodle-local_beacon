@@ -69,13 +69,40 @@ if ($type === 'mine') {
     if ($context instanceof context_course) {
         $filters->lock_course($context->instanceid);
     }
+    // Same viewer scope as the on-screen report: a non-admin teacher's export is
+    // hard-limited to their own learners, so an export can never leak a course
+    // they don't teach (even by editing the URL).
+    if (!has_capability('local/beacon:viewall', context_system::instance())) {
+        $filters->enable_option_scope();
+        $filters->enable_viewer_scope((int) $USER->id);
+    }
 
     // A generous cap for an export, well above the on-screen preview.
     $result = $report->run($filters, 5000);
 }
 
+// For the per-learner drill-down, name the student and course on the export so it
+// stands on its own (the rows only list activities).
+$subject = null;
+if ($report->requestscoped) {
+    $suid = optional_param('userid', 0, PARAM_INT);
+    $scid = optional_param('courseid', 0, PARAM_INT);
+    if ($suid > 0 && $scid > 1) {
+        $parts = [];
+        if ($su = \core_user::get_user($suid)) {
+            $parts[] = get_string('col_learner', 'local_beacon') . ': ' . fullname($su);
+        }
+        try {
+            $parts[] = get_string('col_course', 'local_beacon') . ': ' . format_string(get_course($scid)->fullname);
+        } catch (moodle_exception $e) {
+            $e = null;
+        }
+        $subject = $parts ? implode('   ·   ', $parts) : null;
+    }
+}
+
 if ($format === 'csv') {
-    export::csv($report, $result['rows']);
+    export::csv($report, $result['rows'], $subject);
 } else {
-    export::pdf($report, $result['rows'], $context);
+    export::pdf($report, $result['rows'], $context, $subject);
 }

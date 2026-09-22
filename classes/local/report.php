@@ -102,6 +102,19 @@ class report {
     }
 
     /**
+     * Whether this report can be safely shown to a non-admin teacher — i.e. it has
+     * a course / category / group / trainer dimension the viewer scope can pin to
+     * their own courses. Reports without one (site-wide people directories, role
+     * and policy lists) are admin-only, since they cannot be limited to a teacher's
+     * learners.
+     *
+     * @return bool
+     */
+    public function scopeable_for_teacher(): bool {
+        return !empty(array_intersect(['course', 'category', 'group', 'trainer'], $this->filters));
+    }
+
+    /**
      * Is the required table present on this site?
      *
      * @return bool

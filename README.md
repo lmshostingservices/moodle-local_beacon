@@ -10,7 +10,7 @@
 
 # Beacon — Reports & Analytics for Moodle
 
-**Version:** 2.0.0 · **Component:** `local_beacon` · **Maturity:** Stable  
+**Version:** 2.1.0 · **Component:** `local_beacon` · **Maturity:** Stable  
 **Price:** $50 USD one-time per site · lifetime updates · no subscription  
 **Compatibility:** Moodle™ 4.4 – 5.1 · PHP 8.2+
 

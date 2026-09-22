@@ -2,6 +2,25 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.1.0] - 2026-09-22
+- **Teachers are now automatically scoped to their own learners on every report —
+  closing a leak.** Previously a teacher who could open the site dashboard saw
+  every course on Funding participation (and other reports) until they manually
+  picked a filter. Now a non-admin viewer is hard-limited, in the SQL, to the
+  learners they teach on every report and every export, before touching a filter.
+  A visible banner names exactly which course(s) they're seeing, so the scope is
+  auditable. Site-wide reports (people directories, role and policy lists) that
+  can't be scoped to a teacher are hidden from them and blocked by URL.
+- **Group filter: your groups are pre-ticked, with Select all / Clear all.** On a
+  fresh open the teacher's own groups are all selected; quick buttons let them tick
+  all or clear all and drill to one group. "Clear all" is respected and not
+  re-defaulted.
+- **Student activity drill-down now names the student and course** — shown as pill
+  boxes on the page, and included at the top of both the CSV and PDF export, so an
+  exported file stands on its own.
+- Managers keep full site-wide access via the new `local/beacon:viewall`
+  capability; only holders of that capability are unscoped.
+
 ## [v2.0.0] - 2026-09-22
 - **Fix: add the missing language string for the `local/beacon:viewall`
   capability.** Every Moodle capability must have a matching language string; the

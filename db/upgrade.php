@@ -269,5 +269,15 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026092219, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026092220) {
+        // Version 2.1.0: non-admin teachers are now automatically row-scoped to
+        // their own learners on every report (and export), with a visible scope
+        // banner; site-wide reports are hidden from and blocked for them; the
+        // Group filter pre-ticks their groups with select-all/clear-all; and the
+        // per-learner drill-down names the student and course on screen and in the
+        // CSV/PDF. Behaviour only; no schema change.
+        upgrade_plugin_savepoint(true, 2026092220, 'local', 'beacon');
+    }
+
     return true;
 }

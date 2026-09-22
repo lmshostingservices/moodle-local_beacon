@@ -64,7 +64,7 @@ class export {
      * @param \context $context Context.
      * @return void
      */
-    private static function build_pdf(report $report, array $rows, \context $context): \pdf {
+    private static function build_pdf(report $report, array $rows, \context $context, ?string $subject = null): \pdf {
         global $CFG, $SITE;
         require_once($CFG->libdir . '/pdflib.php');
 
@@ -92,6 +92,9 @@ class export {
             . '</tr></table>';
         $head .= '<div style="border-bottom:2px solid ' . self::TEAL . ';">&nbsp;</div>';
         $head .= '<h1 style="font-size:17px;color:#111826;margin-top:8px;">' . s($report->name()) . '</h1>';
+        if ($subject !== null && $subject !== '') {
+            $head .= '<p style="font-size:12px;color:#111826;font-weight:bold;">' . s($subject) . '</p>';
+        }
         $head .= '<p style="font-size:10px;color:#667283;">' . s($report->description()) . '</p>';
         $head .= '<p style="font-size:9px;color:#8A95A4;">'
             . s(get_string('pdf_generated', 'local_beacon', $generated))
@@ -212,8 +215,8 @@ class export {
      * @param \context $context Context.
      * @return void
      */
-    public static function pdf(report $report, array $rows, \context $context): void {
-        $pdf = self::build_pdf($report, $rows, $context);
+    public static function pdf(report $report, array $rows, \context $context, ?string $subject = null): void {
+        $pdf = self::build_pdf($report, $rows, $context, $subject);
         $pdf->Output(self::filename($report) . '.pdf', 'D');
         exit;
     }
@@ -238,12 +241,16 @@ class export {
      * @param array $rows Rows of cells.
      * @return void
      */
-    public static function csv(report $report, array $rows): void {
+    public static function csv(report $report, array $rows, ?string $subject = null): void {
         global $CFG;
         require_once($CFG->libdir . '/csvlib.class.php');
 
         $csv = new \csv_export_writer();
         $csv->set_filename(self::filename($report));
+        if ($subject !== null && $subject !== '') {
+            $csv->add_data([$subject]);
+            $csv->add_data([]);
+        }
         $csv->add_data(self::headers($report));
         foreach ($rows as $cells) {
             $csv->add_data(array_map(fn($c) => (string) $c['v'], $cells));

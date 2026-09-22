@@ -35,6 +35,14 @@ define('local_beacon/filterbar', [], function() {
         this.bindDependents();
     };
 
+    /**
+     * Dependent dropdowns: a pill carrying data-depends-param only shows the
+     * facets whose data-parent is among the values ticked in the parent pill
+     * (Course narrows to the chosen Category, Group to the chosen Course). With
+     * nothing ticked in the parent, everything shows. A facet hidden this way is
+     * also unchecked, so it can't apply a stale filter. Pure enhancement — with
+     * no JS every option shows and the server still constrains the results.
+     */
     Bar.prototype.bindDependents = function() {
         var self = this;
         var dependents = this.pills.filter(function(p) {
@@ -71,6 +79,9 @@ define('local_beacon/filterbar', [], function() {
                 }
             });
         };
+        // Refresh in declared order (Category → Course → Group), so a change high
+        // in the chain cascades: hiding a course also drops it from the Group
+        // parent set before the Group list refreshes.
         var refreshAll = function() {
             dependents.forEach(refresh);
         };
@@ -117,6 +128,34 @@ define('local_beacon/filterbar', [], function() {
                     }
                 });
             });
+
+            // Select all / Clear all for a multi-value pill. Only toggles the
+            // currently-visible options (so it respects an active search filter).
+            var setAll = function(state) {
+                pill.querySelectorAll('.bc-ffacet').forEach(function(facet) {
+                    if (facet.style.display === 'none') {
+                        return;
+                    }
+                    var cb = facet.querySelector('input[type="checkbox"]');
+                    if (cb) {
+                        cb.checked = state;
+                    }
+                });
+                // Let dependent-dropdown wiring react to the change.
+                self.form.dispatchEvent(new Event('change'));
+            };
+            var all = pill.querySelector('[data-facetall]');
+            if (all) {
+                all.addEventListener('click', function() {
+                    setAll(true);
+                });
+            }
+            var none = pill.querySelector('[data-facetnone]');
+            if (none) {
+                none.addEventListener('click', function() {
+                    setAll(false);
+                });
+            }
         });
 
         // Close on outside click.

@@ -128,6 +128,34 @@ define('local_beacon/filterbar', [], function() {
                     }
                 });
             });
+
+            // Select all / Clear all for a multi-value pill. Only toggles the
+            // currently-visible options (so it respects an active search filter).
+            var setAll = function(state) {
+                pill.querySelectorAll('.bc-ffacet').forEach(function(facet) {
+                    if (facet.style.display === 'none') {
+                        return;
+                    }
+                    var cb = facet.querySelector('input[type="checkbox"]');
+                    if (cb) {
+                        cb.checked = state;
+                    }
+                });
+                // Let dependent-dropdown wiring react to the change.
+                self.form.dispatchEvent(new Event('change'));
+            };
+            var all = pill.querySelector('[data-facetall]');
+            if (all) {
+                all.addEventListener('click', function() {
+                    setAll(true);
+                });
+            }
+            var none = pill.querySelector('[data-facetnone]');
+            if (none) {
+                none.addEventListener('click', function() {
+                    setAll(false);
+                });
+            }
         });
 
         // Close on outside click.

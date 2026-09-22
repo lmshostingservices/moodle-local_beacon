@@ -386,6 +386,7 @@ class detail implements renderable, templatable {
      * @return array
      */
     private function report_context(): array {
+        global $USER;
         $rep = catalogue::report($this->id);
         $filters = filterset::from_request($this->context);
         // Opened in a course context (e.g. a teacher from the course Reports
@@ -393,9 +394,26 @@ class detail implements renderable, templatable {
         if ($this->context instanceof \context_course) {
             $filters->lock_course($this->context->instanceid);
         }
-        // A viewer-scoped report limits its filter option lists to what the
-        // viewer may see, so the dropdowns match the rows they can reach.
-        if ($rep->scopedfilters) {
+        // A non-admin viewer (a teacher without local/beacon:viewall) is hard-
+        // scoped to the learners they teach on EVERY report, before touching a
+        // filter, and their filter option lists are limited to their own courses
+        // and groups. Managers/admins (viewall) see everything.
+        $seesall = has_capability('local/beacon:viewall', \context_system::instance());
+        if (!$seesall) {
+            $filters->enable_option_scope();
+            $filters->enable_viewer_scope((int) $USER->id);
+            // On a fresh open (before the viewer has touched the filter form) tick
+            // all of the teacher's own groups by default, so the Group filter shows
+            // what they're already seeing and they can quickly narrow to one.
+            // "f_touched" is emitted by the filter form, so a deliberate "clear
+            // all" is respected rather than re-defaulted.
+            if (in_array('group', $rep->filters, true) && !optional_param('f_touched', 0, PARAM_INT)) {
+                $groupids = array_map('intval', array_keys($filters->options('group')));
+                $filters->default_select('group', $groupids);
+            }
+        } else if ($rep->scopedfilters) {
+            // A viewer-scoped report limits its filter option lists to what the
+            // viewer may see, so the dropdowns match the rows they can reach.
             $filters->enable_option_scope();
         }
         // Load the full working set (matching the CSV/PDF export cap) so the
@@ -479,6 +497,61 @@ class detail implements renderable, templatable {
             ['contextid' => $this->context->id, 'id' => $rep->id, 'format' => 'pdf'] + $extra
         ))->out(false);
 
+        // For the per-learner drill-down, resolve who and which course this is, so
+        // the page (and the CSV/PDF export) always names the student and course —
+        // the table rows themselves only list activities.
+        $subject = null;
+        if ($rep->requestscoped) {
+            $uid = optional_param('userid', 0, PARAM_INT);
+            $cid = optional_param('courseid', 0, PARAM_INT);
+            if ($uid > 0 && $cid > 1) {
+                $student = '';
+                if ($u = \core_user::get_user($uid)) {
+                    $student = fullname($u);
+                }
+                $coursename = '';
+                try {
+                    $coursename = format_string(get_course($cid)->fullname);
+                } catch (\moodle_exception $e) {
+                    $coursename = '';
+                }
+                if ($student !== '' || $coursename !== '') {
+                    $subject = [
+                        'student' => $student,
+                        'course'  => $coursename,
+                        'hasstudent' => $student !== '',
+                        'hascourse'  => $coursename !== '',
+                        'exportline' => trim(
+                            ($student !== '' ? get_string('col_learner', 'local_beacon') . ': ' . $student : '') .
+                            ($student !== '' && $coursename !== '' ? '  ·  ' : '') .
+                            ($coursename !== '' ? get_string('col_course', 'local_beacon') . ': ' . $coursename : '')
+                        ),
+                    ];
+                }
+            }
+        }
+
+        // Visible scope banner so a teacher can SEE exactly which of their courses
+        // the report is limited to (and confirm nothing else leaks through).
+        $scope = null;
+        if ($filters->viewer_scope_active()) {
+            $cids = $filters->viewer_scope_courseids();
+            $names = [];
+            foreach ($cids as $cid) {
+                try {
+                    $names[] = format_string(get_course($cid)->fullname);
+                } catch (\moodle_exception $e) {
+                    continue;
+                }
+            }
+            sort($names);
+            $scope = [
+                'count'   => count($names),
+                'courses' => implode(', ', $names),
+                'none'    => empty($names),
+            ];
+        }
+
         return [
             'name'        => $rep->name(),
             'description' => $rep->description(),
@@ -494,6 +567,10 @@ class detail implements renderable, templatable {
             'capped'      => $total > $shown,
             'error'       => $result['error'],
             'isempty'     => $shown === 0 && !$result['error'],
+            'hassubject'  => $subject !== null,
+            'subject'     => $subject,
+            'hasscope'    => $scope !== null,
+            'scope'       => $scope,
             'hasfilterbar' => $rep->has_filters(),
             'filterbar'    => $rep->has_filters() ? $this->build_filterbar($rep, $filters) : null,
             'actions'      => $this->build_actions($rep, $filters),
@@ -686,12 +763,18 @@ class detail implements renderable, templatable {
                 'label' => get_string($labelkey, 'local_beacon'),
                 'active' => $count > 0, 'hascount' => $count > 0, 'count' => $count,
                 'searchable' => count($opts) > 8, 'options' => $opts,
+                'hasmany' => count($opts) > 1,
                 'hasdependson' => $dependson !== '', 'dependson' => $dependson,
             ];
         }
 
+        // "Clear all" carries the interaction sentinel so it truly clears (rather
+        // than re-applying the first-load defaults such as the group pre-tick).
+        $clearurl = (new \moodle_url($base, ['f_touched' => 1]))->out(false);
+
         return [
             'baseurl'  => $base->out(false),
+            'clearurl' => $clearurl,
             'contextid' => $this->context->id,
             'id'       => $rep->id,
             'active'   => $filters->has_any(),
