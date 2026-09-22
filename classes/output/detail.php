@@ -373,12 +373,27 @@ class detail implements renderable, templatable {
         if ($this->context instanceof \context_course) {
             $filters->lock_course($this->context->instanceid);
         }
-        $limit = 200;
+        // A viewer-scoped report limits its filter option lists to what the
+        // viewer may see, so the dropdowns match the rows they can reach.
+        if ($rep->scopedfilters) {
+            $filters->enable_option_scope();
+        }
+        // Load the full working set (matching the CSV/PDF export cap) so the
+        // in-table search finds any learner, course or assignment by typing —
+        // not only those in the first screenful. A teacher can type a student's
+        // name instead of drilling the filters.
+        $limit = self::ROWCAP;
         $result = $rep->run($filters, $limit);
 
         $columns = [];
+        $sm = get_string_manager();
         foreach ($rep->columns as $i => $c) {
             $type = $c[2];
+            // Plain-English hover text for the header, if one is defined for this
+            // column (every column has a matching '<key>_help' string).
+            $helpkey = $c[1] . '_help';
+            $help = $sm->string_exists($helpkey, 'local_beacon')
+                ? get_string($helpkey, 'local_beacon') : '';
             $columns[] = [
                 'index'      => $i,
                 'label'      => get_string($c[1], 'local_beacon'),
@@ -386,6 +401,8 @@ class detail implements renderable, templatable {
                 'numeric'    => in_array($type, ['number'], true),
                 // Text and status columns get a faceted value filter; number/date get sort only.
                 'filterable' => in_array($type, ['text', 'status'], true),
+                'help'       => $help,
+                'hashelp'    => $help !== '',
             ];
         }
 
@@ -411,6 +428,18 @@ class detail implements renderable, templatable {
 
         // Active filters ride along on the branded PDF so what you see downloads.
         $extra = $filters->url_params();
+        // A request-scoped drill-down (e.g. Student activity) carries its learner
+        // and course selectors on the export link too, so the PDF is not empty.
+        if ($rep->requestscoped) {
+            $uid = optional_param('userid', 0, PARAM_INT);
+            $cid = optional_param('courseid', 0, PARAM_INT);
+            if ($uid > 0) {
+                $extra['userid'] = $uid;
+            }
+            if ($cid > 0) {
+                $extra['courseid'] = $cid;
+            }
+        }
         $pdfurl = (new \moodle_url(
             '/local/beacon/download.php',
             ['contextid' => $this->context->id, 'id' => $rep->id, 'format' => 'pdf'] + $extra
@@ -513,9 +542,13 @@ class detail implements renderable, templatable {
     }
 
     /** URL parameter each filter type reads. */
+    /** @var int Rows loaded into the interactive table (matches the export cap). */
+    private const ROWCAP = 5000;
+
     private const FPARAM = [
         'cohort' => 'f_cohort', 'cohortid' => 'f_cohortid', 'group' => 'f_group',
-        'course' => 'f_course', 'category' => 'f_cat', 'role' => 'f_role', 'roleid' => 'f_roleid',
+        'course' => 'f_course', 'category' => 'f_cat', 'trainer' => 'f_trainer',
+        'role' => 'f_role', 'roleid' => 'f_roleid',
         'auth' => 'f_auth', 'enrolmethod' => 'f_enrol', 'idle' => 'f_idle',
         'certstatus' => 'f_certstatus', 'policystatus' => 'f_policystatus',
         'proficiency' => 'f_proficiency', 'contextlevel' => 'f_contextlevel',
@@ -525,7 +558,8 @@ class detail implements renderable, templatable {
     /** The string-key suffix (under filter_) each type displays as. */
     private const FLABEL = [
         'cohort' => 'cohort', 'cohortid' => 'cohort', 'group' => 'group', 'course' => 'course',
-        'category' => 'category', 'role' => 'role', 'roleid' => 'role', 'auth' => 'auth',
+        'category' => 'category', 'trainer' => 'trainer', 'role' => 'role', 'roleid' => 'role',
+        'auth' => 'auth',
         'enrolmethod' => 'enrolmethod', 'idle' => 'idle', 'certstatus' => 'certstatus',
         'policystatus' => 'policystatus', 'proficiency' => 'proficiency', 'contextlevel' => 'contextlevel',
         'gradeband' => 'gradeband', 'progressband' => 'progressband',
@@ -588,21 +622,37 @@ class detail implements renderable, templatable {
             $param = self::FPARAM[$type];
             $labelkey = 'filter_' . (self::FLABEL[$type] ?? $type);
             $selected = array_map('strval', $filters->selected($type));
+            // Parent id per option, powering the dependent dropdowns: a course's
+            // category, a group's course. Empty for every other filter type.
+            $parents = $filters->option_parent($type);
             $opts = [];
             foreach ($options as $val => $lab) {
                 $on = in_array((string) $val, $selected, true);
-                $opts[] = ['value' => $val, 'label' => $lab, 'selected' => $on];
+                $opts[] = [
+                    'value' => $val, 'label' => $lab, 'selected' => $on,
+                    'hasparent' => isset($parents[$val]), 'parent' => $parents[$val] ?? '',
+                ];
                 if ($on) {
                     $chips[] = ['label' => get_string($labelkey, 'local_beacon') . ': ' . $lab,
                                 'removeurl' => (new \moodle_url($base, $filters->without($type, $val)))->out(false)];
                 }
             }
             $count = count($selected);
+            // Dependent-dropdown wiring (applies to every report that has these
+            // filters): Course narrows to the chosen Category, Group to the
+            // chosen Course. The value is the parent filter's request parameter.
+            $dependson = '';
+            if ($type === 'course') {
+                $dependson = self::FPARAM['category'];
+            } else if ($type === 'group') {
+                $dependson = self::FPARAM['course'];
+            }
             $pills[] = [
                 'isdate' => false, 'type' => $type, 'param' => $param,
                 'label' => get_string($labelkey, 'local_beacon'),
                 'active' => $count > 0, 'hascount' => $count > 0, 'count' => $count,
                 'searchable' => count($opts) > 8, 'options' => $opts,
+                'hasdependson' => $dependson !== '', 'dependson' => $dependson,
             ];
         }
 

@@ -2,6 +2,115 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v1.9.6] - 2026-09-22
+- **Legacy H5P ("Interactive content", mod_hvp) now covered.** Its durable xAPI
+  event store (`hvp_events`) is harvested for participation dates, so historic
+  engagement with old H5P activities appears alongside everything else. (New H5P
+  via mod_h5pactivity was already covered.) Validated against PostgreSQL.
+
+## [v1.9.5] - 2026-09-22
+- **More robust auto-discovery of custom activity tables.** The attempt harvester
+  now finds a module's instance column by testing which column actually resolves
+  to a course module, instead of guessing from the name — so activities whose
+  attempt table uses a non-standard key (e.g. `scenarioid`, `workbookid`) are now
+  picked up correctly. It also harvests tables that store the course-module id
+  directly (a `cmid` column). Both join modes validated against PostgreSQL, and a
+  column that does not resolve is never used, so wrong data can't be produced.
+
+## [v1.9.4] - 2026-09-22
+- **Deep history for activities that don't track completion, too.** The harvester
+  now also reads each activity module's own durable attempt/submission table
+  (assignment submissions, quiz attempts, lesson timers, H5P attempts, and more).
+  Core modules are covered by a curated map; any other installed activity —
+  including third-party/custom ones — is discovered automatically at runtime (its
+  per-user attempt table, timestamp and instance column), so the plugin needs no
+  knowledge of a site's custom activities. Each source has its own high-water
+  mark, so records are counted exactly once. Instance→module mapping validated
+  against PostgreSQL (a wrong guess yields no rows, never wrong rows).
+- **Funding "Activities" count now matches the drill-down.** The Activities figure
+  on the Funding participation report is now the count of distinct activities in
+  the durable participation table, so it lines up exactly with the number of rows
+  in the Student activity report you reach by clicking it. Falls back safely to
+  the raw record count if the participation table is absent.
+
+## [v1.9.3] - 2026-09-22
+- **Historic participation now shows, not just from install onward.** The
+  participation harvester now also reads `course_modules_completion`, which Moodle
+  never purges — so an activity a learner completed years ago still appears as
+  participation evidence, with its real completion date. This works for every
+  completion-tracked activity type (core and contrib), keyed directly by the
+  course module, and merges with the log-harvested data (extending the
+  first-participation date backwards where an older completion exists). Join and
+  backward-date-extension validated against PostgreSQL. On upgrade, run the
+  harvest task once (or wait for the hourly schedule) to pull in the back history.
+
+## [v1.9.2] - 2026-09-22
+- **Fix (scope safety):** the Student activity drill-down report is now never
+  served from the shared short-lived result cache. Because it is keyed by request
+  parameters (the learner and course) and scoped to the viewer rather than by the
+  filter set, a cached result could otherwise have been shown to a different
+  viewer within the cache window. Request-scoped reports now always run fresh, so
+  the per-viewer scope check always applies.
+- **Fix:** the PDF export of the Student activity report now carries the learner
+  and course selectors, so the exported PDF matches the on-screen table instead of
+  coming back empty.
+
+## [v1.9.1] - 2026-09-22
+- **Consistent filter order across every report.** Wherever a report offers the
+  Category, Course and Group filters, they now appear in that order (Category →
+  Course → Group), with the date range last — matching the dependent-dropdown
+  chain so the filters read top-to-bottom the way you drill. No behaviour change
+  beyond ordering; the dynamic dependency and full-set search already applied to
+  every report.
+
+## [v1.9.0] - 2026-09-22
+- **Durable activity-participation evidence.** A new hourly harvester copies each
+  student's activity participation out of the standard log into a permanent Beacon
+  table (`local_beacon_participation`) *before* Moodle purges the log — so the
+  evidence survives well beyond the log-retention window. It is universal: because
+  it reads the log at module context, it captures participation in **every**
+  activity type, core and contrib alike (quizzes, assignments, H5P, SCORM, and any
+  custom activity), with no per-plugin configuration. On a fresh install it
+  backfills from whatever logs still exist, then keeps pace hourly from a
+  high-water mark (no double-counting). Aggregation and incremental-merge SQL
+  validated against PostgreSQL.
+- **New "Student activity" drill-down report.** Clicking the Activities count on
+  the Funding participation report opens a per-learner, per-course table of every
+  activity they participated in — activity (deep-linked into Moodle), type, first
+  participated, last participated and interaction count — sortable, searchable and
+  CSV/PDF-exportable like every other report. Scope-enforced: a teacher can only
+  open it for learners they teach; the report is hidden from the library and
+  reachable only via the drill-down link.
+
+## [v1.8.8] - 2026-09-22
+- **Plain-English hover text on every report column header.** Hovering any column
+  header (or its small "?" marker) now shows a one-line description of exactly what
+  that column is counting or measuring — e.g. "Course views (12 mo)" explains that
+  older views aren't counted because Moodle only keeps detailed logs for a limited
+  time. Every column across every report has one.
+
+## [v1.8.7] - 2026-09-22
+- **Dynamic dependent filters on every report.** The Course filter now narrows to
+  the categories you've picked, and the Group filter narrows to the courses you've
+  picked (Category → Course → Group). Choosing a parent hides — and unticks —
+  options that no longer apply. Pure enhancement: with no JavaScript every option
+  still shows and the server still constrains the results.
+- **In-table search now covers the whole result set.** The "Search this report"
+  box previously only searched the first 200 rows, so a learner further down the
+  list wouldn't appear until you filtered first. The table now loads the full
+  working set (the same cap the CSV/PDF export uses), so typing a learner, course
+  or assignment name finds them directly — no need to filter first.
+- **Marking queue filters expanded.** Both the "My marking queue" and site-wide
+  "Marking queue" reports gain Category, Course, Group, Cohort and (admins only) a
+  **Trainer** filter, ordered Category → Course → Group. The Trainer filter narrows
+  to the submissions a chosen trainer is responsible for (editing teacher → whole
+  course; non-editing teacher → learners in their groups); its scope SQL is
+  validated against PostgreSQL.
+- **Filter options are scoped to the viewer on the marking queue.** A non-editing
+  teacher sees only the categories, courses and groups they teach in the filter
+  dropdowns (and no Trainer filter) — matching the rows they can already see. Site
+  admins see everything.
+
 ## [v1.8.6] - 2026-09-22
 - **KPI cut-offs are now editable by a site admin.** A new **Beacon KPI targets**
   settings page (Site administration → Plugins → Local plugins) lists every KPI

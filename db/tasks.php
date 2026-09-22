@@ -64,4 +64,15 @@ $tasks = [
         'month'     => '*',
         'dayofweek' => '*',
     ],
+    [
+        // Harvest activity participation from the log into the durable table,
+        // hourly, before the log purges. Catches up a backlog over several runs.
+        'classname' => 'local_beacon\task\harvest_participation',
+        'blocking'  => 0,
+        'minute'    => '40',
+        'hour'      => '*',
+        'day'       => '*',
+        'month'     => '*',
+        'dayofweek' => '*',
+    ],
 ];

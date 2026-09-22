@@ -32,6 +32,61 @@ define('local_beacon/filterbar', [], function() {
         this.form = form;
         this.pills = Array.prototype.slice.call(form.querySelectorAll('details[data-fpill]'));
         this.bind();
+        this.bindDependents();
+    };
+
+    /**
+     * Dependent dropdowns: a pill carrying data-depends-param only shows the
+     * facets whose data-parent is among the values ticked in the parent pill
+     * (Course narrows to the chosen Category, Group to the chosen Course). With
+     * nothing ticked in the parent, everything shows. A facet hidden this way is
+     * also unchecked, so it can't apply a stale filter. Pure enhancement — with
+     * no JS every option shows and the server still constrains the results.
+     */
+    Bar.prototype.bindDependents = function() {
+        var self = this;
+        var dependents = this.pills.filter(function(p) {
+            return p.getAttribute('data-depends-param');
+        });
+        if (!dependents.length) {
+            return;
+        }
+        var parentPill = function(param) {
+            for (var i = 0; i < self.pills.length; i++) {
+                if (self.pills[i].querySelector('input[name="' + param + '[]"]')) {
+                    return self.pills[i];
+                }
+            }
+            return null;
+        };
+        var refresh = function(pill) {
+            var parent = parentPill(pill.getAttribute('data-depends-param'));
+            var chosen = [];
+            if (parent) {
+                parent.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) {
+                    chosen.push(cb.value);
+                });
+            }
+            pill.querySelectorAll('.bc-ffacet').forEach(function(facet) {
+                var par = facet.getAttribute('data-parent');
+                var show = (chosen.length === 0) || (par !== null && chosen.indexOf(par) !== -1);
+                facet.style.display = show ? '' : 'none';
+                if (!show) {
+                    var cb = facet.querySelector('input[type="checkbox"]');
+                    if (cb) {
+                        cb.checked = false;
+                    }
+                }
+            });
+        };
+        // Refresh in declared order (Category → Course → Group), so a change high
+        // in the chain cascades: hiding a course also drops it from the Group
+        // parent set before the Group list refreshes.
+        var refreshAll = function() {
+            dependents.forEach(refresh);
+        };
+        this.form.addEventListener('change', refreshAll);
+        refreshAll();
     };
 
     Bar.prototype.bind = function() {

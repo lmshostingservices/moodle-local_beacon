@@ -103,6 +103,76 @@ class catalogue {
     }
 
     /**
+     * Whether the current viewer may see one learner's activity in a course:
+     * a site admin may see anyone; an editing teacher on the course may see any
+     * of its learners; a non-editing teacher may see only learners in a group
+     * they share on that course.
+     *
+     * @param \moodle_database $DB Database.
+     * @param int $viewerid Current user id.
+     * @param int $studentid Learner being viewed.
+     * @param int $courseid Course.
+     * @return bool
+     */
+    private static function may_view_student(\moodle_database $DB, int $viewerid, int $studentid, int $courseid): bool {
+        if (has_capability('moodle/site:config', \context_system::instance())) {
+            return true;
+        }
+        $ected = $DB->record_exists_sql(
+            "SELECT 1 FROM {role_assignments} ra
+               JOIN {context} ctx ON ctx.id = ra.contextid
+                    AND ctx.contextlevel = 50 AND ctx.instanceid = :cid
+               JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
+              WHERE ra.userid = :uid",
+            ['cid' => $courseid, 'uid' => $viewerid]
+        );
+        if ($ected) {
+            return true;
+        }
+        return $DB->record_exists_sql(
+            "SELECT 1 FROM {role_assignments} ra
+               JOIN {context} ctx ON ctx.id = ra.contextid
+                    AND ctx.contextlevel = 50 AND ctx.instanceid = :cid
+               JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
+               JOIN {groups_members} gmt ON gmt.userid = ra.userid
+               JOIN {groups} grp ON grp.id = gmt.groupid AND grp.courseid = :cid2
+               JOIN {groups_members} gls ON gls.groupid = grp.id AND gls.userid = :sid
+              WHERE ra.userid = :uid",
+            ['cid' => $courseid, 'cid2' => $courseid, 'uid' => $viewerid, 'sid' => $studentid]
+        );
+    }
+
+    /**
+     * A bound WHERE fragment narrowing a marking query (aliases assign a,
+     * submission s) to the submissions the given trainer(s) are responsible for:
+     * an editing teacher on the course, or a non-editing teacher who shares a
+     * group with the learner on that course. OR-ed across the selected trainers.
+     *
+     * @param \moodle_database $DB Database.
+     * @param int[] $trainerids Selected trainer user ids.
+     * @return array{0:string,1:array}
+     */
+    private static function marking_trainer_filter(\moodle_database $DB, array $trainerids): array {
+        [$in1, $p1] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trfa');
+        [$in2, $p2] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trfb');
+        $sql = " AND (
+            EXISTS (SELECT 1 FROM {role_assignments} ra
+                      JOIN {context} ctx ON ctx.id = ra.contextid
+                           AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
+                      JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
+                     WHERE ra.userid $in1)
+            OR EXISTS (SELECT 1 FROM {role_assignments} ra
+                         JOIN {context} ctx ON ctx.id = ra.contextid
+                              AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
+                         JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
+                         JOIN {groups_members} gmt ON gmt.userid = ra.userid
+                         JOIN {groups} grp ON grp.id = gmt.groupid AND grp.courseid = a.course
+                         JOIN {groups_members} gls ON gls.groupid = grp.id AND gls.userid = s.userid
+                        WHERE ra.userid $in2))";
+        return [$sql, $p1 + $p2];
+    }
+
+    /**
      * A UNION of durable, non-purgeable activity records as (userid, courseid, ts).
      *
      * Unlike the standard log (retained only for loglifetime), completion,
@@ -527,7 +597,7 @@ class catalogue {
 
         $defs[] = [
             'id' => 'enrolment_details', 'family' => 'people', 'icon' => 'login', 'grain' => 'enrolment',
-            'filters' => ['daterange', 'cohort', 'group', 'course', 'category', 'enrolmethod'],
+            'filters' => ['category', 'course', 'group', 'cohort', 'enrolmethod', 'daterange'],
             'datelabel' => 'col_joined',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['method', 'col_method', 'text'], ['joined', 'col_joined', 'text']],
@@ -557,7 +627,7 @@ class catalogue {
 
         $defs[] = [
             'id' => 'course_completion', 'family' => 'progress', 'icon' => 'flag', 'grain' => 'enrolment',
-            'filters' => ['daterange', 'cohort', 'group', 'course', 'category'],
+            'filters' => ['category', 'course', 'group', 'cohort', 'daterange'],
             'datelabel' => 'col_completed',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['status', 'col_status', 'status'], ['completed', 'col_completed', 'text']],
@@ -588,7 +658,7 @@ class catalogue {
 
         $defs[] = [
             'id' => 'activity_completion', 'family' => 'progress', 'icon' => 'check', 'grain' => 'enrolment',
-            'filters' => ['cohort', 'group', 'course', 'category'],
+            'filters' => ['category', 'course', 'group', 'cohort'],
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['done', 'col_done', 'number'], ['total', 'col_oftotal', 'number']],
             'run' => function ($DB, $q, $limit) {
@@ -621,7 +691,7 @@ class catalogue {
 
         $defs[] = [
             'id' => 'not_started', 'family' => 'engagement', 'icon' => 'moon', 'grain' => 'enrolment',
-            'filters' => ['daterange', 'cohort', 'course', 'category'], 'datelabel' => 'col_enrolled',
+            'filters' => ['category', 'course', 'cohort', 'daterange'], 'datelabel' => 'col_enrolled',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['enrolled', 'col_enrolled', 'text'], ['status', 'col_status', 'status']],
             'run' => function ($DB, $q, $limit) {
@@ -675,7 +745,7 @@ class catalogue {
             'id' => 'grade_summary', 'family' => 'assessment', 'icon' => 'doc', 'grain' => 'enrolment',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['grade', 'col_grade', 'text']],
-            'filters' => ['cohort', 'course', 'category', 'gradeband'],
+            'filters' => ['category', 'course', 'cohort', 'gradeband'],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'gi.courseid', 'category' => 'gi.courseid',
                     'gradeband' => '(100.0 * gg.finalgrade / NULLIF(gg.rawgrademax,0))']);
@@ -701,7 +771,7 @@ class catalogue {
         $defs[] = [
             'id' => 'quiz_performance', 'family' => 'assessment', 'icon' => 'star', 'grain' => 'learner',
             'requirestable' => 'quiz_attempts',
-            'filters' => ['cohort', 'course', 'category'],
+            'filters' => ['category', 'course', 'cohort'],
             'columns' => [['learner', 'col_learner', 'text'], ['attempts', 'col_attempts', 'number'],
                           ['best', 'col_best', 'text'], ['avg', 'col_avg', 'text']],
             'run' => function ($DB, $q, $limit) {
@@ -733,12 +803,21 @@ class catalogue {
         $defs[] = [
             'id' => 'marking_queue', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'submission',
             'requirestable' => 'assign_submission',
-            'filters' => ['daterange', 'cohort', 'course', 'category'], 'datelabel' => 'col_submitted',
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
+            'datelabel' => 'col_submitted',
             'columns' => [['learner', 'col_learner', 'text'], ['assignment', 'col_assignment', 'text'],
                           ['submitted', 'col_submitted', 'text'], ['waiting', 'col_waiting', 'text']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'a.course', 'category' => 'a.course',
+                    'group' => 's.userid',
                     'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
+                $scope = '';
+                $trainers = $q->selected('trainer');
+                if ($trainers) {
+                    [$trsql, $trparams] = self::marking_trainer_filter($DB, $trainers);
+                    $scope = $trsql;
+                    $fp += $trparams;
+                }
                 $body = "FROM {assign_submission} s
                           JOIN {assign} a ON a.id = s.assignment
                           JOIN {user} u ON u.id = s.userid AND u.deleted = 0
@@ -748,7 +827,7 @@ class catalogue {
                      LEFT JOIN {course_modules} cm ON cm.instance = a.id
                                AND cm.module = md.id AND cm.course = a.course
                          WHERE s.latest = 1 AND s.status = 'submitted'
-                           AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0) $fw";
+                           AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0)$scope $fw";
                 $sql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
                                u.firstname, u.lastname, a.name AS assignment, s.timemodified
                         $body ORDER BY s.timemodified ASC";
@@ -836,7 +915,7 @@ class catalogue {
 
         $defs[] = [
             'id' => 'course_health', 'family' => 'operations', 'icon' => 'grid', 'grain' => 'course',
-            'filters' => ['daterange', 'category'], 'datelabel' => 'col_updated',
+            'filters' => ['category', 'daterange'], 'datelabel' => 'col_updated',
             'columns' => [['course', 'col_course', 'text'], ['enrolled', 'col_enrolled', 'number'],
                           ['tracks', 'col_tracks', 'status'], ['updated', 'col_updated', 'text']],
             'run' => function ($DB, $q, $limit) {
@@ -1034,7 +1113,7 @@ class catalogue {
 
         $defs[] = [
             'id' => 'course_progress', 'family' => 'progress', 'icon' => 'play', 'grain' => 'enrolment',
-            'filters' => ['cohort', 'group', 'course', 'category', 'progressband'],
+            'filters' => ['category', 'course', 'group', 'cohort', 'progressband'],
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['progress', 'col_progress', 'number']],
             'run' => function ($DB, $q, $limit) {
@@ -1102,7 +1181,7 @@ class catalogue {
         $defs[] = [
             'id' => 'quiz_grades', 'family' => 'assessment', 'icon' => 'star', 'grain' => 'quiz',
             'requirestable' => 'quiz_attempts',
-            'filters' => ['course', 'category'],
+            'filters' => ['category', 'course'],
             'columns' => [['quiz', 'col_quiz', 'text'], ['course', 'col_course', 'text'],
                           ['attempts', 'col_attempts', 'number'], ['learners', 'col_learners', 'number'],
                           ['avg', 'col_avg', 'text']],
@@ -1133,7 +1212,7 @@ class catalogue {
         $defs[] = [
             'id' => 'assignment_status', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'assignment',
             'requirestable' => 'assign',
-            'filters' => ['course', 'category'],
+            'filters' => ['category', 'course'],
             'columns' => [['assignment', 'col_assignment', 'text'], ['course', 'col_course', 'text'],
                           ['submitted', 'col_submitted_n', 'number'], ['graded', 'col_graded', 'number'],
                           ['pending', 'col_pending', 'number']],
@@ -1167,7 +1246,7 @@ class catalogue {
         $defs[] = [
             'id' => 'scorm_attempts', 'family' => 'assessment', 'icon' => 'play', 'grain' => 'learner',
             'defaulton' => true, 'requirestable' => 'scorm_attempt',
-            'filters' => ['cohort', 'course', 'category'],
+            'filters' => ['category', 'course', 'cohort'],
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['scorm', 'col_scorm', 'text'], ['attempts', 'col_attempts', 'number']],
             'run' => function ($DB, $q, $limit) {
@@ -1290,7 +1369,7 @@ class catalogue {
         $defs[] = [
             'id' => 'funding_participation', 'family' => 'compliance', 'icon' => 'pulse', 'grain' => 'enrolment',
             'defaulton' => true,
-            'filters' => ['cohort', 'group', 'course', 'category', 'daterange'], 'datelabel' => 'col_lastact',
+            'filters' => ['category', 'course', 'group', 'cohort', 'daterange'], 'datelabel' => 'col_lastact',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['firstact', 'col_firstact', 'text'], ['lastact', 'col_lastact', 'text'],
                           ['activedays', 'col_activedays', 'number'], ['activities', 'col_activities', 'number'],
@@ -1319,19 +1398,39 @@ class catalogue {
                     $params = ['cvevent' => '\\core\\event\\course_viewed',
                                'logcut' => time() - 365 * DAYSECS] + $fp;
                 }
-                $body = "$joins $vjoin WHERE act.courseid > 1 AND act.userid > 0 $fw";
+                // Activities count = distinct activities in the durable
+                // participation table, so it matches the Student activity
+                // drill-down exactly. Falls back to the raw record count when the
+                // participation table is not present.
+                $haspart = $DB->get_manager()->table_exists('local_beacon_participation');
+                $actsel = 'COUNT(*)';
+                $pjoin = '';
+                if ($haspart) {
+                    $actsel = 'MAX(COALESCE(pp.pc, 0))';
+                    $pjoin = "LEFT JOIN (SELECT userid, courseid, COUNT(*) AS pc
+                                           FROM {local_beacon_participation}
+                                       GROUP BY userid, courseid) pp
+                                     ON pp.userid = act.userid AND pp.courseid = act.courseid";
+                }
+                $body = "$joins $vjoin $pjoin WHERE act.courseid > 1 AND act.userid > 0 $fw";
                 $days = "COUNT(DISTINCT FLOOR(act.ts / 86400.0))";
                 $sql = "SELECT $rk AS bcrowid, act.userid, act.courseid, u.firstname, u.lastname, c.fullname AS course,
                                MIN(act.ts) AS firstact, MAX(act.ts) AS lastact,
-                               $days AS activedays, COUNT(*) AS activities, $vsel AS views $body
+                               $days AS activedays, $actsel AS activities, $vsel AS views $body
                           GROUP BY act.userid, act.courseid, u.firstname, u.lastname, c.fullname
                           ORDER BY activedays DESC, lastact DESC";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
+                    // The activities count drills into the durable Student activity
+                    // report for this learner in this course.
+                    $saurl = (new \moodle_url('/local/beacon/view.php',
+                        ['type' => 'report', 'id' => 'student_activity',
+                         'userid' => (int) $r->userid, 'courseid' => (int) $r->courseid]))->out(false);
                     $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
                                cell::when((int) $r->firstact), cell::when((int) $r->lastact),
-                               cell::number((int) $r->activedays), cell::number((int) $r->activities),
+                               cell::number((int) $r->activedays),
+                               cell::number((int) $r->activities, null, $saurl),
                                cell::number((int) $r->views)];
                 }
                 $total = $DB->count_records_sql("SELECT COUNT(DISTINCT $rk) $countbody", $fp);
@@ -1340,9 +1439,63 @@ class catalogue {
         ];
 
         $defs[] = [
+            'id' => 'student_activity', 'family' => 'compliance', 'icon' => 'pulse', 'grain' => 'activity',
+            'defaulton' => false, 'schedulable' => false, 'requestscoped' => true,
+            'requirestable' => 'local_beacon_participation',
+            'columns' => [['activity', 'col_activity', 'text'], ['type', 'col_acttype', 'text'],
+                          ['firstpart', 'col_firstpart', 'date'], ['lastpart', 'col_lastpart', 'date'],
+                          ['engagements', 'col_engagements', 'number']],
+            'run' => function ($DB, $q, $limit) {
+                global $USER;
+                $userid = optional_param('userid', 0, PARAM_INT);
+                $courseid = optional_param('courseid', 0, PARAM_INT);
+                if ($userid <= 0 || $courseid <= 1) {
+                    return [[], 0];
+                }
+                // Scope: only view a learner you are entitled to see.
+                if (!self::may_view_student($DB, (int) $USER->id, $userid, $courseid)) {
+                    return [[], 0];
+                }
+                $rows = \local_beacon\local\participation_harvester::for_user_course($userid, $courseid);
+                if (!$rows) {
+                    return [[], 0];
+                }
+                try {
+                    $modinfo = get_fast_modinfo($courseid);
+                    $cms = $modinfo->get_cms();
+                } catch (\moodle_exception $e) {
+                    return [[], 0];
+                }
+                $out = [];
+                foreach ($rows as $cmid => $r) {
+                    $cm = $cms[$cmid] ?? null;
+                    if ($cm === null) {
+                        continue;
+                    }
+                    $url = $cm->url ? $cm->url->out(false) : null;
+                    $out[] = [
+                        'sortlast' => (int) $r->lastdate,
+                        'cells' => [
+                            cell::text($cm->get_formatted_name(), $url),
+                            cell::text(get_string('pluginname', 'mod_' . $cm->modname)),
+                            cell::when((int) $r->firstdate),
+                            cell::when((int) $r->lastdate),
+                            cell::number((int) $r->engagements),
+                        ],
+                    ];
+                }
+                // Most-recently-active first.
+                usort($out, fn($a, $b) => $b['sortlast'] <=> $a['sortlast']);
+                $total = count($out);
+                $out = array_slice($out, 0, $limit);
+                return [array_map(fn($r) => $r['cells'], $out), $total];
+            },
+        ];
+
+        $defs[] = [
             'id' => 'course_access', 'family' => 'engagement', 'icon' => 'clock', 'grain' => 'enrolment',
             'defaulton' => true, 'requirestable' => 'logstore_standard_log',
-            'filters' => ['cohort', 'group', 'course', 'category', 'daterange'], 'datelabel' => 'col_lastaccess',
+            'filters' => ['category', 'course', 'group', 'cohort', 'daterange'], 'datelabel' => 'col_lastaccess',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['firstseen', 'col_firstseen', 'text'], ['lastseen', 'col_lastaccess', 'text'],
                           ['activedays', 'col_activedays', 'number'], ['views', 'col_courseviews', 'number'],
@@ -1384,13 +1537,16 @@ class catalogue {
         $defs[] = [
             'id' => 'my_marking_queue', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'submission',
             'defaulton' => true, 'requirestable' => 'assign_submission', 'schedulable' => false,
-            'filters' => ['daterange', 'course', 'category'], 'datelabel' => 'col_submitted',
+            'scopedfilters' => true,
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
+            'datelabel' => 'col_submitted',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['assignment', 'col_assignment', 'text'], ['submitted', 'col_submitted', 'text'],
                           ['waiting', 'col_waiting', 'text']],
             'run' => function ($DB, $q, $limit) {
                 global $USER;
                 [$fw, $fp] = $q->where(['course' => 'a.course', 'category' => 'a.course',
+                    'group' => 's.userid', 'cohort' => 's.userid',
                     'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
                 // Scope to what the viewer may mark: admins/managers see all; editing
                 // teachers see their whole course; non-editing teachers see only learners
@@ -1417,6 +1573,14 @@ class catalogue {
                         )
                     )";
                     $params = ['meed' => $USER->id, 'ment' => $USER->id, 'mgrp' => $USER->id] + $fp;
+                }
+                // Trainer filter (admin only, enforced by the option list): narrow
+                // to the submissions the chosen trainer(s) are responsible for.
+                $trainers = $q->selected('trainer');
+                if ($trainers) {
+                    [$trsql, $trparams] = self::marking_trainer_filter($DB, $trainers);
+                    $scope .= $trsql;
+                    $params += $trparams;
                 }
                 $body = "FROM {assign_submission} s
                           JOIN {assign} a ON a.id = s.assignment

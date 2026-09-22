@@ -59,6 +59,17 @@ class filterset {
     /** @var array<string,array<int|string,string>> Lazily loaded option lists. */
     private array $optioncache = [];
 
+    /**
+     * When true, the course/category/group/trainer option lists are limited to
+     * what the current viewer is entitled to (the courses they teach, those
+     * courses' categories, the groups they can mark in, and — trainer — no one,
+     * unless they are a site admin). Set by a report whose data is viewer-scoped,
+     * so the filter dropdowns match the data the viewer can actually see.
+     *
+     * @var bool
+     */
+    private bool $scopeoptions = false;
+
     /** The band tokens each band type accepts, so nothing else can be injected. */
     private const BANDS = [
         'idle'         => ['30', '60', '90'],
@@ -159,6 +170,7 @@ class filterset {
             'group' => 'f_group',
             'course' => 'f_course',
             'category' => 'f_cat',
+            'trainer' => 'f_trainer',
             'role' => 'f_role',
             'roleid' => 'f_roleid',
             ] as $type => $param
@@ -286,6 +298,149 @@ class filterset {
     }
 
     /**
+     * Limit the entity option lists (course, category, group, trainer) to what
+     * the current viewer is entitled to. Site admins are unaffected (they see
+     * everything); any other viewer sees only the courses they teach, those
+     * courses' categories, the groups they can mark in, and no trainers.
+     *
+     * @return void
+     */
+    public function enable_option_scope(): void {
+        $this->scopeoptions = true;
+    }
+
+    /**
+     * Whether the current viewer sees the full, unscoped option lists.
+     *
+     * @return bool
+     */
+    private function viewer_sees_all(): bool {
+        return has_capability('moodle/site:config', \context_system::instance());
+    }
+
+    /**
+     * The ids of the courses the current viewer teaches (holds an editing- or
+     * non-editing-teacher role at the course context).
+     *
+     * @return int[]
+     */
+    private function viewer_course_ids(): array {
+        global $DB, $USER;
+        $sql = "SELECT DISTINCT ctx.instanceid AS courseid
+                  FROM {role_assignments} ra
+                  JOIN {context} ctx ON ctx.id = ra.contextid AND ctx.contextlevel = 50
+                  JOIN {role} r ON r.id = ra.roleid
+                       AND r.archetype IN ('editingteacher', 'teacher')
+                 WHERE ra.userid = :uid AND ctx.instanceid > 1";
+        return array_map('intval', array_keys($DB->get_records_sql($sql, ['uid' => $USER->id])));
+    }
+
+    /**
+     * A bound WHERE fragment restricting a course-id column to the viewer's
+     * taught courses, when option scoping is on and the viewer is not an admin.
+     *
+     * @param string $col Course-id column.
+     * @return array{0:string,1:array} [' AND …' | '', params]
+     */
+    private function course_scope_sql(string $col): array {
+        global $DB;
+        if (!$this->scopeoptions || $this->viewer_sees_all()) {
+            return ['', []];
+        }
+        $ids = $this->viewer_course_ids();
+        if (!$ids) {
+            return [' AND 1 = 0', []];
+        }
+        [$insql, $params] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, 'vsc' . ($this->seq++) . '_');
+        return [" AND $col $insql", $params];
+    }
+
+    /**
+     * A bound WHERE fragment restricting a category-id column to the categories
+     * that contain the viewer's taught courses, under the same conditions.
+     *
+     * @param string $col Category-id column.
+     * @return array{0:string,1:array}
+     */
+    private function category_scope_sql(string $col): array {
+        global $DB;
+        if (!$this->scopeoptions || $this->viewer_sees_all()) {
+            return ['', []];
+        }
+        $ids = $this->viewer_course_ids();
+        if (!$ids) {
+            return [' AND 1 = 0', []];
+        }
+        [$insql, $params] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, 'vscat' . ($this->seq++) . '_');
+        return [" AND $col IN (SELECT category FROM {course} WHERE id $insql)", $params];
+    }
+
+    /**
+     * A bound WHERE fragment restricting the groups list to those the viewer can
+     * mark: every group in a course where they are an editing teacher, plus the
+     * groups they belong to in a course where they are a non-editing teacher.
+     * Assumes the query aliases the groups row as g.
+     *
+     * @return array{0:string,1:array}
+     */
+    private function group_scope_sql(): array {
+        global $USER;
+        if (!$this->scopeoptions || $this->viewer_sees_all()) {
+            return ['', []];
+        }
+        $sql = " AND (
+            EXISTS (SELECT 1 FROM {role_assignments} ra
+                      JOIN {context} ctx ON ctx.id = ra.contextid
+                           AND ctx.contextlevel = 50 AND ctx.instanceid = g.courseid
+                      JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
+                     WHERE ra.userid = :vsg1)
+            OR (
+              EXISTS (SELECT 1 FROM {role_assignments} ra
+                        JOIN {context} ctx ON ctx.id = ra.contextid
+                             AND ctx.contextlevel = 50 AND ctx.instanceid = g.courseid
+                        JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
+                       WHERE ra.userid = :vsg2)
+              AND EXISTS (SELECT 1 FROM {groups_members} gm
+                           WHERE gm.groupid = g.id AND gm.userid = :vsg3)
+            )
+        )";
+        return [$sql, ['vsg1' => $USER->id, 'vsg2' => $USER->id, 'vsg3' => $USER->id]];
+    }
+
+    /**
+     * The parent id of each option, for the dynamic dependent dropdowns: a
+     * course's category, or a group's course. Returns value => parentid; empty
+     * for types with no parent.
+     *
+     * @param string $type Filter type.
+     * @return array<int,int>
+     */
+    public function option_parent(string $type): array {
+        global $DB;
+        $out = [];
+        if ($type === 'course') {
+            [$where, $params] = $this->course_scope_sql('id');
+            foreach (
+                $DB->get_records_select('course', "id > 1 $where", $params, '', 'id, category') as $r
+            ) {
+                $out[(int) $r->id] = (int) $r->category;
+            }
+        } else if ($type === 'group') {
+            [$scopesql, $scopeparams] = $this->group_scope_sql();
+            $recs = $DB->get_records_sql(
+                "SELECT g.id, g.courseid FROM {groups} g WHERE 1 = 1 $scopesql",
+                $scopeparams,
+                0,
+                2000
+            );
+            foreach ($recs as $r) {
+                $out[(int) $r->id] = (int) $r->courseid;
+            }
+        }
+        return $out;
+    }
+
+    /**
      * Whether a filter type is locked (cannot be changed by the viewer).
      *
      * @param string $type Filter type.
@@ -304,8 +459,9 @@ class filterset {
     public function url_params(): array {
         $out = [];
         $map = ['cohort' => 'f_cohort', 'cohortid' => 'f_cohortid', 'group' => 'f_group',
-                'course' => 'f_course', 'category' => 'f_cat', 'role' => 'f_role',
-                'roleid' => 'f_roleid', 'auth' => 'f_auth', 'enrolmethod' => 'f_enrol'];
+                'course' => 'f_course', 'category' => 'f_cat', 'trainer' => 'f_trainer',
+                'role' => 'f_role', 'roleid' => 'f_roleid', 'auth' => 'f_auth',
+                'enrolmethod' => 'f_enrol'];
         foreach ($map as $type => $param) {
             foreach ($this->active[$type] ?? [] as $i => $v) {
                 $out[$param . '[' . $i . ']'] = $v;
@@ -565,18 +721,21 @@ class filterset {
                     }
                     break;
                 }
+                [$scopesql, $scopeparams] = $this->group_scope_sql();
                 $recs = $DB->get_records_sql("SELECT g.id, g.name, c.shortname
                           FROM {groups} g JOIN {course} c ON c.id = g.courseid
-                      ORDER BY c.shortname, g.name", [], 0, 500);
+                         WHERE 1 = 1 $scopesql
+                      ORDER BY c.shortname, g.name", $scopeparams, 0, 500);
                 foreach ($recs as $r) {
                     $opts[$r->id] = format_string($r->shortname . ' · ' . $r->name);
                 }
                 break;
             case 'course':
+                [$where, $params] = $this->course_scope_sql('id');
                 $recs = $DB->get_records_select(
                     'course',
-                    'id > 1',
-                    null,
+                    "id > 1 $where",
+                    $params,
                     'fullname ASC',
                     'id, fullname',
                     0,
@@ -587,8 +746,40 @@ class filterset {
                 }
                 break;
             case 'category':
-                foreach ($DB->get_records('course_categories', null, 'name ASC', 'id, name') as $r) {
+                [$catwhere, $catparams] = $this->category_scope_sql('id');
+                foreach (
+                    $DB->get_records_select(
+                        'course_categories',
+                        "1 = 1 $catwhere",
+                        $catparams,
+                        'name ASC',
+                        'id, name'
+                    ) as $r
+                ) {
                     $opts[$r->id] = format_string($r->name);
+                }
+                break;
+            case 'trainer':
+                // Filtering by trainer is a site-admin capability only; anyone
+                // else gets an empty list, so the pill is hidden for them.
+                if (!$this->viewer_sees_all()) {
+                    break;
+                }
+                $recs = $DB->get_records_sql(
+                    "SELECT DISTINCT u.id, u.firstname, u.lastname, u.firstnamephonetic,
+                            u.lastnamephonetic, u.middlename, u.alternatename
+                       FROM {role_assignments} ra
+                       JOIN {context} ctx ON ctx.id = ra.contextid AND ctx.contextlevel = 50
+                       JOIN {role} r ON r.id = ra.roleid
+                            AND r.archetype IN ('editingteacher', 'teacher')
+                       JOIN {user} u ON u.id = ra.userid AND u.deleted = 0 AND u.suspended = 0
+                   ORDER BY u.lastname, u.firstname",
+                    [],
+                    0,
+                    1000
+                );
+                foreach ($recs as $r) {
+                    $opts[$r->id] = fullname($r);
                 }
                 break;
             case 'role':

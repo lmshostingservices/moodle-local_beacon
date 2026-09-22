@@ -211,5 +211,20 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026092203, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026092207) {
+        // Version 1.9.0: durable per-activity participation table, harvested from
+        // the standard log so participation evidence survives log purging.
+        if (!$dbman->table_exists(new xmldb_table('local_beacon_participation'))) {
+            $dbman->install_one_table_from_xmldb_file(
+                $CFG->dirroot . '/local/beacon/db/install.xml',
+                'local_beacon_participation'
+            );
+        }
+        // student_activity is a hidden drill-down report (opened from the Funding
+        // participation Activities count), so it is deliberately NOT added to the
+        // enabled-reports list — it should not appear as a card in the library.
+        upgrade_plugin_savepoint(true, 2026092207, 'local', 'beacon');
+    }
+
     return true;
 }

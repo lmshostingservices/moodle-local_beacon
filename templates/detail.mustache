@@ -230,7 +230,7 @@
           {{#str}}filters, local_beacon{{/str}}</span>
 
         {{#filterbar.pills}}
-        <details class="bc-fpill {{#active}}on{{/active}}" data-fpill>
+        <details class="bc-fpill {{#active}}on{{/active}}" data-fpill {{#hasdependson}}data-depends-param="{{dependson}}"{{/hasdependson}}>
           <summary class="bc-fpill-btn">
             <span class="bc-fpill-label">{{label}}</span>
             {{#isdate}}{{#hassummary}}<span class="bc-fpill-sum">{{summary}}</span>{{/hassummary}}{{/isdate}}
@@ -253,7 +253,7 @@
               {{#searchable}}<input type="text" class="bc-fsearch" placeholder="{{#str}}filtervalues, local_beacon{{/str}}" data-fsearch>{{/searchable}}
               <div class="bc-ffacets">
                 {{#options}}
-                <label class="bc-ffacet"><input type="checkbox" name="{{param}}[]" value="{{value}}" {{#selected}}checked{{/selected}}><span class="bc-ffacet-v">{{label}}</span></label>
+                <label class="bc-ffacet" {{#hasparent}}data-parent="{{parent}}"{{/hasparent}}><input type="checkbox" name="{{param}}[]" value="{{value}}" {{#selected}}checked{{/selected}}><span class="bc-ffacet-v">{{label}}</span></label>
                 {{/options}}
               </div>
             {{/isdate}}
@@ -321,9 +321,10 @@
             <thead>
               <tr>
                 {{#columns}}
-                  <th data-index="{{index}}" data-type="{{type}}" class="{{#numeric}}bc-num{{/numeric}} {{#filterable}}bc-filterable{{/filterable}}">
+                  <th data-index="{{index}}" data-type="{{type}}" class="{{#numeric}}bc-num{{/numeric}} {{#filterable}}bc-filterable{{/filterable}}" {{#hashelp}}title="{{help}}"{{/hashelp}}>
                     <span class="bc-th-in">
-                      <button type="button" class="bc-sort" data-role="sort" aria-label="{{#str}}sortby, local_beacon, {{label}}{{/str}}">{{label}}<span class="bc-sort-ico"></span></button>
+                      <button type="button" class="bc-sort" data-role="sort" {{#hashelp}}title="{{help}}"{{/hashelp}} aria-label="{{#str}}sortby, local_beacon, {{label}}{{/str}}">{{label}}<span class="bc-sort-ico"></span></button>
+                      {{#hashelp}}<span class="bc-th-help" tabindex="0" role="img" title="{{help}}" aria-label="{{help}}">?</span>{{/hashelp}}
                       {{#filterable}}<button type="button" class="bc-filter-btn" data-role="filter" aria-label="{{#str}}filterby, local_beacon, {{label}}{{/str}}"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>{{/filterable}}
                     </span>
                   </th>

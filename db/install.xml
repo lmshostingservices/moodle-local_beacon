@@ -111,5 +111,24 @@
         <INDEX NAME="userid" UNIQUE="true" FIELDS="userid"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="local_beacon_participation" COMMENT="Durable per-student per-activity participation dates, harvested from the standard log before it purges, so participation evidence survives beyond log retention.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Course module id the participation is against."/>
+        <FIELD NAME="firstdate" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Epoch of first recorded participation."/>
+        <FIELD NAME="lastdate" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Epoch of most recent recorded participation."/>
+        <FIELD NAME="engagements" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Count of recorded interactions."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="user_cm" UNIQUE="true" FIELDS="userid, cmid"/>
+        <INDEX NAME="user_course" UNIQUE="false" FIELDS="userid, courseid"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>

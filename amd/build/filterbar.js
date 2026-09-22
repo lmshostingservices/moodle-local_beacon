@@ -32,6 +32,50 @@ define('local_beacon/filterbar', [], function() {
         this.form = form;
         this.pills = Array.prototype.slice.call(form.querySelectorAll('details[data-fpill]'));
         this.bind();
+        this.bindDependents();
+    };
+
+    Bar.prototype.bindDependents = function() {
+        var self = this;
+        var dependents = this.pills.filter(function(p) {
+            return p.getAttribute('data-depends-param');
+        });
+        if (!dependents.length) {
+            return;
+        }
+        var parentPill = function(param) {
+            for (var i = 0; i < self.pills.length; i++) {
+                if (self.pills[i].querySelector('input[name="' + param + '[]"]')) {
+                    return self.pills[i];
+                }
+            }
+            return null;
+        };
+        var refresh = function(pill) {
+            var parent = parentPill(pill.getAttribute('data-depends-param'));
+            var chosen = [];
+            if (parent) {
+                parent.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) {
+                    chosen.push(cb.value);
+                });
+            }
+            pill.querySelectorAll('.bc-ffacet').forEach(function(facet) {
+                var par = facet.getAttribute('data-parent');
+                var show = (chosen.length === 0) || (par !== null && chosen.indexOf(par) !== -1);
+                facet.style.display = show ? '' : 'none';
+                if (!show) {
+                    var cb = facet.querySelector('input[type="checkbox"]');
+                    if (cb) {
+                        cb.checked = false;
+                    }
+                }
+            });
+        };
+        var refreshAll = function() {
+            dependents.forEach(refresh);
+        };
+        this.form.addEventListener('change', refreshAll);
+        refreshAll();
     };
 
     Bar.prototype.bind = function() {

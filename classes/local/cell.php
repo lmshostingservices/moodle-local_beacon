@@ -53,8 +53,12 @@ class cell {
      * @param string|null $display Display string (defaults to the number).
      * @return array
      */
-    public static function number($number, ?string $display = null): array {
-        return ['v' => $display ?? (string) $number, 'badge' => '', 'sort' => (float) $number, 'numeric' => true];
+    public static function number($number, ?string $display = null, ?string $url = null): array {
+        $cell = ['v' => $display ?? (string) $number, 'badge' => '', 'sort' => (float) $number, 'numeric' => true];
+        if ($url !== null && $url !== '') {
+            $cell['url'] = $url;
+        }
+        return $cell;
     }
 
     /**

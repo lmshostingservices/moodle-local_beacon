@@ -67,13 +67,30 @@ class report {
         $this->datelabel     = $d['datelabel'] ?? null;
         $this->personal      = $d['personal'] ?? false;
         $this->schedulable   = $d['schedulable'] ?? true;
+        $this->scopedfilters = $d['scopedfilters'] ?? false;
+        $this->requestscoped = $d['requestscoped'] ?? false;
     }
+
+    /**
+     * @var bool True when the report reads selectors from the request outside the
+     * filter set (e.g. a per-learner drill-down keyed by userid/courseid) and is
+     * scoped to the viewer. Such a report is never served from the shared result
+     * cache, since its key would not vary by those selectors or the viewer.
+     */
+    public bool $requestscoped = false;
 
     /** @var bool True for learner self-view reports (bound to the current user). */
     public bool $personal = false;
 
     /** @var bool Whether scheduled email delivery is allowed for this report. */
     public bool $schedulable = true;
+
+    /**
+     * @var bool When true, the entity filter option lists (course, category,
+     * group, trainer) are limited to what the viewer is entitled to see, to
+     * match a report whose rows are already viewer-scoped.
+     */
+    public bool $scopedfilters = false;
 
     /**
      * Whether this report offers any server-side filters.
@@ -138,12 +155,18 @@ class report {
         // filtered view is served without re-running the query. Personal
         // (learner self-view) reports are keyed by user, so one learner's rows
         // can never be served to another from this shared application cache.
-        $cache = \cache::make('local_beacon', 'reports');
+        // Request-scoped reports (a per-learner drill-down keyed by request
+        // params and the viewer) must NOT use the shared result cache: their key
+        // would not vary by those selectors, so one learner's rows could be
+        // served to another viewer within the cache window. Always run fresh.
+        $cache = $this->requestscoped ? null : \cache::make('local_beacon', 'reports');
         $key = $this->id . '_' . $filters->context->id . '_' . $limit . '_' . $filters->signature()
             . ($this->personal ? '_u' . (int) $USER->id : '');
-        $cached = $cache->get($key);
-        if ($cached !== false) {
-            return $cached;
+        if ($cache !== null) {
+            $cached = $cache->get($key);
+            if ($cached !== false) {
+                return $cached;
+            }
         }
 
         try {
@@ -154,7 +177,9 @@ class report {
         }
 
         $result = ['rows' => $rows, 'total' => $total, 'error' => false];
-        $cache->set($key, $result);
+        if ($cache !== null) {
+            $cache->set($key, $result);
+        }
         return $result;
     }
 }
