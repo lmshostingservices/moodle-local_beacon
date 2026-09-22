@@ -245,5 +245,13 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026092216, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026092217) {
+        // Version 1.10.0: the Teacher / Non-Editing Teacher filter is now offered
+        // on every learner-in-course report (not just the marking queues), so an
+        // admin can narrow any of them to the learners a chosen teacher is
+        // responsible for. Query-level only; no schema change.
+        upgrade_plugin_savepoint(true, 2026092217, 'local', 'beacon');
+    }
+
     return true;
 }

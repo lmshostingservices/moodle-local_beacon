@@ -2,6 +2,19 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v1.10.0] - 2026-09-22
+- **Teacher / Non-Editing Teacher filter is now on every learner-in-course
+  report.** Previously it appeared only on the two Marking queue reports; it is now
+  available (admin only) on Funding participation, Course access, Course
+  completion, Activity completion, Course progress, Enrolment details, Not started,
+  Grade summary, Quiz performance and SCORM attempts. Pick a teacher and the report
+  narrows to the learners that teacher is responsible for — every learner in a
+  course where they are an editing teacher, or the learners sharing their groups in
+  a course where they are a non-editing teacher. Reports that have no learner-in-a-
+  course dimension (e.g. Course health, Quiz grades, Assignment status, site-wide
+  people lists) deliberately do not offer it. Query-level only; no schema change.
+  Logic validated against seeded data on a second SQL engine.
+
 ## [v1.9.9] - 2026-09-22
 - **Fixed: deep-link cells now render as links again.** Report-table cells that
   carry a link target — the **Activities** count on Funding participation (which

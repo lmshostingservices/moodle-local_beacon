@@ -547,6 +547,23 @@ class filterset {
             if (!isset($this->active[$type])) {
                 continue;
             }
+
+            // Teacher / non-editing-teacher filter: restrict the report's
+            // (learner, course) rows to those a selected teacher is responsible
+            // for. Binding is ['user' => <userid col>, 'course' => <courseid col>].
+            if ($type === 'trainer') {
+                $ucol = is_array($binding) ? ($binding['user'] ?? '') : '';
+                $ccol = is_array($binding) ? ($binding['course'] ?? '') : '';
+                if ($ucol !== '' && $ccol !== '') {
+                    [$f, $p] = $this->trainer_fragment($ucol, $ccol, $this->active[$type]);
+                    if ($f !== '') {
+                        $frags[] = $f;
+                        $params += $p;
+                    }
+                }
+                continue;
+            }
+
             $col = is_array($binding) ? ($binding['col'] ?? '') : $binding;
 
             if ($type === 'daterange') {
@@ -601,6 +618,40 @@ class filterset {
 
         $where = $frags ? ' AND (' . implode(') AND (', $frags) . ')' : '';
         return [$where, $params];
+    }
+
+    /**
+     * Build the Teacher / non-editing-teacher fragment: keep only rows whose
+     * (learner, course) the selected teacher(s) are responsible for — an editing
+     * teacher on that course (whole course), or a non-editing teacher who shares a
+     * group with the learner on that course. OR-ed across the selected teachers.
+     * Mirrors the marking-queue trainer scoping, generalised to any report's own
+     * learner-id and course-id columns.
+     *
+     * @param string $ucol Learner user-id column.
+     * @param string $ccol Course-id column.
+     * @param array $trainerids Selected teacher user ids.
+     * @return array{0:string,1:array}
+     */
+    private function trainer_fragment(string $ucol, string $ccol, array $trainerids): array {
+        global $DB;
+        [$in1, $p1] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trf' . ($this->seq++) . '_');
+        [$in2, $p2] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trf' . ($this->seq++) . '_');
+        $sql = "(
+            EXISTS (SELECT 1 FROM {role_assignments} ra
+                      JOIN {context} ctx ON ctx.id = ra.contextid
+                           AND ctx.contextlevel = 50 AND ctx.instanceid = $ccol
+                      JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
+                     WHERE ra.userid $in1)
+            OR EXISTS (SELECT 1 FROM {role_assignments} ra
+                         JOIN {context} ctx ON ctx.id = ra.contextid
+                              AND ctx.contextlevel = 50 AND ctx.instanceid = $ccol
+                         JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
+                         JOIN {groups_members} gmt ON gmt.userid = ra.userid
+                         JOIN {groups} grp ON grp.id = gmt.groupid AND grp.courseid = $ccol
+                         JOIN {groups_members} gls ON gls.groupid = grp.id AND gls.userid = $ucol
+                        WHERE ra.userid $in2))";
+        return [$sql, $p1 + $p2];
     }
 
     /**

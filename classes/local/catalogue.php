@@ -596,13 +596,14 @@ class catalogue {
 
         $defs[] = [
             'id' => 'enrolment_details', 'family' => 'people', 'icon' => 'login', 'grain' => 'enrolment',
-            'filters' => ['category', 'course', 'group', 'cohort', 'enrolmethod', 'daterange'],
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'enrolmethod', 'daterange'],
             'datelabel' => 'col_joined',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['method', 'col_method', 'text'], ['joined', 'col_joined', 'text']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id', 'course' => 'e.courseid',
                     'category' => 'e.courseid', 'enrolmethod' => 'e.enrol',
+                    'trainer' => ['user' => 'u.id', 'course' => 'e.courseid'],
                     'daterange' => ['col' => 'ue.timecreated', 'label' => 'col_joined']]);
                 $params = ['now' => time()] + $fp;
                 $body = "FROM {user_enrolments} ue
@@ -626,13 +627,14 @@ class catalogue {
 
         $defs[] = [
             'id' => 'course_completion', 'family' => 'progress', 'icon' => 'flag', 'grain' => 'enrolment',
-            'filters' => ['category', 'course', 'group', 'cohort', 'daterange'],
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_completed',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['status', 'col_status', 'status'], ['completed', 'col_completed', 'text']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'enr.userid', 'group' => 'enr.userid',
                     'course' => 'enr.courseid', 'category' => 'enr.courseid',
+                    'trainer' => ['user' => 'enr.userid', 'course' => 'enr.courseid'],
                     'daterange' => ['col' => 'cc.timecompleted', 'label' => 'col_completed']]);
                 $params = ['now' => time()] + $fp;
                 $body = "FROM (" . self::live_enrolments(true) . ") enr
@@ -657,12 +659,13 @@ class catalogue {
 
         $defs[] = [
             'id' => 'activity_completion', 'family' => 'progress', 'icon' => 'check', 'grain' => 'enrolment',
-            'filters' => ['category', 'course', 'group', 'cohort'],
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort'],
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['done', 'col_done', 'number'], ['total', 'col_oftotal', 'number']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'enr.userid', 'group' => 'enr.userid',
-                    'course' => 'enr.courseid', 'category' => 'enr.courseid']);
+                    'course' => 'enr.courseid', 'category' => 'enr.courseid',
+                    'trainer' => ['user' => 'enr.userid', 'course' => 'enr.courseid']]);
                 $params = ['now' => time()] + $fp;
                 $body = "FROM (" . self::live_enrolments() . ") enr
                           JOIN {user} u ON u.id = enr.userid
@@ -690,12 +693,14 @@ class catalogue {
 
         $defs[] = [
             'id' => 'not_started', 'family' => 'engagement', 'icon' => 'moon', 'grain' => 'enrolment',
-            'filters' => ['category', 'course', 'cohort', 'daterange'], 'datelabel' => 'col_enrolled',
+            'filters' => ['category', 'course', 'trainer', 'cohort', 'daterange'], 'datelabel' => 'col_enrolled',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['enrolled', 'col_enrolled', 'text'], ['status', 'col_status', 'status']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'e.courseid',
-                    'category' => 'e.courseid', 'daterange' => ['col' => 'ue.timecreated', 'label' => 'col_enrolled']]);
+                    'category' => 'e.courseid',
+                    'trainer' => ['user' => 'u.id', 'course' => 'e.courseid'],
+                    'daterange' => ['col' => 'ue.timecreated', 'label' => 'col_enrolled']]);
                 $body = "FROM {user_enrolments} ue
                           JOIN {enrol} e ON e.id = ue.enrolid
                           JOIN {course} c ON c.id = e.courseid
@@ -744,9 +749,10 @@ class catalogue {
             'id' => 'grade_summary', 'family' => 'assessment', 'icon' => 'doc', 'grain' => 'enrolment',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['grade', 'col_grade', 'text']],
-            'filters' => ['category', 'course', 'cohort', 'gradeband'],
+            'filters' => ['category', 'course', 'trainer', 'cohort', 'gradeband'],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'gi.courseid', 'category' => 'gi.courseid',
+                    'trainer' => ['user' => 'u.id', 'course' => 'gi.courseid'],
                     'gradeband' => '(100.0 * gg.finalgrade / NULLIF(gg.rawgrademax,0))']);
                 $body = "FROM {grade_grades} gg
                           JOIN {grade_items} gi ON gi.id = gg.itemid AND gi.itemtype = 'course'
@@ -770,11 +776,12 @@ class catalogue {
         $defs[] = [
             'id' => 'quiz_performance', 'family' => 'assessment', 'icon' => 'star', 'grain' => 'learner',
             'requirestable' => 'quiz_attempts',
-            'filters' => ['category', 'course', 'cohort'],
+            'filters' => ['category', 'course', 'trainer', 'cohort'],
             'columns' => [['learner', 'col_learner', 'text'], ['attempts', 'col_attempts', 'number'],
                           ['best', 'col_best', 'text'], ['avg', 'col_avg', 'text']],
             'run' => function ($DB, $q, $limit) {
-                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'qz.course', 'category' => 'qz.course']);
+                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'qz.course', 'category' => 'qz.course',
+                    'trainer' => ['user' => 'u.id', 'course' => 'qz.course']]);
                 $body = "FROM {quiz_attempts} qa
                           JOIN {quiz} qz ON qz.id = qa.quiz
                           JOIN {user} u ON u.id = qa.userid AND u.deleted = 0
@@ -1112,12 +1119,13 @@ class catalogue {
 
         $defs[] = [
             'id' => 'course_progress', 'family' => 'progress', 'icon' => 'play', 'grain' => 'enrolment',
-            'filters' => ['category', 'course', 'group', 'cohort', 'progressband'],
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'progressband'],
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['progress', 'col_progress', 'number']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'enr.userid', 'group' => 'enr.userid',
                     'course' => 'enr.courseid', 'category' => 'enr.courseid',
+                    'trainer' => ['user' => 'enr.userid', 'course' => 'enr.courseid'],
                     'progressband' => 'CASE WHEN COALESCE(t.cnt,0) > 0 THEN 100.0 * COALESCE(d.cnt,0) / t.cnt ELSE 0 END']);
                 $params = ['now' => time()] + $fp;
                 $body = "FROM (" . self::live_enrolments() . ") enr
@@ -1245,11 +1253,12 @@ class catalogue {
         $defs[] = [
             'id' => 'scorm_attempts', 'family' => 'assessment', 'icon' => 'play', 'grain' => 'learner',
             'defaulton' => true, 'requirestable' => 'scorm_attempt',
-            'filters' => ['category', 'course', 'cohort'],
+            'filters' => ['category', 'course', 'trainer', 'cohort'],
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['scorm', 'col_scorm', 'text'], ['attempts', 'col_attempts', 'number']],
             'run' => function ($DB, $q, $limit) {
-                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 's.course', 'category' => 's.course']);
+                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 's.course', 'category' => 's.course',
+                    'trainer' => ['user' => 'u.id', 'course' => 's.course']]);
                 // Moodle 4.3+ SCORM tracking schema: one {scorm_attempt} row per attempt.
                 // Only the columns proven to exist on the target schema are used
                 // (userid, scormid) — attempt count is COUNT(*) of the rows.
@@ -1368,7 +1377,7 @@ class catalogue {
         $defs[] = [
             'id' => 'funding_participation', 'family' => 'compliance', 'icon' => 'pulse', 'grain' => 'enrolment',
             'defaulton' => true,
-            'filters' => ['category', 'course', 'group', 'cohort', 'daterange'], 'datelabel' => 'col_lastact',
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'], 'datelabel' => 'col_lastact',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['firstact', 'col_firstact', 'text'], ['lastact', 'col_lastact', 'text'],
                           ['activedays', 'col_activedays', 'number'], ['activities', 'col_activities', 'number'],
@@ -1376,6 +1385,7 @@ class catalogue {
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'act.userid', 'group' => 'act.userid',
                     'course' => 'act.courseid', 'category' => 'act.courseid',
+                    'trainer' => ['user' => 'act.userid', 'course' => 'act.courseid'],
                     'daterange' => ['col' => 'act.ts', 'label' => 'col_lastact']]);
                 $union = self::activity_union($DB);
                 $rk = $DB->sql_concat('act.userid', "'-'", 'act.courseid');
@@ -1495,7 +1505,7 @@ class catalogue {
         $defs[] = [
             'id' => 'course_access', 'family' => 'engagement', 'icon' => 'clock', 'grain' => 'enrolment',
             'defaulton' => true, 'requirestable' => 'logstore_standard_log',
-            'filters' => ['category', 'course', 'group', 'cohort', 'daterange'], 'datelabel' => 'col_lastaccess',
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'], 'datelabel' => 'col_lastaccess',
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['firstseen', 'col_firstseen', 'text'], ['lastseen', 'col_lastaccess', 'text'],
                           ['activedays', 'col_activedays', 'number'], ['views', 'col_courseviews', 'number'],
@@ -1503,6 +1513,7 @@ class catalogue {
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'l.userid', 'group' => 'l.userid',
                     'course' => 'l.courseid', 'category' => 'l.courseid',
+                    'trainer' => ['user' => 'l.userid', 'course' => 'l.courseid'],
                     'daterange' => ['col' => 'l.timecreated', 'label' => 'col_lastaccess']]);
                 $rk = $DB->sql_concat('l.userid', "'-'", 'l.courseid');
                 $body = "FROM {logstore_standard_log} l
