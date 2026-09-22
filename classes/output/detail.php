@@ -152,6 +152,11 @@ class detail implements renderable, templatable {
                     'hasbadge' => !empty($cell['badge']),
                     'numeric'  => !empty($cell['numeric']),
                     'datey'    => !empty($cell['datey']) && empty($cell['numeric']),
+                    // Carry a cell's deep-link target through to the template so it
+                    // renders as a hyperlink (the Activities drill-down, and every
+                    // marking-queue deep link, depend on this).
+                    'url'      => $cell['url'] ?? '',
+                    'hasurl'   => !empty($cell['url']),
                     'sort'     => is_string($sort) ? $sort : (string) $sort,
                 ];
             }
@@ -431,6 +436,11 @@ class detail implements renderable, templatable {
                     'hasbadge' => !empty($cell['badge']),
                     'numeric'  => !empty($cell['numeric']),
                     'datey'    => !empty($cell['datey']) && empty($cell['numeric']),
+                    // Carry a cell's deep-link target through to the template so it
+                    // renders as a hyperlink (the Activities drill-down, and every
+                    // marking-queue deep link, depend on this).
+                    'url'      => $cell['url'] ?? '',
+                    'hasurl'   => !empty($cell['url']),
                     'sort'     => is_string($sort) ? $sort : (string) $sort,
                 ];
             }

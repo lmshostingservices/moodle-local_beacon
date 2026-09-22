@@ -238,5 +238,12 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026092215, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026092216) {
+        // Version 1.9.9: presentation-only fix so report table cells that carry a
+        // deep link (the Activities drill-down, and the marking-queue links)
+        // render as hyperlinks again. No schema change.
+        upgrade_plugin_savepoint(true, 2026092216, 'local', 'beacon');
+    }
+
     return true;
 }

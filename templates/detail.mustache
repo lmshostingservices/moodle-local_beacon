@@ -335,9 +335,9 @@
               {{#rows}}
                 <tr>
                   {{#cells}}
-                    <td class="{{#numeric}}bc-num{{/numeric}}{{#datey}}bc-date{{/datey}}{{#url}} bc-has-link{{/url}}" data-sort="{{sort}}">
+                    <td class="{{#numeric}}bc-num{{/numeric}}{{#datey}}bc-date{{/datey}}{{#hasurl}} bc-has-link{{/hasurl}}" data-sort="{{sort}}">
                       {{#isstatus}}<span class="bc-badge bc-badge-{{badge}}">{{v}}</span>{{/isstatus}}
-                      {{^isstatus}}{{#url}}<a class="bc-cell-link" href="{{url}}">{{v}}</a>{{/url}}{{^url}}{{v}}{{/url}}{{/isstatus}}
+                      {{^isstatus}}{{#hasurl}}<a class="bc-cell-link" href="{{url}}">{{v}}</a>{{/hasurl}}{{^hasurl}}{{v}}{{/hasurl}}{{/isstatus}}
                     </td>
                   {{/cells}}
                 </tr>

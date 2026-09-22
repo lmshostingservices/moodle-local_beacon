@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026092215;      // YYYYMMDDXX — 22 Sep 2026, sequence 15. Matches upgrade savepoint 2026092215.
+$plugin->version   = 2026092216;      // YYYYMMDDXX — 22 Sep 2026, sequence 16. Matches upgrade savepoint 2026092216.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.9.8';         // Auto-backfill participation on upgrade; centred number/date columns; teacher filter label.
-$plugin->release_prev = '1.9.7';      // Previous release.
+$plugin->release   = '1.9.9';         // Fix: cell deep links (Activities drill-down, marking-queue links) now render.
+$plugin->release_prev = '1.9.8';      // Previous release.

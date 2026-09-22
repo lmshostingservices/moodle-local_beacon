@@ -2,6 +2,15 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v1.9.9] - 2026-09-22
+- **Fixed: deep-link cells now render as links again.** Report-table cells that
+  carry a link target — the **Activities** count on Funding participation (which
+  opens the Student-activity drill-down) and every deep link on the Marking queue
+  reports (learner, course, assignment, submission-date-to-grading-screen) — were
+  being stripped of their URL when the table was built, so they showed as plain
+  text and could not be clicked. The URL is now carried through to the template,
+  so these cells are clickable hyperlinks. Presentation-only; no schema change.
+
 ## [v1.9.8] - 2026-09-22
 - **Participation table now backfills itself right after upgrade/install.** The
   durable participation table starts empty and used to stay empty — every
