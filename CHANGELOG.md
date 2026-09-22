@@ -2,6 +2,14 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.0.0] - 2026-09-22
+- **Fix: add the missing language string for the `local/beacon:viewall`
+  capability.** Every Moodle capability must have a matching language string; the
+  one added in 1.11.0 did not, which failed the Moodle plugin directory's automated
+  validation (`validate` / `phplint` reported as failed). Added
+  `$string['beacon:viewall']`. No functional or schema change — this is the same
+  1.11.0 feature set, now passing the marketplace checks.
+
 ## [v1.11.0] - 2026-09-22
 - **Teacher scoping now works with custom roles.** Previously Beacon only
   recognised Moodle's built-in Teacher / Non-editing teacher archetypes, so a

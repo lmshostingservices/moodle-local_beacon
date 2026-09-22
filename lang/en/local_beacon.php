@@ -52,6 +52,7 @@ $string['band_progressband_inprogress'] = 'In progress';
 $string['band_progressband_notstarted'] = 'Not started';
 $string['beacon:request'] = 'Request a new Beacon report';
 $string['beacon:view'] = 'View the Beacon reports dashboard';
+$string['beacon:viewall'] = 'See all learners\' data in Beacon reports site-wide';
 $string['beacon:viewmine'] = 'View your own Beacon learning reports';
 $string['better_higher'] = 'higher is better';
 $string['better_lower'] = 'lower is better';

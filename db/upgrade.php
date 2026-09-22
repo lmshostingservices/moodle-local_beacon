@@ -262,5 +262,12 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026092218, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026092219) {
+        // Version 2.0.0: add the missing language string for the
+        // local/beacon:viewall capability (required for the Moodle plugin
+        // directory's automated validation). No schema change.
+        upgrade_plugin_savepoint(true, 2026092219, 'local', 'beacon');
+    }
+
     return true;
 }

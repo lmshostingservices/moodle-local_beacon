@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026092218;      // YYYYMMDDXX — 22 Sep 2026, sequence 18. Matches upgrade savepoint 2026092218.
+$plugin->version   = 2026092219;      // YYYYMMDDXX — 22 Sep 2026, sequence 19. Matches upgrade savepoint 2026092219.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.11.0';        // Configurable teacher roles (custom-role + no-groups aware); Student activity back-links.
-$plugin->release_prev = '1.10.0';     // Previous release.
+$plugin->release   = '2.0.0';         // Add missing local/beacon:viewall language string (marketplace validate fix).
+$plugin->release_prev = '1.11.0';     // Previous release.
