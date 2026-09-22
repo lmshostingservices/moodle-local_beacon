@@ -2,6 +2,27 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v1.11.0] - 2026-09-22
+- **Teacher scoping now works with custom roles.** Previously Beacon only
+  recognised Moodle's built-in Teacher / Non-editing teacher archetypes, so a
+  site with a custom role (e.g. "Trainer") saw empty reports — including a blank
+  Student-activity drill-down. A new **Teacher roles** section on the Beacon
+  settings page lets an admin choose, from the site's real roles, which count as
+  **course-level** teachers (see every learner in their course) and which are
+  **group-level** teachers (see only their group members). Reads the live role
+  list, so custom roles appear.
+- **Group-level teachers no longer see nothing on group-less courses.** If a
+  course has no groups there is no boundary to apply, so a group-level teacher now
+  sees the whole course (matching Moodle's own no-groups behaviour) instead of an
+  empty report. All teacher-scoping paths — the Student-activity drill-down, the
+  Teacher filter, the marking queues and the scoped filter option lists — use the
+  configurable roles and this fallback. Validated on a second SQL engine.
+- **New capability `local/beacon:viewall`** (granted to Manager by default)
+  distinguishes "sees all learners site-wide" from a teacher who is scoped to
+  their own learners.
+- **Student activity page now has two back-links:** "Back to reports" (the
+  library) and "Back to Funding participation" (the report it was opened from).
+
 ## [v1.10.0] - 2026-09-22
 - **Teacher / Non-Editing Teacher filter is now on every learner-in-course
   report.** Previously it appeared only on the two Marking queue reports; it is now

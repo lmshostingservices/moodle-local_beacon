@@ -29,9 +29,16 @@
 <div class="bc-root" data-region="beacon-detail">
   <div class="bc-wrap">
 
-    <a class="bc-back" href="{{backurl}}">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      {{#str}}backtoreports, local_beacon{{/str}}</a>
+    <div class="bc-backrow">
+      <a class="bc-back" href="{{backurl}}">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {{#str}}backtoreports, local_beacon{{/str}}</a>
+      {{#hasbackreport}}
+      <a class="bc-back" href="{{backreporturl}}">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {{#str}}backtofunding, local_beacon{{/str}}</a>
+      {{/hasbackreport}}
+    </div>
 
     {{^isreport}}
     <div class="bc-detail-hero bcfam-{{family}}">

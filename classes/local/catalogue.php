@@ -114,30 +114,56 @@ class catalogue {
      * @return bool
      */
     private static function may_view_student(\moodle_database $DB, int $viewerid, int $studentid, int $courseid): bool {
-        if (has_capability('moodle/site:config', \context_system::instance())) {
+        if (has_capability('local/beacon:viewall', \context_system::instance())) {
             return true;
         }
-        $ected = $DB->record_exists_sql(
+        // A holder of a course-level teacher role on this course sees any of its
+        // learners. Roles are admin-configurable so custom roles ("Trainer" …)
+        // work, not just the built-in archetypes.
+        $courseroles = \local_beacon\local\roles::course_roleids();
+        if ($courseroles) {
+            [$in, $p] = $DB->get_in_or_equal($courseroles, SQL_PARAMS_NAMED, 'mvsc');
+            $ected = $DB->record_exists_sql(
+                "SELECT 1 FROM {role_assignments} ra
+                   JOIN {context} ctx ON ctx.id = ra.contextid
+                        AND ctx.contextlevel = 50 AND ctx.instanceid = :cid
+                  WHERE ra.userid = :uid AND ra.roleid $in",
+                ['cid' => $courseid, 'uid' => $viewerid] + $p
+            );
+            if ($ected) {
+                return true;
+            }
+        }
+        // A holder of a group-level teacher role on this course sees learners in a
+        // group they share. But a course may have no groups at all — then there is
+        // no boundary to enforce, so they see the whole course (Moodle's own
+        // no-groups behaviour).
+        $grouproles = \local_beacon\local\roles::group_roleids();
+        if (!$grouproles) {
+            return false;
+        }
+        [$gin, $gp] = $DB->get_in_or_equal($grouproles, SQL_PARAMS_NAMED, 'mvsg');
+        $holdsgrouprole = $DB->record_exists_sql(
             "SELECT 1 FROM {role_assignments} ra
                JOIN {context} ctx ON ctx.id = ra.contextid
                     AND ctx.contextlevel = 50 AND ctx.instanceid = :cid
-               JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
-              WHERE ra.userid = :uid",
-            ['cid' => $courseid, 'uid' => $viewerid]
+              WHERE ra.userid = :uid AND ra.roleid $gin",
+            ['cid' => $courseid, 'uid' => $viewerid] + $gp
         );
-        if ($ected) {
+        if (!$holdsgrouprole) {
+            return false;
+        }
+        // No groups on the course → whole course is visible.
+        if (!$DB->record_exists('groups', ['courseid' => $courseid])) {
             return true;
         }
+        // Otherwise the learner must be in a group the viewer also belongs to.
         return $DB->record_exists_sql(
-            "SELECT 1 FROM {role_assignments} ra
-               JOIN {context} ctx ON ctx.id = ra.contextid
-                    AND ctx.contextlevel = 50 AND ctx.instanceid = :cid
-               JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
-               JOIN {groups_members} gmt ON gmt.userid = ra.userid
-               JOIN {groups} grp ON grp.id = gmt.groupid AND grp.courseid = :cid2
+            "SELECT 1 FROM {groups_members} gmt
+               JOIN {groups} grp ON grp.id = gmt.groupid AND grp.courseid = :cid
                JOIN {groups_members} gls ON gls.groupid = grp.id AND gls.userid = :sid
-              WHERE ra.userid = :uid",
-            ['cid' => $courseid, 'cid2' => $courseid, 'uid' => $viewerid, 'sid' => $studentid]
+              WHERE gmt.userid = :uid",
+            ['cid' => $courseid, 'uid' => $viewerid, 'sid' => $studentid]
         );
     }
 
@@ -154,21 +180,41 @@ class catalogue {
     private static function marking_trainer_filter(\moodle_database $DB, array $trainerids): array {
         [$in1, $p1] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trfa');
         [$in2, $p2] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trfb');
-        $sql = " AND (
-            EXISTS (SELECT 1 FROM {role_assignments} ra
+        // Course- and group-level teacher roles are admin-configurable, so custom
+        // roles are honoured. Guard each branch: an empty bucket contributes 1=0.
+        $courseroles = \local_beacon\local\roles::course_roleids();
+        $grouproles = \local_beacon\local\roles::group_roleids();
+        if ($courseroles) {
+            [$cin, $cp] = $DB->get_in_or_equal($courseroles, SQL_PARAMS_NAMED, 'trfcr');
+            $courseclause = "EXISTS (SELECT 1 FROM {role_assignments} ra
                       JOIN {context} ctx ON ctx.id = ra.contextid
                            AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
-                      JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
-                     WHERE ra.userid $in1)
-            OR EXISTS (SELECT 1 FROM {role_assignments} ra
+                     WHERE ra.userid $in1 AND ra.roleid $cin)";
+        } else {
+            $courseclause = '1 = 0';
+            $cp = [];
+        }
+        if ($grouproles) {
+            [$gin, $gp] = $DB->get_in_or_equal($grouproles, SQL_PARAMS_NAMED, 'trfgr');
+            // Holds a group-level role on the course AND either shares a group with
+            // the learner, or the course has no groups at all (no boundary).
+            $groupclause = "EXISTS (SELECT 1 FROM {role_assignments} ra
                          JOIN {context} ctx ON ctx.id = ra.contextid
                               AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
-                         JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
-                         JOIN {groups_members} gmt ON gmt.userid = ra.userid
-                         JOIN {groups} grp ON grp.id = gmt.groupid AND grp.courseid = a.course
-                         JOIN {groups_members} gls ON gls.groupid = grp.id AND gls.userid = s.userid
-                        WHERE ra.userid $in2))";
-        return [$sql, $p1 + $p2];
+                        WHERE ra.userid $in2 AND ra.roleid $gin
+                          AND (EXISTS (SELECT 1 FROM {groups_members} gmt
+                                         JOIN {groups} grp ON grp.id = gmt.groupid
+                                              AND grp.courseid = a.course
+                                         JOIN {groups_members} gls ON gls.groupid = grp.id
+                                              AND gls.userid = s.userid
+                                        WHERE gmt.userid = ra.userid)
+                               OR NOT EXISTS (SELECT 1 FROM {groups} g2 WHERE g2.courseid = a.course)))";
+        } else {
+            $groupclause = '1 = 0';
+            $gp = [];
+        }
+        $sql = " AND ($courseclause OR $groupclause)";
+        return [$sql, $p1 + $p2 + $cp + $gp];
     }
 
     /**

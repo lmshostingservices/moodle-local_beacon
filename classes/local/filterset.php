@@ -315,7 +315,7 @@ class filterset {
      * @return bool
      */
     private function viewer_sees_all(): bool {
-        return has_capability('moodle/site:config', \context_system::instance());
+        return has_capability('local/beacon:viewall', \context_system::instance());
     }
 
     /**
@@ -326,13 +326,16 @@ class filterset {
      */
     private function viewer_course_ids(): array {
         global $DB, $USER;
+        $teacherroles = roles::all_roleids();
+        if (!$teacherroles) {
+            return [];
+        }
+        [$in, $params] = $DB->get_in_or_equal($teacherroles, SQL_PARAMS_NAMED, 'vrol');
         $sql = "SELECT DISTINCT ctx.instanceid AS courseid
                   FROM {role_assignments} ra
                   JOIN {context} ctx ON ctx.id = ra.contextid AND ctx.contextlevel = 50
-                  JOIN {role} r ON r.id = ra.roleid
-                       AND r.archetype IN ('editingteacher', 'teacher')
-                 WHERE ra.userid = :uid AND ctx.instanceid > 1";
-        return array_map('intval', array_keys($DB->get_records_sql($sql, ['uid' => $USER->id])));
+                 WHERE ra.userid = :uid AND ra.roleid $in AND ctx.instanceid > 1";
+        return array_map('intval', array_keys($DB->get_records_sql($sql, ['uid' => $USER->id] + $params)));
     }
 
     /**
@@ -384,27 +387,36 @@ class filterset {
      * @return array{0:string,1:array}
      */
     private function group_scope_sql(): array {
-        global $USER;
+        global $USER, $DB;
         if (!$this->scopeoptions || $this->viewer_sees_all()) {
             return ['', []];
         }
-        $sql = " AND (
-            EXISTS (SELECT 1 FROM {role_assignments} ra
+        $courseroles = roles::course_roleids();
+        $grouproles = roles::group_roleids();
+        $clauses = [];
+        $params = ['vsg1' => $USER->id, 'vsg2' => $USER->id, 'vsg3' => $USER->id];
+        if ($courseroles) {
+            [$cin, $cp] = $DB->get_in_or_equal($courseroles, SQL_PARAMS_NAMED, 'vsgc');
+            $clauses[] = "EXISTS (SELECT 1 FROM {role_assignments} ra
                       JOIN {context} ctx ON ctx.id = ra.contextid
                            AND ctx.contextlevel = 50 AND ctx.instanceid = g.courseid
-                      JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
-                     WHERE ra.userid = :vsg1)
-            OR (
-              EXISTS (SELECT 1 FROM {role_assignments} ra
+                     WHERE ra.userid = :vsg1 AND ra.roleid $cin)";
+            $params += $cp;
+        }
+        if ($grouproles) {
+            [$gin, $gp] = $DB->get_in_or_equal($grouproles, SQL_PARAMS_NAMED, 'vsgg');
+            $clauses[] = "(EXISTS (SELECT 1 FROM {role_assignments} ra
                         JOIN {context} ctx ON ctx.id = ra.contextid
                              AND ctx.contextlevel = 50 AND ctx.instanceid = g.courseid
-                        JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
-                       WHERE ra.userid = :vsg2)
+                       WHERE ra.userid = :vsg2 AND ra.roleid $gin)
               AND EXISTS (SELECT 1 FROM {groups_members} gm
-                           WHERE gm.groupid = g.id AND gm.userid = :vsg3)
-            )
-        )";
-        return [$sql, ['vsg1' => $USER->id, 'vsg2' => $USER->id, 'vsg3' => $USER->id]];
+                           WHERE gm.groupid = g.id AND gm.userid = :vsg3))";
+            $params += $gp;
+        }
+        if (!$clauses) {
+            return [' AND 1 = 0', []];
+        }
+        return [' AND (' . implode(' OR ', $clauses) . ')', $params];
     }
 
     /**
@@ -635,23 +647,42 @@ class filterset {
      */
     private function trainer_fragment(string $ucol, string $ccol, array $trainerids): array {
         global $DB;
-        [$in1, $p1] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trf' . ($this->seq++) . '_');
-        [$in2, $p2] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trf' . ($this->seq++) . '_');
-        $sql = "(
-            EXISTS (SELECT 1 FROM {role_assignments} ra
+        $courseroles = roles::course_roleids();
+        $grouproles = roles::group_roleids();
+        $clauses = [];
+        $params = [];
+        // Course-level teacher role on the row's course → whole course.
+        if ($courseroles) {
+            [$in1, $p1] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trf' . ($this->seq++) . '_');
+            [$cin, $cp] = $DB->get_in_or_equal($courseroles, SQL_PARAMS_NAMED, 'trf' . ($this->seq++) . '_');
+            $clauses[] = "EXISTS (SELECT 1 FROM {role_assignments} ra
                       JOIN {context} ctx ON ctx.id = ra.contextid
                            AND ctx.contextlevel = 50 AND ctx.instanceid = $ccol
-                      JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
-                     WHERE ra.userid $in1)
-            OR EXISTS (SELECT 1 FROM {role_assignments} ra
+                     WHERE ra.userid $in1 AND ra.roleid $cin)";
+            $params += $p1 + $cp;
+        }
+        // Group-level teacher role → learners in a shared group, or the whole
+        // course when it has no groups.
+        if ($grouproles) {
+            [$in2, $p2] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trf' . ($this->seq++) . '_');
+            [$gin, $gp] = $DB->get_in_or_equal($grouproles, SQL_PARAMS_NAMED, 'trf' . ($this->seq++) . '_');
+            $clauses[] = "EXISTS (SELECT 1 FROM {role_assignments} ra
                          JOIN {context} ctx ON ctx.id = ra.contextid
                               AND ctx.contextlevel = 50 AND ctx.instanceid = $ccol
-                         JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
-                         JOIN {groups_members} gmt ON gmt.userid = ra.userid
-                         JOIN {groups} grp ON grp.id = gmt.groupid AND grp.courseid = $ccol
-                         JOIN {groups_members} gls ON gls.groupid = grp.id AND gls.userid = $ucol
-                        WHERE ra.userid $in2))";
-        return [$sql, $p1 + $p2];
+                        WHERE ra.userid $in2 AND ra.roleid $gin
+                          AND (EXISTS (SELECT 1 FROM {groups_members} gmt
+                                         JOIN {groups} grp ON grp.id = gmt.groupid
+                                              AND grp.courseid = $ccol
+                                         JOIN {groups_members} gls ON gls.groupid = grp.id
+                                              AND gls.userid = $ucol
+                                        WHERE gmt.userid = ra.userid)
+                               OR NOT EXISTS (SELECT 1 FROM {groups} g2 WHERE g2.courseid = $ccol)))";
+            $params += $p2 + $gp;
+        }
+        if (!$clauses) {
+            return ['1 = 0', []];
+        }
+        return ['(' . implode(' OR ', $clauses) . ')', $params];
     }
 
     /**
@@ -811,21 +842,25 @@ class filterset {
                 }
                 break;
             case 'trainer':
-                // Filtering by trainer is a site-admin capability only; anyone
-                // else gets an empty list, so the pill is hidden for them.
+                // Filtering by trainer is for users who see all learners (admins /
+                // managers); anyone else gets an empty list, so the pill is hidden.
                 if (!$this->viewer_sees_all()) {
                     break;
                 }
+                $teacherroles = roles::all_roleids();
+                if (!$teacherroles) {
+                    break;
+                }
+                [$rin, $rp] = $DB->get_in_or_equal($teacherroles, SQL_PARAMS_NAMED, 'trole');
                 $recs = $DB->get_records_sql(
                     "SELECT DISTINCT u.id, u.firstname, u.lastname, u.firstnamephonetic,
                             u.lastnamephonetic, u.middlename, u.alternatename
                        FROM {role_assignments} ra
                        JOIN {context} ctx ON ctx.id = ra.contextid AND ctx.contextlevel = 50
-                       JOIN {role} r ON r.id = ra.roleid
-                            AND r.archetype IN ('editingteacher', 'teacher')
                        JOIN {user} u ON u.id = ra.userid AND u.deleted = 0 AND u.suspended = 0
+                      WHERE ra.roleid $rin
                    ORDER BY u.lastname, u.firstname",
-                    [],
+                    $rp,
                     0,
                     1000
                 );

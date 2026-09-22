@@ -38,6 +38,17 @@ $capabilities = [
         ],
     ],
 
+    // See ALL learners' data site-wide (no per-teacher scoping). Managers and
+    // admins hold this; a teacher who only has local/beacon:view is scoped to the
+    // learners they teach. Read at the system context.
+    'local/beacon:viewall' => [
+        'captype'      => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes'   => [
+            'manager' => CAP_ALLOW,
+        ],
+    ],
+
     // Submit a "build me a report" request to support.
     'local/beacon:request' => [
         'captype'      => 'write',

@@ -109,7 +109,17 @@ class detail implements renderable, templatable {
             return ['backurl' => $backurl, 'isreport' => true] + $this->personal_report_context();
         }
         if ($this->type === 'report') {
-            return ['backurl' => $backurl, 'isreport' => true] + $this->report_context();
+            $extra = [];
+            // The Student activity drill-down is opened from Funding participation;
+            // offer a link straight back to that report, alongside Back to reports.
+            if ($this->id === 'student_activity') {
+                $extra['hasbackreport'] = true;
+                $extra['backreporturl'] = (new \moodle_url(
+                    '/local/beacon/view.php',
+                    ['contextid' => $this->context->id, 'type' => 'report', 'id' => 'funding_participation']
+                ))->out(false);
+            }
+            return ['backurl' => $backurl, 'isreport' => true] + $extra + $this->report_context();
         }
         return ['backurl' => $backurl, 'isreport' => false] + $this->metric_context();
     }

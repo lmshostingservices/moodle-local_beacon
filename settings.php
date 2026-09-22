@@ -74,6 +74,32 @@ if ($hassiteconfig) {
         1
     ));
 
+    // Teacher roles: which of the site's real roles Beacon treats as teachers,
+    // so custom roles (Trainer, Assessor, …) scope correctly — not just the
+    // built-in archetypes.
+    $settings->add(new admin_setting_heading(
+        'local_beacon/teacherroles_heading',
+        get_string('teacherroles_heading', 'local_beacon'),
+        get_string('teacherroles_heading_desc', 'local_beacon')
+    ));
+    if ($ADMIN->fulltree) {
+        $rolemenu = \local_beacon\local\roles::menu();
+        $settings->add(new admin_setting_configmultiselect(
+            'local_beacon/teacherroles_course',
+            get_string('teacherroles_course', 'local_beacon'),
+            get_string('teacherroles_course_desc', 'local_beacon'),
+            \local_beacon\local\roles::defaults('course'),
+            $rolemenu
+        ));
+        $settings->add(new admin_setting_configmultiselect(
+            'local_beacon/teacherroles_group',
+            get_string('teacherroles_group', 'local_beacon'),
+            get_string('teacherroles_group_desc', 'local_beacon'),
+            \local_beacon\local\roles::defaults('group'),
+            $rolemenu
+        ));
+    }
+
     $ADMIN->add('localplugins', $settings);
 
     // KPI targets: let the admin retune each gauge's cut-offs without touching code.

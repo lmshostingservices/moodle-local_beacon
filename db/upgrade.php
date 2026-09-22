@@ -253,5 +253,14 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026092217, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026092218) {
+        // Version 1.11.0: teacher scoping now reads admin-configurable roles from
+        // the site (custom roles supported), and a group-level teacher sees the
+        // whole course when the course has no groups. The new local/beacon:viewall
+        // capability is installed automatically by core on this version bump; no
+        // schema change here.
+        upgrade_plugin_savepoint(true, 2026092218, 'local', 'beacon');
+    }
+
     return true;
 }

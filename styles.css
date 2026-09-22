@@ -1143,6 +1143,15 @@
 }
 
 /* =================================================================== detail */
+.bc-backrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.bc-backrow .bc-back {
+    margin-bottom: 0;
+}
 .bc-back {
     display: inline-flex;
     align-items: center;
