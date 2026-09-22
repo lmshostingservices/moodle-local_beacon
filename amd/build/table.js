@@ -627,6 +627,9 @@ define('local_beacon/table', ['core/str'], function(Str) {
                 if (!c || !c.el) {
                     return;
                 }
+                if (c.el.querySelector('a.bc-cell-link')) {
+                    return;
+                }
                 c.el.classList.add('bc-drill');
                 c.el.title = STR.drilltofilter;
                 c.el.addEventListener('click', function() {

@@ -58,5 +58,70 @@ if ($hassiteconfig) {
             'mycourses' => get_string('nav_mycourses', 'local_beacon'),
         ]
     ));
+
+    // Marking-queue heading.
+    $settings->add(new admin_setting_heading(
+        'local_beacon/markingheading',
+        get_string('markingheading', 'local_beacon'),
+        get_string('markingheading_desc', 'local_beacon')
+    ));
+
+    // Send the daily per-trainer marking digest email.
+    $settings->add(new admin_setting_configcheckbox(
+        'local_beacon/markingdigest',
+        get_string('markingdigest', 'local_beacon'),
+        get_string('markingdigest_desc', 'local_beacon'),
+        1
+    ));
+
     $ADMIN->add('localplugins', $settings);
+
+    // KPI targets: let the admin retune each gauge's cut-offs without touching code.
+    $kpipage = new admin_settingpage(
+        'local_beacon_kpitargets',
+        get_string('kpitargets_menu', 'local_beacon')
+    );
+    if ($ADMIN->fulltree) {
+        $kpipage->add(new admin_setting_heading(
+            'local_beacon/kpitargets_intro',
+            '',
+            get_string('kpitargets_intro', 'local_beacon')
+        ));
+        foreach (\local_beacon\local\catalogue::metrics() as $m) {
+            if (!$m->is_kpi()) {
+                continue;
+            }
+            $dirkey = ($m->better === 'lower') ? 'kpi_dir_lower' : 'kpi_dir_higher';
+            $kpipage->add(new admin_setting_heading(
+                'local_beacon/kpihead_' . $m->id,
+                get_string('m_' . $m->id, 'local_beacon'),
+                get_string($dirkey, 'local_beacon')
+            ));
+            $kpipage->add(new admin_setting_configtext(
+                'local_beacon/kpi_' . $m->id . '_target',
+                get_string('kpi_target', 'local_beacon'),
+                get_string('kpi_target_desc', 'local_beacon'),
+                (string) $m->targetdefault,
+                PARAM_INT,
+                5
+            ));
+            $kpipage->add(new admin_setting_configtext(
+                'local_beacon/kpi_' . $m->id . '_green',
+                get_string('kpi_green', 'local_beacon'),
+                get_string('kpi_green_desc', 'local_beacon'),
+                (string) $m->greendefault,
+                PARAM_INT,
+                5
+            ));
+            $kpipage->add(new admin_setting_configtext(
+                'local_beacon/kpi_' . $m->id . '_amber',
+                get_string('kpi_amber', 'local_beacon'),
+                get_string('kpi_amber_desc', 'local_beacon'),
+                (string) $m->amberdefault,
+                PARAM_INT,
+                5
+            ));
+        }
+    }
+    $ADMIN->add('localplugins', $kpipage);
 }

@@ -48,12 +48,18 @@ class metric {
     public string $better;
     /** @var bool Whether the metric is on by default. */
     public bool $defaulton;
-    /** @var float|null KPI target (percentage). */
+    /** @var float|null KPI target (percentage), after any admin override. */
     public ?float $target;
-    /** @var float|null KPI amber threshold. */
+    /** @var float|null KPI amber threshold, after any admin override. */
     public ?float $amber;
-    /** @var float|null KPI green threshold. */
+    /** @var float|null KPI green threshold, after any admin override. */
     public ?float $green;
+    /** @var float|null Built-in default target (before override), for the settings page. */
+    public ?float $targetdefault;
+    /** @var float|null Built-in default amber (before override). */
+    public ?float $amberdefault;
+    /** @var float|null Built-in default green (before override). */
+    public ?float $greendefault;
     /** @var callable Returns [value|null, denominator|null] given (moodle_database, context). */
     private $computefn;
     /** @var string|null Table this metric depends on; null = always available. */
@@ -72,11 +78,36 @@ class metric {
         $this->format        = $d['format'] ?? 'number';
         $this->better        = $d['better'] ?? 'higher';
         $this->defaulton     = $d['defaulton'] ?? true;
-        $this->target        = $d['target'] ?? null;
-        $this->amber         = $d['amber'] ?? null;
-        $this->green         = $d['green'] ?? null;
+        $this->targetdefault = $d['target'] ?? null;
+        $this->amberdefault  = $d['amber'] ?? null;
+        $this->greendefault  = $d['green'] ?? null;
+        // A site admin may override each KPI cut-off under Beacon settings; fall
+        // back to the built-in default when nothing valid is stored.
+        $this->target        = self::resolve_threshold($d['id'], 'target', $this->targetdefault);
+        $this->amber         = self::resolve_threshold($d['id'], 'amber', $this->amberdefault);
+        $this->green         = self::resolve_threshold($d['id'], 'green', $this->greendefault);
         $this->computefn     = $d['compute'];
         $this->requirestable = $d['requirestable'] ?? null;
+    }
+
+    /**
+     * Resolve one KPI cut-off, preferring a valid admin override over the
+     * built-in default. Stats (no default) are never looked up.
+     *
+     * @param string $id Metric id.
+     * @param string $key One of target, amber, green.
+     * @param float|null $default Built-in default.
+     * @return float|null
+     */
+    private static function resolve_threshold(string $id, string $key, ?float $default): ?float {
+        if ($default === null) {
+            return null;
+        }
+        $v = get_config('local_beacon', 'kpi_' . $id . '_' . $key);
+        if ($v === false || $v === '' || !is_numeric($v)) {
+            return $default;
+        }
+        return (float) $v;
     }
 
     /**

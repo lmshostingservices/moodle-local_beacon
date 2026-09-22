@@ -2,6 +2,64 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v1.8.6] - 2026-09-22
+- **KPI cut-offs are now editable by a site admin.** A new **Beacon KPI targets**
+  settings page (Site administration → Plugins → Local plugins) lists every KPI
+  gauge with three editable fields — target, on-target cut-off (green) and
+  near-target cut-off (amber) — each pre-filled with the shipped default. The
+  gauge reads the admin's value if set and falls back to the default otherwise.
+  Because only the colour banding depends on the cut-offs (never the stored
+  numbers), changes take effect immediately with no cache rebuild. Override
+  resolution unit-tested (unset/empty/non-numeric fall back to default; zero is a
+  valid override; stat cards without a target are never affected).
+
+## [v1.8.5] - 2026-09-22
+- **Marking queue rows now deep-link into Moodle.** On both the "My marking queue"
+  and site-wide "Marking queue" reports, the learner name opens their profile, the
+  course name opens the course, the assignment opens its page, and the submission
+  date opens the grading screen for that learner — so a trainer can click a date
+  and go straight to marking that submission. Previously clicking a value only
+  applied a table column filter. Column header filtering is unchanged. Link joins
+  validated against PostgreSQL (correct module id, no row multiplication).
+- **Removed the dashboard marking badge and its show/hide setting.** Sites link to
+  the marking queue from their own quick-links dashboard instead. The daily marking
+  digest email (and its on/off setting) is unchanged.
+
+## [v1.8.4] - 2026-09-22
+- New **Longest marking wait** stat card (Assessment): how many days the oldest
+  still-unmarked submission has been waiting — an early warning that marking is
+  falling behind. Lower is better; reads 0 when nothing is waiting.
+- New **Marked within 7 days** KPI gauge (Assessment): the share of graded
+  submissions that were marked within a week of being submitted — a turnaround
+  service level, distinct from the existing "Feedback rate" (which measures whether
+  work is eventually graded, not how quickly). Both link through to the marking
+  queue report and are enabled on existing sites by the upgrade step. Stat and KPI
+  SQL validated against PostgreSQL.
+
+## [v1.8.3] - 2026-09-22
+- **Marking-queue dashboard badge**: when enabled, each trainer's Beacon navigation
+  link shows a count of submitted assessments still waiting for them to mark (e.g.
+  "Beacon (7)"). The count is read from an hourly precomputed cache
+  (`local_beacon_marking`) — one indexed row per user — so it adds no cost to page
+  loads, unlike the core Grade Me block. New admin setting **Show marking-queue
+  badge** turns it on or off (on by default).
+- **Daily marking digest email**: an optional per-trainer daily email with the
+  waiting count and a link straight to their My marking queue report. Contains only
+  the count and a link — never learner data — so no per-row capability check is
+  needed. New admin setting **Send daily marking digest email** (on by default).
+- Both are driven by a scheduled task that recomputes each trainer's count with
+  that trainer's own scope (editing teachers → whole course; non-editing teachers →
+  their groups), so a cached figure can only ever reflect what that trainer may
+  mark. Scope and count SQL validated against PostgreSQL.
+
+## [v1.8.2] - 2026-09-22
+- New **My marking queue** report: submitted assessments still awaiting marking, scoped to
+  the viewer — administrators see all, editing teachers see their whole course, and
+  non-editing teachers see only learners in the groups they belong to. Independent of due
+  dates, so it works for rolling intakes (where the core Grade Me block does not). Scope
+  SQL validated against PostgreSQL. Optimised: it filters to the small unmarked set first,
+  then applies scope.
+
 ## [v1.8.1] - 2026-09-17
 - New participation feature (this is the released form of the work drafted as the
   unreleased 1.8.0): **Funding participation evidence** report (durable — completion,

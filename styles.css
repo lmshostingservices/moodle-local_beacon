@@ -2212,6 +2212,21 @@ th[data-sortdir="desc"] .bc-sort-ico::before {
     text-decoration: underline;
     text-underline-offset: 2px;
 }
+/* Deep-link cell (opens the relevant Moodle page) */
+.bc-data td.bc-has-link {
+    cursor: pointer;
+}
+.bc-data a.bc-cell-link {
+    color: var(--bc-a);
+    font-weight: 600;
+    text-decoration: none;
+}
+.bc-data a.bc-cell-link:hover,
+.bc-data a.bc-cell-link:focus {
+    color: var(--bc-a2);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
 /* Distribution mini-bar */
 .bc-dist {
     padding: 12px 18px;

@@ -43,4 +43,25 @@ $tasks = [
         'month'     => '*',
         'dayofweek' => '*',
     ],
+    [
+        // Recompute each trainer's marking-queue count, hourly. Cheap and off the
+        // page-load path; the dashboard badge reads the result, never this query.
+        'classname' => 'local_beacon\task\refresh_marking_queues',
+        'blocking'  => 0,
+        'minute'    => '50',
+        'hour'      => '*',
+        'day'       => '*',
+        'month'     => '*',
+        'dayofweek' => '*',
+    ],
+    [
+        // Daily digest to each trainer with items waiting (07:10 site time).
+        'classname' => 'local_beacon\task\send_marking_digest',
+        'blocking'  => 0,
+        'minute'    => '10',
+        'hour'      => '7',
+        'day'       => '*',
+        'month'     => '*',
+        'dayofweek' => '*',
+    ],
 ];

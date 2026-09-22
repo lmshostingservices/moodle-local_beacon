@@ -627,6 +627,11 @@ define('local_beacon/table', ['core/str'], function(Str) {
                 if (!c || !c.el) {
                     return;
                 }
+                // A cell that is a deep link into Moodle navigates on click; it
+                // must not be turned into a click-to-filter (drill) cell.
+                if (c.el.querySelector('a.bc-cell-link')) {
+                    return;
+                }
                 c.el.classList.add('bc-drill');
                 c.el.title = STR.drilltofilter;
                 c.el.addEventListener('click', function() {

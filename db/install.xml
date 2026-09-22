@@ -95,5 +95,21 @@
         <INDEX NAME="downer" UNIQUE="false" FIELDS="userid"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="local_beacon_marking" COMMENT="Precomputed per-trainer count of submitted-but-unmarked assessments, so the dashboard badge reads one indexed row instead of computing on page load.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Trainer (teacher/editing teacher) the count belongs to."/>
+        <FIELD NAME="tocount" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Number of submissions this trainer may mark that are still unmarked."/>
+        <FIELD NAME="oldest" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Epoch of the oldest waiting submission, for digest context. 0 when none."/>
+        <FIELD NAME="lastnotified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="YYYYMMDD of the last daily digest sent, so we email at most once per day."/>
+        <FIELD NAME="timecomputed" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="userid" UNIQUE="true" FIELDS="userid"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>

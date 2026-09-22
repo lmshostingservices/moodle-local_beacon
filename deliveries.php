@@ -42,7 +42,7 @@ require_capability('local/beacon:view', $context);
 require_sesskey();
 
 $report = catalogue::report($reportid);
-if ($report === null || !$report->is_available()) {
+if ($report === null || !$report->is_available() || !$report->schedulable) {
     throw new moodle_exception('itemnotfound', 'local_beacon');
 }
 

@@ -15,19 +15,37 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Version details.
+ * Recomputes each trainer's marking-queue count into the cache table.
  *
  * @package    local_beacon
  * @copyright  2026 LMS Hosting Services
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+namespace local_beacon\task;
 
-$plugin->component = 'local_beacon';
-$plugin->version   = 2026092204;      // YYYYMMDDXX — 22 Sep 2026, sequence 04. Matches upgrade savepoint 2026092203.
-$plugin->requires  = 2024042200;      // Moodle 4.4.0.
-$plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.8.6';         // Admin-editable KPI target/amber/green cut-offs (settings page).
-$plugin->release_prev = '1.8.5';      // Previous release.
+use local_beacon\local\marking;
+
+/**
+ * Warms `local_beacon_marking` so the dashboard badge is a one-row read.
+ */
+class refresh_marking_queues extends \core\task\scheduled_task {
+    /**
+     * Name shown in the scheduled tasks report.
+     *
+     * @return string
+     */
+    public function get_name(): string {
+        return get_string('task_marking_refresh', 'local_beacon');
+    }
+
+    /**
+     * Recompute every trainer's count.
+     *
+     * @return void
+     */
+    public function execute(): void {
+        $n = marking::refresh_all();
+        mtrace("local_beacon: refreshed marking-queue counts for {$n} trainer(s).");
+    }
+}

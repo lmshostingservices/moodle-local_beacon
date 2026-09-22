@@ -173,6 +173,7 @@
         </div>
       </details>
 
+{{#canschedule}}
       <details class="bc-fpill" data-fpill>
         <summary class="bc-fpill-btn">
           <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M4 6h16v13a1 1 0 01-1 1H5a1 1 0 01-1-1z" stroke="currentColor" stroke-width="1.8"/><path d="M4 8l8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
@@ -214,6 +215,7 @@
           </form>
         </div>
       </details>
+{{/canschedule}}
     </div>
     {{/actions}}
 
@@ -332,9 +334,9 @@
               {{#rows}}
                 <tr>
                   {{#cells}}
-                    <td class="{{#numeric}}bc-num{{/numeric}}" data-sort="{{sort}}">
+                    <td class="{{#numeric}}bc-num{{/numeric}}{{#url}} bc-has-link{{/url}}" data-sort="{{sort}}">
                       {{#isstatus}}<span class="bc-badge bc-badge-{{badge}}">{{v}}</span>{{/isstatus}}
-                      {{^isstatus}}{{v}}{{/isstatus}}
+                      {{^isstatus}}{{#url}}<a class="bc-cell-link" href="{{url}}">{{v}}</a>{{/url}}{{^url}}{{v}}{{/url}}{{/isstatus}}
                     </td>
                   {{/cells}}
                 </tr>

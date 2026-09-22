@@ -172,7 +172,7 @@ class delivery {
         }
 
         $report = catalogue::report($d->reportid);
-        if ($report === null || !$report->is_available()) {
+        if ($report === null || !$report->is_available() || !$report->schedulable) {
             return false;
         }
 

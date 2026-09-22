@@ -322,6 +322,7 @@ class detail implements renderable, templatable {
         'monthly_active_rate' => 'login_activity', 'pass_rate' => 'grade_summary',
         'feedback_rate' => 'marking_queue', 'certification_currency' => 'certification_status',
         'awaiting_marking' => 'marking_queue', 'dormant_learners' => 'inactive_learners',
+        'marking_backlog_days' => 'marking_queue', 'marking_timeliness' => 'marking_queue',
         'expiring_soon' => 'certification_status', 'in_progress' => 'course_progress',
         'new_enrolments' => 'enrolment_details', 'total_learners' => 'learner_roster',
         'live_enrolments' => 'enrolment_details', 'active_learners' => 'login_activity',
@@ -494,6 +495,7 @@ class detail implements renderable, templatable {
         return [
             'contextid'    => $ctxid,
             'reportid'     => $rep->id,
+            'canschedule'  => $rep->schedulable,
             'sesskey'      => sesskey(),
             'saveurl'      => (new \moodle_url('/local/beacon/savedview.php'))->out(false),
             'deliveryurl'  => (new \moodle_url('/local/beacon/deliveries.php'))->out(false),

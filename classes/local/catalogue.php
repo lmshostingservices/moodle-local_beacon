@@ -76,6 +76,33 @@ class catalogue {
     }
 
     /**
+     * Deep links into Moodle for a marking-queue row. Returns four target URLs
+     * (as strings, or null where the row lacks the ids to build one):
+     *   [learner profile, course, assignment, grade-this-submission].
+     * The learner name, course and assignment open the relevant Moodle page; the
+     * submission date opens the grading screen for that learner, so a trainer can
+     * click straight through to mark it.
+     *
+     * @param object $r Row with userid, courseid and (optionally) cmid.
+     * @return array{0:?string,1:?string,2:?string,3:?string}
+     */
+    private static function marking_links($r): array {
+        $userid = (int) ($r->userid ?? 0);
+        $courseid = (int) ($r->courseid ?? 0);
+        $cmid = (int) ($r->cmid ?? 0);
+        $profile = ($userid && $courseid)
+            ? (new \moodle_url('/user/view.php', ['id' => $userid, 'course' => $courseid]))->out(false)
+            : ($userid ? (new \moodle_url('/user/profile.php', ['id' => $userid]))->out(false) : null);
+        $course = $courseid ? (new \moodle_url('/course/view.php', ['id' => $courseid]))->out(false) : null;
+        $assign = $cmid ? (new \moodle_url('/mod/assign/view.php', ['id' => $cmid]))->out(false) : null;
+        $grade = ($cmid && $userid)
+            ? (new \moodle_url('/mod/assign/view.php',
+                ['id' => $cmid, 'action' => 'grader', 'userid' => $userid]))->out(false)
+            : null;
+        return [$profile, $course, $assign, $grade];
+    }
+
+    /**
      * A UNION of durable, non-purgeable activity records as (userid, courseid, ts).
      *
      * Unlike the standard log (retained only for loglifetime), completion,
@@ -351,6 +378,49 @@ class catalogue {
                 $r = $DB->get_record_sql($sql);
                 $den = (int) ($r->den ?? 0);
                 return [$den ? 100.0 * (int)$r->num / $den : null, $den];
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'marking_backlog_days', 'kind' => 'stat', 'family' => 'assessment',
+            'icon' => 'clock', 'format' => 'number', 'better' => 'lower',
+            'requirestable' => 'assign_submission',
+            'compute' => function ($DB) {
+                // How long the oldest still-unmarked submission has been waiting.
+                $sql = "SELECT MIN(s.timemodified) AS oldest
+                          FROM {assign_submission} s
+                     LEFT JOIN {assign_grades} g ON g.assignment = s.assignment
+                               AND g.userid = s.userid AND g.attemptnumber = s.attemptnumber
+                         WHERE s.latest = 1 AND s.status = 'submitted'
+                           AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0)";
+                $oldest = $DB->get_field_sql($sql);
+                if ($oldest === null || $oldest === false || (int) $oldest === 0) {
+                    return [0, null];
+                }
+                return [(int) floor((time() - (int) $oldest) / DAYSECS), null];
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'marking_timeliness', 'kind' => 'kpi', 'family' => 'assessment',
+            'icon' => 'gauge', 'format' => 'percent', 'better' => 'higher',
+            'target' => 80, 'amber' => 60, 'green' => 80, 'requirestable' => 'assign_submission',
+            'compute' => function ($DB) {
+                // Share of graded submissions that were marked within seven days
+                // of being submitted — the marking-queue service level.
+                $window = 7 * DAYSECS;
+                $sql = "SELECT
+                          SUM(CASE WHEN g.timemodified > 0
+                                    AND g.timemodified - s.timemodified <= :win THEN 1 ELSE 0 END) AS num,
+                          COUNT(*) AS den
+                        FROM {assign_submission} s
+                        JOIN {assign_grades} g ON g.assignment = s.assignment
+                             AND g.userid = s.userid AND g.attemptnumber = s.attemptnumber
+                       WHERE s.latest = 1 AND s.status = 'submitted'
+                         AND g.grade IS NOT NULL AND g.grade >= 0";
+                $r = $DB->get_record_sql($sql, ['win' => $window]);
+                $den = (int) ($r->den ?? 0);
+                return [$den ? 100.0 * (int) $r->num / $den : null, $den];
             },
         ];
 
@@ -674,9 +744,13 @@ class catalogue {
                           JOIN {user} u ON u.id = s.userid AND u.deleted = 0
                      LEFT JOIN {assign_grades} g ON g.assignment = s.assignment
                                AND g.userid = s.userid AND g.attemptnumber = s.attemptnumber
+                     LEFT JOIN {modules} md ON md.name = 'assign'
+                     LEFT JOIN {course_modules} cm ON cm.instance = a.id
+                               AND cm.module = md.id AND cm.course = a.course
                          WHERE s.latest = 1 AND s.status = 'submitted'
                            AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0) $fw";
-                $sql = "SELECT s.id, u.firstname, u.lastname, a.name AS assignment, s.timemodified
+                $sql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
+                               u.firstname, u.lastname, a.name AS assignment, s.timemodified
                         $body ORDER BY s.timemodified ASC";
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
@@ -684,8 +758,9 @@ class catalogue {
                 foreach ($recs as $r) {
                     $wait = $r->timemodified ? floor(($now - $r->timemodified) / DAYSECS) . ' ' .
                             get_string('days', 'local_beacon') : '—';
-                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->assignment),
-                               cell::when($r->timemodified), cell::status($wait, 'w')];
+                    [$plink, , $alink, $glink] = self::marking_links($r);
+                    $rows[] = [cell::text(self::fullname_of($r), $plink), cell::text($r->assignment, $alink),
+                               cell::when($r->timemodified, $glink), cell::status($wait, 'w')];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
             },
@@ -1303,6 +1378,72 @@ class catalogue {
                 }
                 $total = $DB->count_records_sql("SELECT COUNT(DISTINCT $rk) $body", $fp);
                 return [$rows, $total];
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'my_marking_queue', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'submission',
+            'defaulton' => true, 'requirestable' => 'assign_submission', 'schedulable' => false,
+            'filters' => ['daterange', 'course', 'category'], 'datelabel' => 'col_submitted',
+            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+                          ['assignment', 'col_assignment', 'text'], ['submitted', 'col_submitted', 'text'],
+                          ['waiting', 'col_waiting', 'text']],
+            'run' => function ($DB, $q, $limit) {
+                global $USER;
+                [$fw, $fp] = $q->where(['course' => 'a.course', 'category' => 'a.course',
+                    'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
+                // Scope to what the viewer may mark: admins/managers see all; editing
+                // teachers see their whole course; non-editing teachers see only learners
+                // in the groups they belong to. Applied to the small unmarked set only.
+                $scope = '';
+                $params = $fp;
+                if (!has_capability('moodle/site:config', \context_system::instance())) {
+                    $scope = " AND (
+                        EXISTS (SELECT 1 FROM {role_assignments} ra
+                                  JOIN {context} ctx ON ctx.id = ra.contextid
+                                       AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
+                                  JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
+                                 WHERE ra.userid = :meed)
+                        OR (
+                          EXISTS (SELECT 1 FROM {role_assignments} ra
+                                    JOIN {context} ctx ON ctx.id = ra.contextid
+                                         AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
+                                    JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
+                                   WHERE ra.userid = :ment)
+                          AND EXISTS (SELECT 1 FROM {groups_members} gmme
+                                        JOIN {groups} grp ON grp.id = gmme.groupid AND grp.courseid = a.course
+                                        JOIN {groups_members} gml ON gml.groupid = grp.id AND gml.userid = s.userid
+                                       WHERE gmme.userid = :mgrp)
+                        )
+                    )";
+                    $params = ['meed' => $USER->id, 'ment' => $USER->id, 'mgrp' => $USER->id] + $fp;
+                }
+                $body = "FROM {assign_submission} s
+                          JOIN {assign} a ON a.id = s.assignment
+                          JOIN {course} c ON c.id = a.course
+                          JOIN {user} u ON u.id = s.userid AND u.deleted = 0
+                     LEFT JOIN {assign_grades} g ON g.assignment = s.assignment
+                               AND g.userid = s.userid AND g.attemptnumber = s.attemptnumber
+                     LEFT JOIN {modules} md ON md.name = 'assign'
+                     LEFT JOIN {course_modules} cm ON cm.instance = a.id
+                               AND cm.module = md.id AND cm.course = a.course
+                         WHERE s.latest = 1 AND s.status = 'submitted'
+                           AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0)$scope $fw";
+                $sql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
+                               u.firstname, u.lastname, c.fullname AS course, a.name AS assignment,
+                               s.timemodified $body ORDER BY s.timemodified ASC";
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+                $rows = [];
+                $now = time();
+                foreach ($recs as $r) {
+                    $wait = $r->timemodified ? floor(($now - $r->timemodified) / DAYSECS) . ' ' .
+                            get_string('days', 'local_beacon') : '—';
+                    [$plink, $clink, $alink, $glink] = self::marking_links($r);
+                    $rows[] = [cell::text(self::fullname_of($r), $plink), cell::text($r->course, $clink),
+                               cell::text($r->assignment, $alink), cell::when($r->timemodified, $glink),
+                               cell::status($wait, 'w')];
+                }
+                return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
             },
         ];
 

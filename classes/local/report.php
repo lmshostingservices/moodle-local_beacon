@@ -66,10 +66,14 @@ class report {
         $this->filters       = $d['filters'] ?? [];
         $this->datelabel     = $d['datelabel'] ?? null;
         $this->personal      = $d['personal'] ?? false;
+        $this->schedulable   = $d['schedulable'] ?? true;
     }
 
     /** @var bool True for learner self-view reports (bound to the current user). */
     public bool $personal = false;
+
+    /** @var bool Whether scheduled email delivery is allowed for this report. */
+    public bool $schedulable = true;
 
     /**
      * Whether this report offers any server-side filters.

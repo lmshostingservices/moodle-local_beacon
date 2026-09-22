@@ -155,5 +155,61 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026091700, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026092200) {
+        // Version 1.8.2: trainer-scoped My marking queue report. Enable on existing sites.
+        $cur = get_config('local_beacon', 'enabledreports');
+        if ($cur !== false && $cur !== '' && strpos(',' . $cur . ',', ',my_marking_queue,') === false) {
+            set_config('enabledreports', $cur . ',my_marking_queue', 'local_beacon');
+        }
+        upgrade_plugin_savepoint(true, 2026092200, 'local', 'beacon');
+    }
+
+    if ($oldversion < 2026092201) {
+        // Version 1.8.3: per-trainer marking-queue count cache, feeding the
+        // dashboard badge and the daily digest. Create the table if absent.
+        if (!$dbman->table_exists(new xmldb_table('local_beacon_marking'))) {
+            $dbman->install_one_table_from_xmldb_file(
+                $CFG->dirroot . '/local/beacon/db/install.xml',
+                'local_beacon_marking'
+            );
+        }
+        // Turn the daily digest on by default on upgrading sites, unless the
+        // admin has already made a choice.
+        if (get_config('local_beacon', 'markingdigest') === false) {
+            set_config('markingdigest', 1, 'local_beacon');
+        }
+        upgrade_plugin_savepoint(true, 2026092201, 'local', 'beacon');
+    }
+
+    if ($oldversion < 2026092202) {
+        // Version 1.8.4: marking-queue stat card and KPI. Enable them on existing
+        // sites (fresh installs get them from each item's defaulton flag). Only
+        // append when the set has already been configured.
+        $additions = [
+            'enabledstats' => ['marking_backlog_days'],
+            'enabledkpis' => ['marking_timeliness'],
+        ];
+        foreach ($additions as $key => $newids) {
+            $cur = get_config('local_beacon', $key);
+            if ($cur === false || $cur === '') {
+                continue;
+            }
+            foreach ($newids as $newid) {
+                if (strpos(',' . $cur . ',', ',' . $newid . ',') === false) {
+                    $cur .= ',' . $newid;
+                }
+            }
+            set_config($key, $cur, 'local_beacon');
+        }
+        upgrade_plugin_savepoint(true, 2026092202, 'local', 'beacon');
+    }
+
+    if ($oldversion < 2026092203) {
+        // Version 1.8.5: the dashboard marking badge was removed (sites link from
+        // their own quick-links dashboard instead). Clean up its orphaned setting.
+        unset_config('showmarkingbadge', 'local_beacon');
+        upgrade_plugin_savepoint(true, 2026092203, 'local', 'beacon');
+    }
+
     return true;
 }

@@ -34,10 +34,16 @@ class cell {
      * A plain text cell. The sort key is the lower-cased text.
      *
      * @param string $value Text.
+     * @param string|null $url Optional link target; when set the cell renders as
+     *                         a hyperlink instead of a click-to-filter value.
      * @return array
      */
-    public static function text(string $value): array {
-        return ['v' => $value, 'badge' => '', 'sort' => \core_text::strtolower($value)];
+    public static function text(string $value, ?string $url = null): array {
+        $cell = ['v' => $value, 'badge' => '', 'sort' => \core_text::strtolower($value)];
+        if ($url !== null && $url !== '') {
+            $cell['url'] = $url;
+        }
+        return $cell;
     }
 
     /**
@@ -66,16 +72,22 @@ class cell {
      * A timestamp rendered as a short date, sorted by the raw time.
      *
      * @param int|null $timestamp Unix time.
+     * @param string|null $url Optional link target; when set the date renders as
+     *                         a hyperlink instead of a click-to-filter value.
      * @return array
      */
-    public static function when(?int $timestamp): array {
+    public static function when(?int $timestamp, ?string $url = null): array {
         if (empty($timestamp)) {
             return ['v' => '—', 'badge' => '', 'sort' => 0];
         }
-        return [
+        $cell = [
             'v'    => userdate($timestamp, get_string('strftimedate', 'langconfig')),
             'badge' => '',
             'sort' => (int) $timestamp,
         ];
+        if ($url !== null && $url !== '') {
+            $cell['url'] = $url;
+        }
+        return $cell;
     }
 }
