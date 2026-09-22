@@ -2,6 +2,13 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.2.0] - 2026-09-22
+- Maintenance build for the Moodle plugin directory's automated re-validation.
+  Standardised a few Mustache template sections to nested form (the page renders
+  identically). No functional, capability, string or schema change from 2.1.0 —
+  every `php -l`, capability/language-string and scheduled-task check verified
+  clean.
+
 ## [v2.1.0] - 2026-09-22
 - **Teachers are now automatically scoped to their own learners on every report —
   closing a leak.** Previously a teacher who could open the site dashboard saw

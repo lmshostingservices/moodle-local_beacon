@@ -279,5 +279,11 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026092220, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026092221) {
+        // Version 2.2.0: maintenance build for the plugin-directory re-validation
+        // (standardised a few Mustache sections to nested form). No schema change.
+        upgrade_plugin_savepoint(true, 2026092221, 'local', 'beacon');
+    }
+
     return true;
 }

@@ -140,19 +140,23 @@
       </div>
       <p class="bc-dh-expl">{{description}}</p>
       {{#hassubject}}
-      <div class="bc-subject" data-subject="{{subject.exportline}}">
-        {{#subject.hasstudent}}<span class="bc-subject-pill"><span class="bc-subject-k">{{#str}}col_learner, local_beacon{{/str}}</span><span class="bc-subject-v">{{subject.student}}</span></span>{{/subject.hasstudent}}
-        {{#subject.hascourse}}<span class="bc-subject-pill"><span class="bc-subject-k">{{#str}}col_course, local_beacon{{/str}}</span><span class="bc-subject-v">{{subject.course}}</span></span>{{/subject.hascourse}}
+      {{#subject}}
+      <div class="bc-subject" data-subject="{{exportline}}">
+        {{#hasstudent}}<span class="bc-subject-pill"><span class="bc-subject-k">{{#str}}col_learner, local_beacon{{/str}}</span><span class="bc-subject-v">{{student}}</span></span>{{/hasstudent}}
+        {{#hascourse}}<span class="bc-subject-pill"><span class="bc-subject-k">{{#str}}col_course, local_beacon{{/str}}</span><span class="bc-subject-v">{{course}}</span></span>{{/hascourse}}
       </div>
+      {{/subject}}
       {{/hassubject}}
     </div>
 
     {{#hasscope}}
+    {{#scope}}
     <div class="bc-scope" role="status">
       <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      {{#scope.none}}<span>{{#str}}scope_none, local_beacon{{/str}}</span>{{/scope.none}}
-      {{^scope.none}}<span>{{#str}}scope_courses, local_beacon, {{scope.count}}{{/str}} <strong>{{scope.courses}}</strong></span>{{/scope.none}}
+      {{#none}}<span>{{#str}}scope_none, local_beacon{{/str}}</span>{{/none}}
+      {{^none}}<span>{{#str}}scope_courses, local_beacon, {{count}}{{/str}} <strong>{{courses}}</strong></span>{{/none}}
     </div>
+    {{/scope}}
     {{/hasscope}}
 
     {{#actions}}

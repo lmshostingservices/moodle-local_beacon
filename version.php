@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026092220;      // YYYYMMDDXX — 22 Sep 2026, sequence 20. Matches upgrade savepoint 2026092220.
+$plugin->version   = 2026092221;      // YYYYMMDDXX — 22 Sep 2026, sequence 21. Matches upgrade savepoint 2026092221.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.1.0';         // Automatic teacher viewer-scoping; scope banner; group defaults + select-all; drill-down subject.
-$plugin->release_prev = '2.0.0';      // Previous release.
+$plugin->release   = '2.2.0';         // Marketplace re-validation build; standardised Mustache sections. No behaviour change.
+$plugin->release_prev = '2.1.0';      // Previous release.
