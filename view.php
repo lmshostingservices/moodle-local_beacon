@@ -56,14 +56,21 @@ if (!$page->is_valid()) {
     throw new moodle_exception('itemnotfound', 'local_beacon');
 }
 
-// A non-admin teacher may only open reports that can be scoped to their own
-// learners (or the per-learner drill-down, which enforces its own access). A
-// site-wide report — a people directory, role or policy list — is admin-only, so
-// it cannot be reached by editing the URL.
-if ($type === 'report' && !has_capability('local/beacon:viewall', context_system::instance())) {
-    $rep = \local_beacon\local\catalogue::report($id);
-    if ($rep !== null && !$rep->requestscoped && !$rep->scopeable_for_teacher()) {
+// Site-wide items are for viewers entitled to site-wide figures (viewall). A
+// non-admin teacher may not reach them by editing the URL:
+//  - stat cards and KPI gauges are site-wide aggregates;
+//  - a report that can't be scoped to their own learners (a people directory,
+//    role or policy list) — but the per-learner drill-down enforces its own
+//    access and is allowed.
+if (!has_capability('local/beacon:viewall', context_system::instance())) {
+    if ($type === 'stat' || $type === 'kpi') {
         throw new moodle_exception('nopermissions', 'error', '', get_string('pluginname', 'local_beacon'));
+    }
+    if ($type === 'report') {
+        $rep = \local_beacon\local\catalogue::report($id);
+        if ($rep !== null && !$rep->requestscoped && !$rep->scopeable_for_teacher()) {
+            throw new moodle_exception('nopermissions', 'error', '', get_string('pluginname', 'local_beacon'));
+        }
     }
 }
 

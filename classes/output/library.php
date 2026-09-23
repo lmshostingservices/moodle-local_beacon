@@ -56,11 +56,17 @@ class library implements renderable, templatable {
         $ctxid = $this->context->id;
         $iscourse = $this->context instanceof \context_course;
 
+        // Site-wide access: only Managers/admins (viewall) see the unscoped stat
+        // cards, KPI gauges and site-wide reports. A scoped teacher must not be
+        // shown site-wide aggregate totals alongside their own-learner reports.
+        $seesall = has_capability('local/beacon:viewall', \context_system::instance());
+
         // Stat cards and KPI gauges are computed at site scope, so they show only
-        // on the site dashboard — not inside a single course.
+        // on the site dashboard (not inside a single course) and only to viewers
+        // entitled to site-wide figures.
         $stats = [];
         $kpis = [];
-        if (!$iscourse) {
+        if (!$iscourse && $seesall) {
             // One query loads every cached metric value for this context.
             \local_beacon\local\metric_cache::prefetch($ctxid);
             foreach (config::stats() as $m) {
@@ -74,7 +80,6 @@ class library implements renderable, templatable {
         // Inside a course — or for any non-admin teacher, at any context — only
         // offer reports that can actually be scoped (to the course, or to the
         // teacher's own learners). Site-wide reports stay admin-only.
-        $seesall = has_capability('local/beacon:viewall', \context_system::instance());
         $reports = [];
         foreach (config::reports() as $r) {
             if (($iscourse || !$seesall) && !$r->scopeable_for_teacher()) {

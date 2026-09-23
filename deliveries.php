@@ -46,6 +46,13 @@ if ($report === null || !$report->is_available() || !$report->schedulable) {
     throw new moodle_exception('itemnotfound', 'local_beacon');
 }
 
+// A non-admin teacher may only schedule a report that can be scoped to their own
+// learners; a site-wide report is admin-only (mirrors view.php / download.php).
+if (!has_capability('local/beacon:viewall', context_system::instance())
+        && !$report->requestscoped && !$report->scopeable_for_teacher()) {
+    throw new moodle_exception('nopermissions', 'error', '', get_string('pluginname', 'local_beacon'));
+}
+
 $reporturl = new moodle_url(
     '/local/beacon/view.php',
     ['contextid' => $contextid, 'type' => 'report', 'id' => $reportid]

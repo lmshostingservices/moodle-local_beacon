@@ -327,17 +327,25 @@ class filterset {
     /** @var int|null When set, rows are hard-restricted to this viewer's learners. */
     private ?int $viewerscopeuid = null;
 
+    /** @var bool Force viewer scope even when the ambient user would see all. */
+    private bool $viewerscopeforced = false;
+
     /**
      * Hard-scope the report's ROWS (not just the option lists) to the learners a
      * non-admin viewer teaches — applied automatically on every load, before any
      * filter is chosen, so a teacher never sees a course they don't teach. A
      * viewer who holds local/beacon:viewall (managers/admins) is never scoped.
      *
-     * @param int $userid The viewer.
+     * @param int $userid The viewer to scope to.
+     * @param bool $force Apply the scope regardless of the *ambient* user's
+     *                    capability — used when running as someone else (a
+     *                    scheduled email delivery runs under cron, not the owner),
+     *                    where the caller has already checked the owner's rights.
      * @return void
      */
-    public function enable_viewer_scope(int $userid): void {
+    public function enable_viewer_scope(int $userid, bool $force = false): void {
         $this->viewerscopeuid = $userid;
+        $this->viewerscopeforced = $force;
     }
 
     /**
@@ -346,7 +354,7 @@ class filterset {
      * @return bool
      */
     public function viewer_scope_active(): bool {
-        return $this->viewerscopeuid !== null && !$this->viewer_sees_all();
+        return $this->viewerscopeuid !== null && ($this->viewerscopeforced || !$this->viewer_sees_all());
     }
 
     /**
@@ -398,12 +406,15 @@ class filterset {
         if (!$teacherroles) {
             return [];
         }
+        // Scope to the explicit viewer when one is set (a scheduled delivery runs
+        // under cron, not the owner), otherwise the current user.
+        $uid = $this->viewerscopeuid ?? (int) $USER->id;
         [$in, $params] = $DB->get_in_or_equal($teacherroles, SQL_PARAMS_NAMED, 'vrol');
         $sql = "SELECT DISTINCT ctx.instanceid AS courseid
                   FROM {role_assignments} ra
                   JOIN {context} ctx ON ctx.id = ra.contextid AND ctx.contextlevel = 50
                  WHERE ra.userid = :uid AND ra.roleid $in AND ctx.instanceid > 1";
-        return array_map('intval', array_keys($DB->get_records_sql($sql, ['uid' => $USER->id] + $params)));
+        return array_map('intval', array_keys($DB->get_records_sql($sql, ['uid' => $uid] + $params)));
     }
 
     /**
@@ -602,10 +613,17 @@ class filterset {
      * @return string
      */
     public function signature(): string {
-        if (empty($this->active)) {
+        // Viewer scoping restricts the rows but is not part of $active, so it MUST
+        // be folded into the signature — otherwise the shared result cache could
+        // serve one viewer's scoped (or an admin's unscoped) rows to another.
+        $sig = $this->active;
+        if ($this->viewer_scope_active()) {
+            $sig['__viewerscope'] = (int) $this->viewerscopeuid;
+        }
+        if (empty($sig)) {
             return 'none';
         }
-        return md5(json_encode($this->active));
+        return md5(json_encode($sig));
     }
 
     /**
@@ -706,7 +724,7 @@ class filterset {
         // report that has only a course column is limited to their taught courses.
         // This is the security floor — the visible filters can only narrow within
         // it, never widen past it.
-        if ($this->viewerscopeuid !== null && !$this->viewer_sees_all()) {
+        if ($this->viewer_scope_active()) {
             if (isset($map['trainer']) && is_array($map['trainer'])) {
                 $ucol = $map['trainer']['user'] ?? '';
                 $ccol = $map['trainer']['course'] ?? '';

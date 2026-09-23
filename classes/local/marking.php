@@ -50,25 +50,42 @@ class marking {
      * @return array [string $sqlfragment, array $params]
      */
     private static function scope(int $uid): array {
-        $sql = "(
-            EXISTS (SELECT 1 FROM {role_assignments} ra
+        global $DB;
+        // Uses the site's admin-configured teacher roles (so custom roles count),
+        // with the same no-groups fallback as the reports: a course-level role
+        // counts the whole course; a group-level role counts shared-group learners,
+        // or the whole course when it has no groups.
+        $courseroles = roles::course_roleids();
+        $grouproles = roles::group_roleids();
+        $clauses = [];
+        $params = [];
+        if ($courseroles) {
+            [$cin, $cp] = $DB->get_in_or_equal($courseroles, SQL_PARAMS_NAMED, 'mkcr');
+            $clauses[] = "EXISTS (SELECT 1 FROM {role_assignments} ra
                       JOIN {context} ctx ON ctx.id = ra.contextid
                            AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
-                      JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
-                     WHERE ra.userid = :meed)
-            OR (
-              EXISTS (SELECT 1 FROM {role_assignments} ra
-                        JOIN {context} ctx ON ctx.id = ra.contextid
-                             AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
-                        JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
-                       WHERE ra.userid = :ment)
-              AND EXISTS (SELECT 1 FROM {groups_members} gmme
-                            JOIN {groups} grp ON grp.id = gmme.groupid AND grp.courseid = a.course
-                            JOIN {groups_members} gml ON gml.groupid = grp.id AND gml.userid = s.userid
-                           WHERE gmme.userid = :mgrp)
-            )
-        )";
-        return [$sql, ['meed' => $uid, 'ment' => $uid, 'mgrp' => $uid]];
+                     WHERE ra.userid = :meed AND ra.roleid $cin)";
+            $params += ['meed' => $uid] + $cp;
+        }
+        if ($grouproles) {
+            [$gin, $gp] = $DB->get_in_or_equal($grouproles, SQL_PARAMS_NAMED, 'mkgr');
+            $clauses[] = "EXISTS (SELECT 1 FROM {role_assignments} ra
+                      JOIN {context} ctx ON ctx.id = ra.contextid
+                           AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
+                     WHERE ra.userid = :ment AND ra.roleid $gin
+                       AND (EXISTS (SELECT 1 FROM {groups_members} gmme
+                                      JOIN {groups} grp ON grp.id = gmme.groupid
+                                           AND grp.courseid = a.course
+                                      JOIN {groups_members} gml ON gml.groupid = grp.id
+                                           AND gml.userid = s.userid
+                                     WHERE gmme.userid = :mgrp)
+                            OR NOT EXISTS (SELECT 1 FROM {groups} g2 WHERE g2.courseid = a.course)))";
+            $params += ['ment' => $uid, 'mgrp' => $uid] + $gp;
+        }
+        if (!$clauses) {
+            return ['1 = 0', []];
+        }
+        return ['(' . implode(' OR ', $clauses) . ')', $params];
     }
 
     /**
@@ -79,13 +96,17 @@ class marking {
      * @return int[] Distinct trainer user ids.
      */
     public static function trainer_ids(\moodle_database $DB): array {
+        $roleids = roles::all_roleids();
+        if (!$roleids) {
+            return [];
+        }
+        [$in, $params] = $DB->get_in_or_equal($roleids, SQL_PARAMS_NAMED, 'trole');
         $sql = "SELECT DISTINCT ra.userid
                   FROM {role_assignments} ra
                   JOIN {context} ctx ON ctx.id = ra.contextid AND ctx.contextlevel = 50
-                  JOIN {role} r ON r.id = ra.roleid
                   JOIN {user} u ON u.id = ra.userid AND u.deleted = 0 AND u.suspended = 0
-                 WHERE r.archetype IN ('editingteacher', 'teacher')";
-        return array_keys($DB->get_records_sql($sql));
+                 WHERE ra.roleid $in";
+        return array_keys($DB->get_records_sql($sql, $params));
     }
 
     /**

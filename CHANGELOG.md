@@ -2,6 +2,30 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.3.0] - 2026-09-22
+- **Permissions hardened consistently across every report** (extending the
+  Funding-participation model site-wide):
+  - **Marking queues (and the daily digest) now use the configurable teacher
+    roles.** *My marking queue* and the digest still had a hardcoded
+    `editingteacher`/`teacher` check, so on a custom-role site a trainer saw an
+    empty queue and got no digest; all marking paths now use the same
+    configurable-role, group-aware, no-groups-fallback rule as everything else, and
+    the marking scope moved into the shared filter engine so it also applies
+    correctly to a scheduled marking-queue email (which runs under cron).
+  - **Fixed a cross-viewer result-cache bleed.** The short result cache keyed on
+    the filters but not on the viewer scope, so within the cache window one
+    viewer's rows (or an admin's unscoped rows) could be served to another. The
+    cache key now varies by viewer scope.
+  - **Site-wide stat cards and KPI gauges are admin/manager only.** A scoped teacher
+    no longer sees site-wide totals next to their own-learner reports (and can't
+    reach a stat/KPI page by URL).
+  - **Site-wide reports are blocked for teachers everywhere** — on screen, by direct
+    URL, in CSV/PDF export, and when scheduling an email delivery.
+  - **Scheduled email deliveries reproduce their owner's own scope**, so a teacher's
+    scheduled report can only ever contain their own learners (deliveries run under
+    cron, so the owner's rights are checked explicitly).
+- No schema change.
+
 ## [v2.2.0] - 2026-09-22
 - Maintenance build for the Moodle plugin directory's automated re-validation.
   Standardised a few Mustache template sections to nested form (the page renders

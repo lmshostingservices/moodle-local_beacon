@@ -184,6 +184,23 @@ class delivery {
         $params = [];
         parse_str((string) $d->params, $params);
         $filters = filterset::from_params($context, $params);
+        // Reproduce the OWNER's own scope, so a scheduled export can only ever
+        // contain what its owner is entitled to see. This runs under cron (not the
+        // owner), so we check the owner's capability explicitly and force the
+        // scope. A course-context delivery is also hard-locked to that course.
+        if ($context instanceof \context_course) {
+            $filters->lock_course($context->instanceid);
+        }
+        $ownerid = (int) $d->userid;
+        $ownerseesall = has_capability('local/beacon:viewall', \context_system::instance(), $ownerid);
+        if (!$ownerseesall && !$report->requestscoped) {
+            // A non-admin owner may only receive a report that can be scoped to
+            // their own learners; refuse to email a site-wide report to them.
+            if (!$report->scopeable_for_teacher()) {
+                return false;
+            }
+            $filters->enable_viewer_scope($ownerid, true);
+        }
         $result = $report->run($filters, 5000);
         $rows = $result['rows'];
 

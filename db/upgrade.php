@@ -285,5 +285,16 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026092221, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026092222) {
+        // Version 2.3.0: permissions hardening across all reports — the marking
+        // queues now use the configurable teacher roles (fixing custom-role sites);
+        // the result-cache key varies by viewer scope (no cross-viewer bleed);
+        // site-wide stat/KPI cards and non-scopeable reports are hidden from and
+        // blocked for teachers on screen, by URL and in exports; and scheduled
+        // email deliveries reproduce their owner's own scope. Behaviour only; no
+        // schema change.
+        upgrade_plugin_savepoint(true, 2026092222, 'local', 'beacon');
+    }
+
     return true;
 }

@@ -61,6 +61,14 @@ if ($type === 'mine') {
         throw new moodle_exception('itemnotfound', 'local_beacon');
     }
 
+    // A non-admin teacher may only export a report that can be scoped to their own
+    // learners (or the per-learner drill-down). A site-wide report is admin-only,
+    // so it can't be exported by editing the URL.
+    if (!has_capability('local/beacon:viewall', context_system::instance())
+            && !$report->requestscoped && !$report->scopeable_for_teacher()) {
+        throw new moodle_exception('nopermissions', 'error', '', get_string('pluginname', 'local_beacon'));
+    }
+
     // The export honours the same filters the on-screen report was viewed with,
     // carried on the download URL — so what you see is what you download.
     $filters = filterset::from_request($context);

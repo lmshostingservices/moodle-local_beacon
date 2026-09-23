@@ -168,56 +168,6 @@ class catalogue {
     }
 
     /**
-     * A bound WHERE fragment narrowing a marking query (aliases assign a,
-     * submission s) to the submissions the given trainer(s) are responsible for:
-     * an editing teacher on the course, or a non-editing teacher who shares a
-     * group with the learner on that course. OR-ed across the selected trainers.
-     *
-     * @param \moodle_database $DB Database.
-     * @param int[] $trainerids Selected trainer user ids.
-     * @return array{0:string,1:array}
-     */
-    private static function marking_trainer_filter(\moodle_database $DB, array $trainerids): array {
-        [$in1, $p1] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trfa');
-        [$in2, $p2] = $DB->get_in_or_equal($trainerids, SQL_PARAMS_NAMED, 'trfb');
-        // Course- and group-level teacher roles are admin-configurable, so custom
-        // roles are honoured. Guard each branch: an empty bucket contributes 1=0.
-        $courseroles = \local_beacon\local\roles::course_roleids();
-        $grouproles = \local_beacon\local\roles::group_roleids();
-        if ($courseroles) {
-            [$cin, $cp] = $DB->get_in_or_equal($courseroles, SQL_PARAMS_NAMED, 'trfcr');
-            $courseclause = "EXISTS (SELECT 1 FROM {role_assignments} ra
-                      JOIN {context} ctx ON ctx.id = ra.contextid
-                           AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
-                     WHERE ra.userid $in1 AND ra.roleid $cin)";
-        } else {
-            $courseclause = '1 = 0';
-            $cp = [];
-        }
-        if ($grouproles) {
-            [$gin, $gp] = $DB->get_in_or_equal($grouproles, SQL_PARAMS_NAMED, 'trfgr');
-            // Holds a group-level role on the course AND either shares a group with
-            // the learner, or the course has no groups at all (no boundary).
-            $groupclause = "EXISTS (SELECT 1 FROM {role_assignments} ra
-                         JOIN {context} ctx ON ctx.id = ra.contextid
-                              AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
-                        WHERE ra.userid $in2 AND ra.roleid $gin
-                          AND (EXISTS (SELECT 1 FROM {groups_members} gmt
-                                         JOIN {groups} grp ON grp.id = gmt.groupid
-                                              AND grp.courseid = a.course
-                                         JOIN {groups_members} gls ON gls.groupid = grp.id
-                                              AND gls.userid = s.userid
-                                        WHERE gmt.userid = ra.userid)
-                               OR NOT EXISTS (SELECT 1 FROM {groups} g2 WHERE g2.courseid = a.course)))";
-        } else {
-            $groupclause = '1 = 0';
-            $gp = [];
-        }
-        $sql = " AND ($courseclause OR $groupclause)";
-        return [$sql, $p1 + $p2 + $cp + $gp];
-    }
-
-    /**
      * A UNION of durable, non-purgeable activity records as (userid, courseid, ts).
      *
      * Unlike the standard log (retained only for loglifetime), completion,
@@ -860,16 +810,15 @@ class catalogue {
             'columns' => [['learner', 'col_learner', 'text'], ['assignment', 'col_assignment', 'text'],
                           ['submitted', 'col_submitted', 'text'], ['waiting', 'col_waiting', 'text']],
             'run' => function ($DB, $q, $limit) {
+                // Marking scoping now lives entirely in the filter map: the viewer
+                // scope (a teacher sees only what they may mark — group-aware, whole
+                // course when it has no groups) and an admin's selected trainer both
+                // flow through the 'trainer' binding, so they use the correct viewer
+                // even under cron (scheduled delivery) and vary the result cache key.
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'a.course', 'category' => 'a.course',
                     'group' => 's.userid',
+                    'trainer' => ['user' => 's.userid', 'course' => 'a.course'],
                     'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
-                $scope = '';
-                $trainers = $q->selected('trainer');
-                if ($trainers) {
-                    [$trsql, $trparams] = self::marking_trainer_filter($DB, $trainers);
-                    $scope = $trsql;
-                    $fp += $trparams;
-                }
                 $body = "FROM {assign_submission} s
                           JOIN {assign} a ON a.id = s.assignment
                           JOIN {user} u ON u.id = s.userid AND u.deleted = 0
@@ -879,7 +828,7 @@ class catalogue {
                      LEFT JOIN {course_modules} cm ON cm.instance = a.id
                                AND cm.module = md.id AND cm.course = a.course
                          WHERE s.latest = 1 AND s.status = 'submitted'
-                           AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0)$scope $fw";
+                           AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0) $fw";
                 $sql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
                                u.firstname, u.lastname, a.name AS assignment, s.timemodified
                         $body ORDER BY s.timemodified ASC";
@@ -1601,44 +1550,16 @@ class catalogue {
                           ['assignment', 'col_assignment', 'text'], ['submitted', 'col_submitted', 'text'],
                           ['waiting', 'col_waiting', 'text']],
             'run' => function ($DB, $q, $limit) {
-                global $USER;
+                // Marking scoping lives entirely in the filter map (see marking_queue):
+                // the viewer scope — a teacher sees only what they may mark, group-aware
+                // and whole-course when the course has no groups, using the configured
+                // teacher roles — and an admin's selected trainer both flow through the
+                // 'trainer' binding, so the correct viewer is used and the result cache
+                // key varies by it.
                 [$fw, $fp] = $q->where(['course' => 'a.course', 'category' => 'a.course',
                     'group' => 's.userid', 'cohort' => 's.userid',
+                    'trainer' => ['user' => 's.userid', 'course' => 'a.course'],
                     'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
-                // Scope to what the viewer may mark: admins/managers see all; editing
-                // teachers see their whole course; non-editing teachers see only learners
-                // in the groups they belong to. Applied to the small unmarked set only.
-                $scope = '';
-                $params = $fp;
-                if (!has_capability('moodle/site:config', \context_system::instance())) {
-                    $scope = " AND (
-                        EXISTS (SELECT 1 FROM {role_assignments} ra
-                                  JOIN {context} ctx ON ctx.id = ra.contextid
-                                       AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
-                                  JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'editingteacher'
-                                 WHERE ra.userid = :meed)
-                        OR (
-                          EXISTS (SELECT 1 FROM {role_assignments} ra
-                                    JOIN {context} ctx ON ctx.id = ra.contextid
-                                         AND ctx.contextlevel = 50 AND ctx.instanceid = a.course
-                                    JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'teacher'
-                                   WHERE ra.userid = :ment)
-                          AND EXISTS (SELECT 1 FROM {groups_members} gmme
-                                        JOIN {groups} grp ON grp.id = gmme.groupid AND grp.courseid = a.course
-                                        JOIN {groups_members} gml ON gml.groupid = grp.id AND gml.userid = s.userid
-                                       WHERE gmme.userid = :mgrp)
-                        )
-                    )";
-                    $params = ['meed' => $USER->id, 'ment' => $USER->id, 'mgrp' => $USER->id] + $fp;
-                }
-                // Trainer filter (admin only, enforced by the option list): narrow
-                // to the submissions the chosen trainer(s) are responsible for.
-                $trainers = $q->selected('trainer');
-                if ($trainers) {
-                    [$trsql, $trparams] = self::marking_trainer_filter($DB, $trainers);
-                    $scope .= $trsql;
-                    $params += $trparams;
-                }
                 $body = "FROM {assign_submission} s
                           JOIN {assign} a ON a.id = s.assignment
                           JOIN {course} c ON c.id = a.course
@@ -1649,11 +1570,11 @@ class catalogue {
                      LEFT JOIN {course_modules} cm ON cm.instance = a.id
                                AND cm.module = md.id AND cm.course = a.course
                          WHERE s.latest = 1 AND s.status = 'submitted'
-                           AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0)$scope $fw";
+                           AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0) $fw";
                 $sql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
                                u.firstname, u.lastname, c.fullname AS course, a.name AS assignment,
                                s.timemodified $body ORDER BY s.timemodified ASC";
-                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+                $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 $now = time();
                 foreach ($recs as $r) {
@@ -1664,7 +1585,7 @@ class catalogue {
                                cell::text($r->assignment, $alink), cell::when($r->timemodified, $glink),
                                cell::status($wait, 'w')];
                 }
-                return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
+                return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
             },
         ];
 
