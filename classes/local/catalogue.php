@@ -625,7 +625,7 @@ class catalogue {
             'id' => 'course_completion', 'family' => 'progress', 'icon' => 'flag', 'grain' => 'enrolment',
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_completed',
-            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
                           ['status', 'col_status', 'status'], ['completed', 'col_completed', 'text']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'enr.userid', 'group' => 'enr.userid',
@@ -638,13 +638,13 @@ class catalogue {
                           JOIN {course} c ON c.id = enr.courseid
                      LEFT JOIN {course_completions} cc ON cc.userid = enr.userid AND cc.course = enr.courseid
                          WHERE 1 = 1 $fw";
-                $sql = "SELECT " . $DB->sql_concat('enr.userid', "'-'", 'enr.courseid') . " AS bcrowid, enr.userid, enr.courseid, u.firstname, u.lastname, c.fullname AS course,
+                $sql = "SELECT " . $DB->sql_concat('enr.userid', "'-'", 'enr.courseid') . " AS bcrowid, enr.userid, enr.courseid, u.firstname, u.lastname, u.email, c.fullname AS course,
                                cc.timecompleted $body ORDER BY cc.timecompleted DESC, c.fullname";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
                     $done = !empty($r->timecompleted);
-                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->email), cell::text($r->course),
                                $done ? cell::status(get_string('status_complete', 'local_beacon'), 'g')
                                      : cell::status(get_string('status_inprogress', 'local_beacon'), 'w'),
                                cell::when($r->timecompleted)];
@@ -656,7 +656,7 @@ class catalogue {
         $defs[] = [
             'id' => 'activity_completion', 'family' => 'progress', 'icon' => 'check', 'grain' => 'enrolment',
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort'],
-            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
                           ['done', 'col_done', 'number'], ['total', 'col_oftotal', 'number']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'enr.userid', 'group' => 'enr.userid',
@@ -675,12 +675,12 @@ class catalogue {
                                  WHERE completion > 0 AND deletioninprogress = 0
                               GROUP BY course) t ON t.course = enr.courseid
                          WHERE 1 = 1 $fw";
-                $sql = "SELECT " . $DB->sql_concat('enr.userid', "'-'", 'enr.courseid') . " AS bcrowid, enr.userid, enr.courseid, u.firstname, u.lastname, c.fullname AS course,
+                $sql = "SELECT " . $DB->sql_concat('enr.userid', "'-'", 'enr.courseid') . " AS bcrowid, enr.userid, enr.courseid, u.firstname, u.lastname, u.email, c.fullname AS course,
                                COALESCE(d.cnt, 0) AS done, COALESCE(t.cnt, 0) AS total $body ORDER BY c.fullname";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->email), cell::text($r->course),
                                cell::text((string)(int)$r->done), cell::text((string)(int)$r->total)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];

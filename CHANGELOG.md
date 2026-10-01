@@ -2,6 +2,23 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.3.2] - 2026-10-01
+- **Fixed:** saving a report view while a multi-select filter (course, group,
+  cohort, category, trainer, role, etc.) was active raised
+  *"Coding error detected... Url parameters values can not be arrays!"* when the
+  saved-views list was rebuilt. The stored filter parameters decode to a nested
+  array, which `moodle_url` rejects; the apply link now re-flattens them through
+  `filterset` to valid bracket-keyed scalar parameters. Existing saved views are
+  unaffected and work immediately after upgrade.
+- No database or schema changes; no capability changes.
+
+## [v2.3.1] - 2026-10-01
+- **Email column added to the completion reports.** Both the **Course
+  completion** and **Activity completion** reports now show each learner's
+  email address in a column immediately after the learner name. The column is
+  included in the on-screen table and in the CSV and PDF exports.
+- No database or schema changes; no capability changes.
+
 ## [v2.3.0] - 2026-09-22
 - **Permissions hardened consistently across every report** (extending the
   Funding-participation model site-wide):

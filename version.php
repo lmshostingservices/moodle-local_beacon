@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026092222;      // YYYYMMDDXX — 22 Sep 2026, sequence 22. Matches upgrade savepoint 2026092222.
+$plugin->version   = 2026100101;      // YYYYMMDDXX — 1 Oct 2026, sequence 01.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.3.0';         // Permissions hardening across all reports (marking queues, cache key, stats, exports, deliveries).
-$plugin->release_prev = '2.2.0';      // Previous release.
+$plugin->release   = '2.3.2';         // Fix: saving a report view with a multi-select filter no longer throws a URL-params error.
+$plugin->release_prev = '2.3.1';      // Previous release.

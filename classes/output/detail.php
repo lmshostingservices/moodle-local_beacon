@@ -601,12 +601,19 @@ class detail implements renderable, templatable {
         }
 
         // Saved views for this user + report.
+        // The stored params decode (via parse_str) to a NESTED array — e.g. a
+        // multi-select course filter becomes ['f_course' => [5, 7]]. Passing
+        // that straight to moodle_url throws "Url parameters values can not be
+        // arrays!", so round-trip it through filterset to re-flatten back to
+        // scalar, bracket-keyed params (f_course[0]=5, f_course[1]=7) that
+        // moodle_url accepts.
         $views = [];
         foreach (savedview::for_user((int) $USER->id, $rep->id) as $v) {
+            $viewparams = filterset::from_params($this->context, savedview::params($v))->url_params();
             $views[] = [
                 'id'       => $v->id,
                 'name'     => $v->name,
-                'applyurl' => (new \moodle_url($reporturl, savedview::params($v)))->out(false),
+                'applyurl' => (new \moodle_url($reporturl, $viewparams))->out(false),
             ];
         }
 
