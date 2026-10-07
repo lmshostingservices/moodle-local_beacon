@@ -2,6 +2,13 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.3.3] - 2026-10-07
+- **Email column added to the Course progress report.** Each learner's email
+  address now appears immediately after their name, so you can filter the report
+  (e.g. by progress band to those who haven't completed) and contact them
+  directly. The column is included in the on-screen table and the CSV/PDF exports.
+- No database or schema changes; no capability changes.
+
 ## [v2.3.2] - 2026-10-01
 - **Fixed:** saving a report view while a multi-select filter (course, group,
   cohort, category, trainer, role, etc.) was active raised

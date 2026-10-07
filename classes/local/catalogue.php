@@ -1115,7 +1115,7 @@ class catalogue {
         $defs[] = [
             'id' => 'course_progress', 'family' => 'progress', 'icon' => 'play', 'grain' => 'enrolment',
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'progressband'],
-            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
                           ['progress', 'col_progress', 'number']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'enr.userid', 'group' => 'enr.userid',
@@ -1135,7 +1135,7 @@ class catalogue {
                                  WHERE completion > 0 AND deletioninprogress = 0
                               GROUP BY course) t ON t.course = enr.courseid
                          WHERE 1 = 1 $fw";
-                $sql = "SELECT " . $DB->sql_concat('enr.userid', "'-'", 'enr.courseid') . " AS bcrowid, enr.userid, enr.courseid, u.firstname, u.lastname, c.fullname AS course,
+                $sql = "SELECT " . $DB->sql_concat('enr.userid', "'-'", 'enr.courseid') . " AS bcrowid, enr.userid, enr.courseid, u.firstname, u.lastname, u.email, c.fullname AS course,
                                COALESCE(d.cnt, 0) AS done, COALESCE(t.cnt, 0) AS total $body ORDER BY c.fullname";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
@@ -1143,10 +1143,10 @@ class catalogue {
                     $total = (int) $r->total;
                     $pct = $total ? round(100 * (int)$r->done / $total) : 0;
                     $badge = $pct >= 100 ? 'g' : ($pct > 0 ? 'w' : 'b');
-                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->email), cell::text($r->course),
                                cell::number($pct, $pct . '%')];
-                    $rows[count($rows) - 1][2]['badge'] = $badge;
-                    $rows[count($rows) - 1][2]['isstatus'] = true;
+                    $rows[count($rows) - 1][3]['badge'] = $badge;
+                    $rows[count($rows) - 1][3]['isstatus'] = true;
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
             },
