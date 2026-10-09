@@ -993,7 +993,9 @@ class catalogue {
                           ['last', 'col_lastaccess', 'date'], ['idle', 'col_idle', 'number']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'idle' => 'u.lastaccess']);
-                $params = ['cut' => time() - 30 * DAYSECS] + $fp;
+                // Baseline "inactive" threshold is 14 days, so the 14+ day idle
+                // filter is meaningful; the idle filter narrows further (30/60/90).
+                $params = ['cut' => time() - 14 * DAYSECS] + $fp;
                 $where = "u.deleted = 0 AND u.suspended = 0 AND u.id > 2
                            AND u.lastaccess > 0 AND u.lastaccess < :cut $fw";
                 $sql = "SELECT u.id, u.firstname, u.lastname, u.email, u.lastaccess

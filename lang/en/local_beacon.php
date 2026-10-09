@@ -40,6 +40,7 @@ $string['band_contextlevel_70'] = 'Activity';
 $string['band_gradeband_high'] = '80% and above';
 $string['band_gradeband_low'] = 'Below 50%';
 $string['band_gradeband_mid'] = '50–79%';
+$string['band_idle_14'] = '14+ days';
 $string['band_idle_30'] = '30+ days';
 $string['band_idle_60'] = '60+ days';
 $string['band_idle_90'] = '90+ days';

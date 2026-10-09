@@ -2,6 +2,13 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.3.4] - 2026-10-09
+- **Inactive learners report: added a "14+ days" idle filter.** The *Idle for*
+  filter now offers 14+, 30+, 60+ and 90+ days. The report's baseline threshold
+  was lowered from 30 to 14 days so the new filter returns learners idle for two
+  weeks or more; the filter narrows further to 30/60/90 as before.
+- No database or schema changes; no capability changes.
+
 ## [v2.3.3] - 2026-10-07
 - **Email column added to the Course progress report.** Each learner's email
   address now appears immediately after their name, so you can filter the report

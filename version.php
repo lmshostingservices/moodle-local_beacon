@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026100700;      // YYYYMMDDXX — 7 Oct 2026, sequence 00.
+$plugin->version   = 2026100900;      // YYYYMMDDXX — 9 Oct 2026, sequence 00.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.3.3';         // Email column added to the Course progress report.
-$plugin->release_prev = '2.3.2';      // Previous release.
+$plugin->release   = '2.3.4';         // Inactive learners: added a 14+ days idle filter (baseline threshold lowered to 14 days).
+$plugin->release_prev = '2.3.3';      // Previous release.

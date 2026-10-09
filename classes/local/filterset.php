@@ -72,7 +72,7 @@ class filterset {
 
     /** The band tokens each band type accepts, so nothing else can be injected. */
     private const BANDS = [
-        'idle'         => ['30', '60', '90'],
+        'idle'         => ['14', '30', '60', '90'],
         'certstatus'   => ['current', 'expiring', 'lapsed'],
         'policystatus' => ['accepted', 'declined'],
         'proficiency'  => ['proficient', 'notyet'],
