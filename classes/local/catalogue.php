@@ -807,7 +807,8 @@ class catalogue {
             'requirestable' => 'assign_submission',
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_submitted',
-            'columns' => [['learner', 'col_learner', 'text'], ['assignment', 'col_assignment', 'text'],
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
+                          ['assignment', 'col_assignment', 'text'],
                           ['submitted', 'col_submitted', 'text'], ['waiting', 'col_waiting', 'text']],
             'run' => function ($DB, $q, $limit) {
                 // Marking scoping now lives entirely in the filter map: the viewer
@@ -821,6 +822,7 @@ class catalogue {
                     'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
                 $body = "FROM {assign_submission} s
                           JOIN {assign} a ON a.id = s.assignment
+                          JOIN {course} c ON c.id = a.course
                           JOIN {user} u ON u.id = s.userid AND u.deleted = 0
                      LEFT JOIN {assign_grades} g ON g.assignment = s.assignment
                                AND g.userid = s.userid AND g.attemptnumber = s.attemptnumber
@@ -830,7 +832,7 @@ class catalogue {
                          WHERE s.latest = 1 AND s.status = 'submitted'
                            AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0) $fw";
                 $sql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
-                               u.firstname, u.lastname, a.name AS assignment, s.timemodified
+                               u.firstname, u.lastname, u.email, c.fullname AS course, a.name AS assignment, s.timemodified
                         $body ORDER BY s.timemodified ASC";
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
@@ -838,8 +840,10 @@ class catalogue {
                 foreach ($recs as $r) {
                     $wait = $r->timemodified ? floor(($now - $r->timemodified) / DAYSECS) . ' ' .
                             get_string('days', 'local_beacon') : '—';
-                    [$plink, , $alink, $glink] = self::marking_links($r);
-                    $rows[] = [cell::text(self::fullname_of($r), $plink), cell::text($r->assignment, $alink),
+                    [$plink, $clink, $alink, $glink] = self::marking_links($r);
+                    $rows[] = [cell::text(self::fullname_of($r), $plink), cell::text($r->email),
+                               cell::text($r->course, $clink),
+                               cell::text($r->assignment, $alink),
                                cell::when($r->timemodified, $glink), cell::status($wait, 'w')];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
@@ -1548,7 +1552,7 @@ class catalogue {
             'scopedfilters' => true,
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_submitted',
-            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
                           ['assignment', 'col_assignment', 'text'], ['submitted', 'col_submitted', 'text'],
                           ['waiting', 'col_waiting', 'text']],
             'run' => function ($DB, $q, $limit) {
@@ -1574,7 +1578,7 @@ class catalogue {
                          WHERE s.latest = 1 AND s.status = 'submitted'
                            AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0) $fw";
                 $sql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
-                               u.firstname, u.lastname, c.fullname AS course, a.name AS assignment,
+                               u.firstname, u.lastname, u.email, c.fullname AS course, a.name AS assignment,
                                s.timemodified $body ORDER BY s.timemodified ASC";
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
@@ -1583,7 +1587,8 @@ class catalogue {
                     $wait = $r->timemodified ? floor(($now - $r->timemodified) / DAYSECS) . ' ' .
                             get_string('days', 'local_beacon') : '—';
                     [$plink, $clink, $alink, $glink] = self::marking_links($r);
-                    $rows[] = [cell::text(self::fullname_of($r), $plink), cell::text($r->course, $clink),
+                    $rows[] = [cell::text(self::fullname_of($r), $plink), cell::text($r->email),
+                               cell::text($r->course, $clink),
                                cell::text($r->assignment, $alink), cell::when($r->timemodified, $glink),
                                cell::status($wait, 'w')];
                 }

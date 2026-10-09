@@ -2,6 +2,19 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.3.6] - 2026-10-09
+- **Marking queue: added a Course column.** The staff *Marking queue* now shows
+  the course (unit) each submission belongs to, immediately after the email —
+  matching the per-trainer *My marking queue*. The course name deep-links to the
+  course and is included in the CSV/PDF exports.
+
+## [v2.3.5] - 2026-10-09
+- **Email column added to the Marking queue reports.** Both the staff *Marking
+  queue* and the per-trainer *My marking queue* now show each learner's email
+  address immediately after their name, so submissions from students who share a
+  name can be told apart. Included in the on-screen table and the CSV/PDF exports.
+- No database or schema changes; no capability changes.
+
 ## [v2.3.4] - 2026-10-09
 - **Inactive learners report: added a "14+ days" idle filter.** The *Idle for*
   filter now offers 14+, 30+, 60+ and 90+ days. The report's baseline threshold
