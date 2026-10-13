@@ -1172,14 +1172,15 @@ class catalogue {
             'run' => function ($DB, $q, $limit) {
                 // Flags learners with 2+ sessions marked Absent in a course (mod_attendance).
                 // "Absent"/"Present" are matched by the standard status acronym (A / P) or a
-                // description containing the word, so custom status sets still work.
+                // description containing the word, so custom status sets still work. The
+                // LIKE patterns are fixed literals (not user input), kept inline to avoid
+                // repeated bound params and collation quirks across databases.
                 [$fw, $fp] = $q->where(['cohort' => 'l.studentid', 'group' => 'l.studentid',
                     'course' => 'a.course', 'category' => 'a.course',
                     'trainer' => ['user' => 'l.studentid', 'course' => 'a.course'],
                     'daterange' => ['col' => 's.sessdate', 'label' => 'col_session']]);
-                $absent = "(UPPER(st.acronym) = 'A' OR " . $DB->sql_like('LOWER(st.description)', ':absw') . ")";
-                $present = "(UPPER(st.acronym) = 'P' OR " . $DB->sql_like('LOWER(st.description)', ':presw') . ")";
-                $params = ['absw' => '%absent%', 'presw' => '%present%'] + $fp;
+                $absent = "(UPPER(st.acronym) = 'A' OR LOWER(st.description) LIKE '%absent%')";
+                $present = "(UPPER(st.acronym) = 'P' OR LOWER(st.description) LIKE '%present%')";
                 $body = "FROM {attendance_log} l
                           JOIN {attendance_sessions} s ON s.id = l.sessionid
                           JOIN {attendance} a ON a.id = s.attendanceid
@@ -1188,8 +1189,8 @@ class catalogue {
                           JOIN {user} u ON u.id = l.studentid AND u.deleted = 0
                          WHERE 1 = 1 $fw";
                 $abssum = "SUM(CASE WHEN $absent THEN 1 ELSE 0 END)";
-                $sql = "SELECT " . $DB->sql_concat('l.studentid', "'-'", 'a.course') . " AS bcrowid,
-                               l.studentid AS userid, a.course AS courseid, c.fullname AS class,
+                $sql = "SELECT MIN(l.id) AS id,
+                               l.studentid AS userid, a.course AS courseid, c.fullname AS classname,
                                u.firstname, u.lastname, u.idnumber, u.email,
                                $abssum AS absences,
                                MAX(CASE WHEN $present THEN s.sessdate ELSE NULL END) AS lastattended
@@ -1197,7 +1198,7 @@ class catalogue {
                      GROUP BY l.studentid, a.course, c.fullname, u.firstname, u.lastname, u.idnumber, u.email
                        HAVING $abssum >= 2
                      ORDER BY absences DESC, u.lastname, u.firstname";
-                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+                $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
                     $profile = (new \moodle_url('/user/view.php',
@@ -1205,12 +1206,12 @@ class catalogue {
                     $courseurl = (new \moodle_url('/course/view.php', ['id' => (int) $r->courseid]))->out(false);
                     $sid = ($r->idnumber !== null && $r->idnumber !== '') ? $r->idnumber : '—';
                     $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($sid),
-                               cell::text($r->email), cell::text($r->class, $courseurl),
+                               cell::text($r->email), cell::text($r->classname, $courseurl),
                                cell::number((int) $r->absences), cell::when((int) $r->lastattended)];
                 }
                 $countsql = "SELECT COUNT(*) FROM (SELECT l.studentid $body
                              GROUP BY l.studentid, a.course HAVING $abssum >= 2) bc";
-                return [$rows, $DB->count_records_sql($countsql, $params)];
+                return [$rows, $DB->count_records_sql($countsql, $fp)];
             },
         ];
 

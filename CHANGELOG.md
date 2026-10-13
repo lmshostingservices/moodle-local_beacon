@@ -2,6 +2,13 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.5.4] - 2026-10-13
+- **Fixed: Student absence alert reported "That report did not finish".** The
+  query used a concatenated expression as the first column of a grouped query,
+  which MySQL 8 rejects under ONLY_FULL_GROUP_BY (error 1055). It now uses a plain
+  aggregate key, and the Absent/Present match uses inline literals instead of a
+  bound LIKE, removing cross-database collation quirks. No data or schema changes.
+
 ## [v2.5.3] - 2026-10-13
 - **Fixed: teachers were being shown the learner view instead of the reports
   library.** `local/beacon:view` is a system-level capability, but a teacher's
