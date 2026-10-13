@@ -2,6 +2,12 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.5.5] - 2026-10-13
+- **Student absence alert: "Weeks missed" renamed to "Sessions missed".** The
+  column counts attendance sessions marked Absent, and attendance sessions are
+  not necessarily weekly, so the label now reflects what the figure actually is
+  (and matches the report's description).
+
 ## [v2.5.4] - 2026-10-13
 - **Fixed: Student absence alert reported "That report did not finish".** The
   query used a concatenated expression as the first column of a grouped query,

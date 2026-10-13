@@ -1168,7 +1168,7 @@ class catalogue {
             'datelabel' => 'col_session',
             'columns' => [['learner', 'col_learner', 'text'], ['studentid', 'col_studentid', 'text'],
                           ['email', 'col_email', 'text'], ['class', 'col_class', 'text'],
-                          ['absences', 'col_weeksmissed', 'number'], ['lastattended', 'col_lastattended', 'date']],
+                          ['absences', 'col_sessionsmissed', 'number'], ['lastattended', 'col_lastattended', 'date']],
             'run' => function ($DB, $q, $limit) {
                 // Flags learners with 2+ sessions marked Absent in a course (mod_attendance).
                 // "Absent"/"Present" are matched by the standard status acronym (A / P) or a

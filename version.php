@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026101305;      // YYYYMMDDXX — 13 Oct 2026, sequence 05.
+$plugin->version   = 2026101306;      // YYYYMMDDXX — 13 Oct 2026, sequence 06.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.5.4';         // Fix: Student absence alert query failing on MySQL (GROUP BY concat); hardened for cross-DB.
-$plugin->release_prev = '2.5.3';      // Previous release.
+$plugin->release   = '2.5.5';         // Student absence alert: renamed 'Weeks missed' to 'Sessions missed' (counts attendance sessions).
+$plugin->release_prev = '2.5.4';      // Previous release.
