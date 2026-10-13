@@ -38,7 +38,11 @@ require_login();
 if ($context instanceof context_course) {
     require_login($context->instanceid);
 }
-require_capability('local/beacon:view', $context);
+// Staff path (manager, or a teacher in any course). A saved view only stores the
+// owner's own filter choices.
+if (!\local_beacon\local\access::is_staff($context)) {
+    require_capability('local/beacon:view', $context);
+}
 require_sesskey();
 
 $report = catalogue::report($reportid);

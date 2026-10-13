@@ -75,30 +75,109 @@ class catalogue {
         return fullname($user);
     }
 
+
     /**
-     * Deep links into Moodle for a marking-queue row. Returns four target URLs
-     * (as strings, or null where the row lacks the ids to build one):
-     *   [learner profile, course, assignment, grade-this-submission].
-     * The learner name, course and assignment open the relevant Moodle page; the
-     * submission date opens the grading screen for that learner, so a trainer can
-     * click straight through to mark it.
+     * The marking queue, shared by the admin and per-trainer reports. Combines
+     * assignment submissions awaiting grading with quiz attempts that have a
+     * question needing manual grading (e.g. essay questions). Each row:
+     * learner · email · course · assessment · submitted · waiting.
      *
-     * @param object $r Row with userid, courseid and (optionally) cmid.
-     * @return array{0:?string,1:?string,2:?string,3:?string}
+     * @param \moodle_database $DB Database.
+     * @param filterset $q Active filter set (carries viewer scoping).
+     * @param int $limit Row cap.
+     * @return array{0:array,1:int} [rows, total]
      */
-    private static function marking_links($r): array {
-        $userid = (int) ($r->userid ?? 0);
-        $courseid = (int) ($r->courseid ?? 0);
-        $cmid = (int) ($r->cmid ?? 0);
-        $profile = ($userid && $courseid)
-            ? (new \moodle_url('/user/view.php', ['id' => $userid, 'course' => $courseid]))->out(false)
-            : ($userid ? (new \moodle_url('/user/profile.php', ['id' => $userid]))->out(false) : null);
-        $course = $courseid ? (new \moodle_url('/course/view.php', ['id' => $courseid]))->out(false) : null;
-        $assign = $cmid ? (new \moodle_url('/mod/assign/view.php', ['id' => $cmid]))->out(false) : null;
-        $grade = ($cmid && $userid)
-            ? (new \moodle_url('/mod/assign/view.php', ['id' => $cmid, 'action' => 'grader', 'userid' => $userid]))->out(false)
-            : null;
-        return [$profile, $course, $assign, $grade];
+    private static function marking_queue_rows(\moodle_database $DB, filterset $q, int $limit): array {
+        // Assignments submitted but not yet graded.
+        [$afw, $afp] = $q->where(['cohort' => 'u.id', 'course' => 'a.course', 'category' => 'a.course',
+            'group' => 's.userid',
+            'trainer' => ['user' => 's.userid', 'course' => 'a.course'],
+            'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
+        $abody = "FROM {assign_submission} s
+                   JOIN {assign} a ON a.id = s.assignment
+                   JOIN {course} c ON c.id = a.course AND c.id <> 1
+                   JOIN {user} u ON u.id = s.userid AND u.deleted = 0
+              LEFT JOIN {assign_grades} g ON g.assignment = s.assignment
+                        AND g.userid = s.userid AND g.attemptnumber = s.attemptnumber
+              LEFT JOIN {modules} md ON md.name = 'assign'
+              LEFT JOIN {course_modules} cm ON cm.instance = a.id
+                        AND cm.module = md.id AND cm.course = a.course
+                  WHERE s.latest = 1 AND s.status = 'submitted'
+                    AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0) $afw";
+        $asql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
+                        u.firstname, u.lastname, u.email, c.fullname AS course,
+                        a.name AS assessment, s.timemodified AS submitted, 'assign' AS atype
+                 $abody ORDER BY s.timemodified ASC";
+        $arecs = $DB->get_records_sql($asql, $afp, 0, $limit);
+        $acount = $DB->count_records_sql("SELECT COUNT(*) $abody", $afp);
+
+        // Quiz attempts with a question currently needing manual grading. A quiz
+        // table may be absent on minimal sites, so guard before touching it.
+        $qrecs = [];
+        $qcount = 0;
+        if ($DB->get_manager()->table_exists('quiz_attempts')) {
+            [$qfw, $qfp] = $q->where(['cohort' => 'u.id', 'course' => 'qz.course', 'category' => 'qz.course',
+                'group' => 'qa.userid',
+                'trainer' => ['user' => 'qa.userid', 'course' => 'qz.course'],
+                'daterange' => ['col' => 'qa.timefinish', 'label' => 'col_submitted']]);
+            $qbody = "FROM {quiz_attempts} qa
+                       JOIN {quiz} qz ON qz.id = qa.quiz
+                       JOIN {course} c ON c.id = qz.course AND c.id <> 1
+                       JOIN {user} u ON u.id = qa.userid AND u.deleted = 0
+                  LEFT JOIN {modules} mdq ON mdq.name = 'quiz'
+                  LEFT JOIN {course_modules} cmq ON cmq.instance = qz.id
+                            AND cmq.module = mdq.id AND cmq.course = qz.course
+                      WHERE qa.state = 'finished' AND qa.preview = 0
+                        AND EXISTS (SELECT 1 FROM {question_attempts} qna
+                                     JOIN {question_attempt_steps} qas ON qas.questionattemptid = qna.id
+                                    WHERE qna.questionusageid = qa.uniqueid
+                                      AND qas.state = 'needsgrading'
+                                      AND qas.sequencenumber = (SELECT MAX(qas2.sequencenumber)
+                                                                  FROM {question_attempt_steps} qas2
+                                                                 WHERE qas2.questionattemptid = qna.id))
+                        $qfw";
+            $qsql = "SELECT qa.id, qa.userid, qz.course AS courseid, cmq.id AS cmid,
+                            u.firstname, u.lastname, u.email, c.fullname AS course,
+                            qz.name AS assessment, qa.timefinish AS submitted, 'quiz' AS atype
+                     $qbody ORDER BY qa.timefinish ASC";
+            $qrecs = $DB->get_records_sql($qsql, $qfp, 0, $limit);
+            $qcount = $DB->count_records_sql("SELECT COUNT(*) $qbody", $qfp);
+        }
+
+        // Merge, oldest first, cap to the row limit.
+        $all = array_merge(array_values($arecs), array_values($qrecs));
+        usort($all, function ($x, $y) {
+            return ((int) $x->submitted) <=> ((int) $y->submitted);
+        });
+        $all = array_slice($all, 0, $limit);
+
+        $rows = [];
+        $now = time();
+        foreach ($all as $r) {
+            $userid = (int) $r->userid;
+            $courseid = (int) $r->courseid;
+            $cmid = (int) ($r->cmid ?? 0);
+            $profile = ($userid && $courseid)
+                ? (new \moodle_url('/user/view.php', ['id' => $userid, 'course' => $courseid]))->out(false) : null;
+            $courseurl = $courseid ? (new \moodle_url('/course/view.php', ['id' => $courseid]))->out(false) : null;
+            if ($r->atype === 'quiz') {
+                $alink = $cmid ? (new \moodle_url('/mod/quiz/view.php', ['id' => $cmid]))->out(false) : null;
+                $glink = $cmid
+                    ? (new \moodle_url('/mod/quiz/report.php', ['id' => $cmid, 'mode' => 'grading']))->out(false)
+                    : null;
+            } else {
+                $alink = $cmid ? (new \moodle_url('/mod/assign/view.php', ['id' => $cmid]))->out(false) : null;
+                $glink = ($cmid && $userid)
+                    ? (new \moodle_url('/mod/assign/view.php',
+                        ['id' => $cmid, 'action' => 'grader', 'userid' => $userid]))->out(false) : null;
+            }
+            $wait = $r->submitted ? floor(($now - $r->submitted) / DAYSECS) . ' ' .
+                    get_string('days', 'local_beacon') : '—';
+            $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($r->email),
+                       cell::text($r->course, $courseurl), cell::text(format_string($r->assessment), $alink),
+                       cell::when((int) $r->submitted, $glink), cell::status($wait, 'w')];
+        }
+        return [$rows, $acount + $qcount];
     }
 
     /**
@@ -770,6 +849,101 @@ class catalogue {
         ];
 
         $defs[] = [
+            'id' => 'grade_changes', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'change',
+            'requirestable' => 'grade_grades_history',
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
+            'datelabel' => 'col_changed',
+            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+                          ['item', 'col_assessment', 'text'], ['prev', 'col_prevresult', 'text'],
+                          ['new', 'col_newresult', 'text'], ['changed', 'col_changed', 'date']],
+            'run' => function ($DB, $q, $limit) {
+                // Each row is a grade change: the current history entry (gh) compared
+                // against the immediately preceding history entry for the same item +
+                // learner (ph, found by MAX(id) < gh.id — portable, no window funcs).
+                // "blank → C" is a first entry (ph is NULL) or a prior NULL grade.
+                [$fw, $fp] = $q->where(['cohort' => 'gh.userid', 'group' => 'gh.userid',
+                    'course' => 'gi.courseid', 'category' => 'gi.courseid',
+                    'trainer' => ['user' => 'gh.userid', 'course' => 'gi.courseid'],
+                    'daterange' => ['col' => 'gh.timemodified', 'label' => 'col_changed']]);
+                $params = $fp;
+                // Default to the last 7 days (a weekly report) when no range is chosen.
+                $window = '';
+                if ($q->daterange() === null) {
+                    $window = ' AND gh.timemodified >= :gcfrom';
+                    $params['gcfrom'] = time() - 7 * DAYSECS;
+                }
+                $body = "FROM {grade_grades_history} gh
+                          JOIN {grade_items} gi ON gi.id = gh.itemid AND gi.gradetype IN (1, 2)
+                          JOIN {course} c ON c.id = gi.courseid AND c.id <> 1
+                          JOIN {user} u ON u.id = gh.userid AND u.deleted = 0
+                     LEFT JOIN {grade_grades_history} ph ON ph.id = (
+                                 SELECT MAX(ph2.id) FROM {grade_grades_history} ph2
+                                  WHERE ph2.itemid = gh.itemid AND ph2.userid = gh.userid
+                                    AND ph2.id < gh.id)
+                         WHERE gh.action <> 3 $window
+                           AND (
+                                 (ph.id IS NULL AND gh.finalgrade IS NOT NULL)
+                              OR (ph.finalgrade IS NULL AND gh.finalgrade IS NOT NULL)
+                              OR (ph.finalgrade IS NOT NULL AND gh.finalgrade IS NULL)
+                              OR (ph.finalgrade <> gh.finalgrade)
+                               ) $fw";
+                $sql = "SELECT gh.id, gh.userid, gi.courseid, gi.itemname, gi.itemtype,
+                               gi.gradetype, gi.scaleid, u.firstname, u.lastname, c.fullname AS course,
+                               ph.finalgrade AS prevgrade, gh.finalgrade AS newgrade, gh.timemodified AS changed
+                        $body ORDER BY gh.timemodified DESC, c.fullname";
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+
+                // Load the scales referenced by these rows, to show words (e.g. C / NYC).
+                $scaleids = [];
+                foreach ($recs as $r) {
+                    if ((int) $r->gradetype === 2 && !empty($r->scaleid)) {
+                        $scaleids[(int) $r->scaleid] = true;
+                    }
+                }
+                $scales = [];
+                if ($scaleids) {
+                    foreach ($DB->get_records_list('scale', 'id', array_keys($scaleids)) as $sc) {
+                        $scales[(int) $sc->id] = array_map('trim', explode(',', $sc->scale));
+                    }
+                }
+                $fmt = function ($fg, $r) use ($scales) {
+                    if ($fg === null) {
+                        return '—';
+                    }
+                    $fg = (float) $fg;
+                    if ((int) $r->gradetype === 2 && !empty($r->scaleid) && isset($scales[(int) $r->scaleid])) {
+                        $items = $scales[(int) $r->scaleid];
+                        $idx = (int) round($fg);
+                        if ($idx < 1) {
+                            return '—';
+                        }
+                        return $items[$idx - 1] ?? ('#' . $idx);
+                    }
+                    $s = rtrim(rtrim(number_format($fg, 2, '.', ''), '0'), '.');
+                    return $s === '' || $s === '-' ? '0' : $s;
+                };
+
+                $rows = [];
+                foreach ($recs as $r) {
+                    $profile = (new \moodle_url('/user/view.php',
+                        ['id' => (int) $r->userid, 'course' => (int) $r->courseid]))->out(false);
+                    $courseurl = (new \moodle_url('/course/view.php', ['id' => (int) $r->courseid]))->out(false);
+                    if ($r->itemtype === 'course') {
+                        $item = get_string('col_coursetotal', 'local_beacon');
+                    } else if ($r->itemname !== null && $r->itemname !== '') {
+                        $item = format_string($r->itemname);
+                    } else {
+                        $item = get_string('col_gradeitem', 'local_beacon');
+                    }
+                    $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($r->course, $courseurl),
+                               cell::text($item), cell::text($fmt($r->prevgrade, $r)),
+                               cell::status($fmt($r->newgrade, $r), 'g'), cell::when((int) $r->changed)];
+                }
+                return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
+            },
+        ];
+
+        $defs[] = [
             'id' => 'quiz_performance', 'family' => 'assessment', 'icon' => 'star', 'grain' => 'learner',
             'requirestable' => 'quiz_attempts',
             'filters' => ['category', 'course', 'trainer', 'cohort'],
@@ -808,45 +982,14 @@ class catalogue {
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_submitted',
             'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
-                          ['assignment', 'col_assignment', 'text'],
+                          ['assessment', 'col_assessment', 'text'],
                           ['submitted', 'col_submitted', 'text'], ['waiting', 'col_waiting', 'text']],
             'run' => function ($DB, $q, $limit) {
-                // Marking scoping now lives entirely in the filter map: the viewer
-                // scope (a teacher sees only what they may mark — group-aware, whole
-                // course when it has no groups) and an admin's selected trainer both
-                // flow through the 'trainer' binding, so they use the correct viewer
-                // even under cron (scheduled delivery) and vary the result cache key.
-                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'a.course', 'category' => 'a.course',
-                    'group' => 's.userid',
-                    'trainer' => ['user' => 's.userid', 'course' => 'a.course'],
-                    'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
-                $body = "FROM {assign_submission} s
-                          JOIN {assign} a ON a.id = s.assignment
-                          JOIN {course} c ON c.id = a.course
-                          JOIN {user} u ON u.id = s.userid AND u.deleted = 0
-                     LEFT JOIN {assign_grades} g ON g.assignment = s.assignment
-                               AND g.userid = s.userid AND g.attemptnumber = s.attemptnumber
-                     LEFT JOIN {modules} md ON md.name = 'assign'
-                     LEFT JOIN {course_modules} cm ON cm.instance = a.id
-                               AND cm.module = md.id AND cm.course = a.course
-                         WHERE s.latest = 1 AND s.status = 'submitted'
-                           AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0) $fw";
-                $sql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
-                               u.firstname, u.lastname, u.email, c.fullname AS course, a.name AS assignment, s.timemodified
-                        $body ORDER BY s.timemodified ASC";
-                $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
-                $rows = [];
-                $now = time();
-                foreach ($recs as $r) {
-                    $wait = $r->timemodified ? floor(($now - $r->timemodified) / DAYSECS) . ' ' .
-                            get_string('days', 'local_beacon') : '—';
-                    [$plink, $clink, $alink, $glink] = self::marking_links($r);
-                    $rows[] = [cell::text(self::fullname_of($r), $plink), cell::text($r->email),
-                               cell::text($r->course, $clink),
-                               cell::text($r->assignment, $alink),
-                               cell::when($r->timemodified, $glink), cell::status($wait, 'w')];
-                }
-                return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
+                // Ungraded assignment submissions + quiz attempts needing manual
+                // grading. Viewer scoping (a teacher sees only what they may mark)
+                // and an admin's selected trainer flow through the shared helper's
+                // 'trainer' binding, so the correct viewer is used even under cron.
+                return self::marking_queue_rows($DB, $q, $limit);
             },
         ];
 
@@ -1015,6 +1158,59 @@ class catalogue {
                                cell::number($days, $days . ' ' . get_string('days', 'local_beacon'))];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) FROM {user} u WHERE $where", $params)];
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'absence_alert', 'family' => 'engagement', 'icon' => 'moon', 'grain' => 'enrolment',
+            'requirestable' => 'attendance_log',
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
+            'datelabel' => 'col_session',
+            'columns' => [['learner', 'col_learner', 'text'], ['studentid', 'col_studentid', 'text'],
+                          ['email', 'col_email', 'text'], ['class', 'col_class', 'text'],
+                          ['absences', 'col_weeksmissed', 'number'], ['lastattended', 'col_lastattended', 'date']],
+            'run' => function ($DB, $q, $limit) {
+                // Flags learners with 2+ sessions marked Absent in a course (mod_attendance).
+                // "Absent"/"Present" are matched by the standard status acronym (A / P) or a
+                // description containing the word, so custom status sets still work.
+                [$fw, $fp] = $q->where(['cohort' => 'l.studentid', 'group' => 'l.studentid',
+                    'course' => 'a.course', 'category' => 'a.course',
+                    'trainer' => ['user' => 'l.studentid', 'course' => 'a.course'],
+                    'daterange' => ['col' => 's.sessdate', 'label' => 'col_session']]);
+                $absent = "(UPPER(st.acronym) = 'A' OR " . $DB->sql_like('LOWER(st.description)', ':absw') . ")";
+                $present = "(UPPER(st.acronym) = 'P' OR " . $DB->sql_like('LOWER(st.description)', ':presw') . ")";
+                $params = ['absw' => '%absent%', 'presw' => '%present%'] + $fp;
+                $body = "FROM {attendance_log} l
+                          JOIN {attendance_sessions} s ON s.id = l.sessionid
+                          JOIN {attendance} a ON a.id = s.attendanceid
+                          JOIN {course} c ON c.id = a.course AND c.id <> 1
+                          JOIN {attendance_statuses} st ON st.id = l.statusid AND st.deleted = 0
+                          JOIN {user} u ON u.id = l.studentid AND u.deleted = 0
+                         WHERE 1 = 1 $fw";
+                $abssum = "SUM(CASE WHEN $absent THEN 1 ELSE 0 END)";
+                $sql = "SELECT " . $DB->sql_concat('l.studentid', "'-'", 'a.course') . " AS bcrowid,
+                               l.studentid AS userid, a.course AS courseid, c.fullname AS class,
+                               u.firstname, u.lastname, u.idnumber, u.email,
+                               $abssum AS absences,
+                               MAX(CASE WHEN $present THEN s.sessdate ELSE NULL END) AS lastattended
+                        $body
+                     GROUP BY l.studentid, a.course, c.fullname, u.firstname, u.lastname, u.idnumber, u.email
+                       HAVING $abssum >= 2
+                     ORDER BY absences DESC, u.lastname, u.firstname";
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+                $rows = [];
+                foreach ($recs as $r) {
+                    $profile = (new \moodle_url('/user/view.php',
+                        ['id' => (int) $r->userid, 'course' => (int) $r->courseid]))->out(false);
+                    $courseurl = (new \moodle_url('/course/view.php', ['id' => (int) $r->courseid]))->out(false);
+                    $sid = ($r->idnumber !== null && $r->idnumber !== '') ? $r->idnumber : '—';
+                    $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($sid),
+                               cell::text($r->email), cell::text($r->class, $courseurl),
+                               cell::number((int) $r->absences), cell::when((int) $r->lastattended)];
+                }
+                $countsql = "SELECT COUNT(*) FROM (SELECT l.studentid $body
+                             GROUP BY l.studentid, a.course HAVING $abssum >= 2) bc";
+                return [$rows, $DB->count_records_sql($countsql, $params)];
             },
         ];
 
@@ -1220,25 +1416,35 @@ class catalogue {
         $defs[] = [
             'id' => 'assignment_status', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'assignment',
             'requirestable' => 'assign',
-            'filters' => ['category', 'course'],
+            'filters' => ['category', 'course', 'group', 'trainer'],
             'columns' => [['assignment', 'col_assignment', 'text'], ['course', 'col_course', 'text'],
                           ['submitted', 'col_submitted_n', 'number'], ['graded', 'col_graded', 'number'],
                           ['pending', 'col_pending', 'number']],
             'run' => function ($DB, $q, $limit) {
-                [$fw, $fp] = $q->where(['course' => 'a.course', 'category' => 'a.course']);
+                // Assignment-level filters decide which assignments appear.
+                [$ofw, $ofp] = $q->where(['course' => 'a.course', 'category' => 'a.course']);
+                // Group / trainer are STUDENT-level: they decide whose submissions
+                // are counted, so they go inside each count subquery on the
+                // submission's userid (and, for a teacher viewer, the automatic
+                // viewer scope flows through the same trainer binding). where() is
+                // called once per subquery so their bound params don't collide.
+                $smap = ['group' => 's.userid', 'trainer' => ['user' => 's.userid', 'course' => 'a.course']];
+                [$sw1, $sp1] = $q->where($smap);
+                [$sw2, $sp2] = $q->where($smap);
+                $params = $ofp + $sp1 + $sp2;
                 $sql = "SELECT a.id, a.name AS assignment, c.fullname AS course,
                           (SELECT COUNT(*) FROM {assign_submission} s
-                            WHERE s.assignment = a.id AND s.latest = 1 AND s.status = 'submitted') AS submitted,
+                            WHERE s.assignment = a.id AND s.latest = 1 AND s.status = 'submitted' $sw1) AS submitted,
                           (SELECT COUNT(*) FROM {assign_submission} s
                              JOIN {assign_grades} g ON g.assignment = s.assignment AND g.userid = s.userid
                                   AND g.attemptnumber = s.attemptnumber
                             WHERE s.assignment = a.id AND s.latest = 1 AND s.status = 'submitted'
-                              AND g.grade IS NOT NULL AND g.grade >= 0) AS graded
+                              AND g.grade IS NOT NULL AND g.grade >= 0 $sw2) AS graded
                           FROM {assign} a
                           JOIN {course} c ON c.id = a.course
-                         WHERE 1 = 1 $fw
+                         WHERE 1 = 1 $ofw
                       ORDER BY submitted DESC";
-                $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
                     $pending = (int)$r->submitted - (int)$r->graded;
@@ -1247,7 +1453,7 @@ class catalogue {
                                $pending > 0 ? array_merge(cell::number($pending), ['badge' => 'w', 'isstatus' => true])
                                             : cell::number($pending)];
                 }
-                return [$rows, $DB->count_records_sql("SELECT COUNT(*) FROM {assign} a WHERE 1 = 1 $fw", $fp)];
+                return [$rows, $DB->count_records_sql("SELECT COUNT(*) FROM {assign} a WHERE 1 = 1 $ofw", $ofp)];
             },
         ];
 
@@ -1553,46 +1759,13 @@ class catalogue {
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_submitted',
             'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
-                          ['assignment', 'col_assignment', 'text'], ['submitted', 'col_submitted', 'text'],
+                          ['assessment', 'col_assessment', 'text'], ['submitted', 'col_submitted', 'text'],
                           ['waiting', 'col_waiting', 'text']],
             'run' => function ($DB, $q, $limit) {
-                // Marking scoping lives entirely in the filter map (see marking_queue):
-                // the viewer scope — a teacher sees only what they may mark, group-aware
-                // and whole-course when the course has no groups, using the configured
-                // teacher roles — and an admin's selected trainer both flow through the
-                // 'trainer' binding, so the correct viewer is used and the result cache
-                // key varies by it.
-                [$fw, $fp] = $q->where(['course' => 'a.course', 'category' => 'a.course',
-                    'group' => 's.userid', 'cohort' => 's.userid',
-                    'trainer' => ['user' => 's.userid', 'course' => 'a.course'],
-                    'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
-                $body = "FROM {assign_submission} s
-                          JOIN {assign} a ON a.id = s.assignment
-                          JOIN {course} c ON c.id = a.course
-                          JOIN {user} u ON u.id = s.userid AND u.deleted = 0
-                     LEFT JOIN {assign_grades} g ON g.assignment = s.assignment
-                               AND g.userid = s.userid AND g.attemptnumber = s.attemptnumber
-                     LEFT JOIN {modules} md ON md.name = 'assign'
-                     LEFT JOIN {course_modules} cm ON cm.instance = a.id
-                               AND cm.module = md.id AND cm.course = a.course
-                         WHERE s.latest = 1 AND s.status = 'submitted'
-                           AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0) $fw";
-                $sql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
-                               u.firstname, u.lastname, u.email, c.fullname AS course, a.name AS assignment,
-                               s.timemodified $body ORDER BY s.timemodified ASC";
-                $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
-                $rows = [];
-                $now = time();
-                foreach ($recs as $r) {
-                    $wait = $r->timemodified ? floor(($now - $r->timemodified) / DAYSECS) . ' ' .
-                            get_string('days', 'local_beacon') : '—';
-                    [$plink, $clink, $alink, $glink] = self::marking_links($r);
-                    $rows[] = [cell::text(self::fullname_of($r), $plink), cell::text($r->email),
-                               cell::text($r->course, $clink),
-                               cell::text($r->assignment, $alink), cell::when($r->timemodified, $glink),
-                               cell::status($wait, 'w')];
-                }
-                return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
+                // Same marking queue as the admin report (ungraded assignments +
+                // quiz attempts needing manual grading), scoped to this trainer via
+                // the shared helper's viewer-aware 'trainer' binding.
+                return self::marking_queue_rows($DB, $q, $limit);
             },
         ];
 

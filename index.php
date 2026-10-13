@@ -31,16 +31,18 @@ require_login();
 if ($context instanceof context_course) {
     require_login($context->instanceid);
 }
-// Learners (no staff dashboard access) are sent to their own self-view.
-if (
-    !has_capability('local/beacon:view', $context)
-    && $context instanceof context_system
-    && !isguestuser()
-    && has_capability('local/beacon:viewmine', $context)
-) {
-    redirect(new moodle_url('/local/beacon/myreports.php'));
+// Staff (managers, and teachers in any course) see the reports library; a
+// learner with no staff access is sent to their own self-view.
+if (!\local_beacon\local\access::is_staff($context)) {
+    if (
+        $context instanceof context_system
+        && !isguestuser()
+        && has_capability('local/beacon:viewmine', $context)
+    ) {
+        redirect(new moodle_url('/local/beacon/myreports.php'));
+    }
+    require_capability('local/beacon:view', $context);
 }
-require_capability('local/beacon:view', $context);
 
 $url = new moodle_url('/local/beacon/index.php', $contextid ? ['contextid' => $contextid] : []);
 $PAGE->set_url($url);

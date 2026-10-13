@@ -45,7 +45,10 @@ function local_beacon_get_fontawesome_icon_map(): array {
  */
 function local_beacon_extend_navigation(global_navigation $navigation): void {
     $syscontext = context_system::instance();
-    $canview = has_capability('local/beacon:view', $syscontext);
+    // Staff (managers, and teachers in any course) get the reports library link;
+    // a learner with no staff access gets the "My reports" link instead.
+    $canview = isloggedin() && !isguestuser()
+        && \local_beacon\local\access::is_staff($syscontext);
     $canmine = isloggedin() && !isguestuser()
         && has_capability('local/beacon:viewmine', $syscontext);
     if (!$canview && !$canmine) {

@@ -45,7 +45,11 @@ if ($type === 'mine') {
     $contextid = $context->id;
     require_capability('local/beacon:viewmine', $context);
 } else {
-    require_capability('local/beacon:view', $context);
+    // Staff path: a manager (system capability) or a teacher in any course. A
+    // teacher's data is hard-limited to their own learners by the viewer scope.
+    if (!\local_beacon\local\access::is_staff($context)) {
+        require_capability('local/beacon:view', $context);
+    }
     if (!in_array($type, ['stat', 'kpi', 'report'], true)) {
         throw new moodle_exception('invalidparameter', 'error');
     }

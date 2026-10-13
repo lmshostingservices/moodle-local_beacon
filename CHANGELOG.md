@@ -2,6 +2,54 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.5.3] - 2026-10-13
+- **Fixed: teachers were being shown the learner view instead of the reports
+  library.** `local/beacon:view` is a system-level capability, but a teacher's
+  role is assigned in their course(s), so at the site level they were treated as
+  a learner and sent to "My reports". Beacon now recognises a user who teaches in
+  any course as staff at the site level and opens the (viewer-scoped) reports
+  library for them — their data is still hard-limited to their own learners.
+  Applies to the navigation link and to the library, report, export, saved-view
+  and scheduled-delivery pages. Managers and learners are unaffected.
+
+## [v2.5.2] - 2026-10-13
+- **Assignment status: added Group and Trainer filters.** You can now filter the
+  report by group and/or trainer, and the Submitted / Graded / Pending counts
+  update to reflect only that group's (or trainer's) students — so you can see
+  how much is pending grading per group or per trainer at a glance. The filters
+  scope the counted submissions (not just which assignments are listed), and a
+  non-admin teacher's view is automatically limited to their own learners.
+
+## [v2.5.1] - 2026-10-13
+- **Marking queue now includes quizzes.** The *Marking queue* and *My marking
+  queue* previously listed only ungraded assignment submissions. They now also
+  list **quiz attempts that need manual grading** (e.g. essay/manually-graded
+  questions), detected via the question engine (an attempt whose current question
+  state is "needs grading"). Quiz rows deep-link to the quiz manual-grading
+  report. The "Assignment" column is now labelled "Assessment", since it covers
+  both assignments and quizzes.
+- Note: the separate daily *marking digest* email still counts assignments only;
+  extending it to quizzes can follow if wanted.
+
+## [v2.5.0] - 2026-10-13
+- **New report: Student absence alert.** Flags students marked Absent in 2 or
+  more attendance sessions in a course, using the Attendance activity module
+  (`mod_attendance`). Shows the student's name, student ID (idnumber), email,
+  class (course), total sessions missed and the date they last attended, sorted
+  from most to fewest absences. Absent/Present are matched by the standard status
+  acronym (A/P) or description, so custom status sets still work. Reads from
+  `attendance_log`; the report is hidden on sites without the Attendance module.
+
+## [v2.4.0] - 2026-10-13
+- **New report: Grade changes.** Highlights unit-level result changes for
+  learners — for example a re-attempt moving from NYC to C, or a first result
+  moving from blank to C. Each row shows the student, course (unit), assessment,
+  previous result, new result and the date of change. Scale grades (e.g. C/NYC)
+  are shown as words. The report defaults to the last 7 days and can be scheduled
+  for a weekly email, making it easy to keep an external SMS (e.g. Wisenet) up to
+  date. Reads from Moodle's grade history (`grade_grades_history`); the report is
+  hidden if grade history is disabled on the site.
+
 ## [v2.3.6] - 2026-10-09
 - **Marking queue: added a Course column.** The staff *Marking queue* now shows
   the course (unit) each submission belongs to, immediately after the email —

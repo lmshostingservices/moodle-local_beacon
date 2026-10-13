@@ -54,7 +54,11 @@ if ($type === 'mine') {
     if ($context instanceof context_course) {
         require_login($context->instanceid);
     }
-    require_capability('local/beacon:view', $context);
+    // Staff path (manager, or a teacher in any course). The viewer scope below
+    // hard-limits a teacher's export to their own learners.
+    if (!\local_beacon\local\access::is_staff($context)) {
+        require_capability('local/beacon:view', $context);
+    }
 
     $report = catalogue::report($id);
     if ($report === null || !$report->is_available()) {
