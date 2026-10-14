@@ -839,9 +839,8 @@ class catalogue {
 
         $defs[] = [
             'id' => 'grade_summary', 'family' => 'assessment', 'icon' => 'doc', 'grain' => 'enrolment',
-            'columns' => [['learner', 'col_learner', 'text'], ['studentid', 'col_studentid', 'text'],
-                          ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
-                          ['grade', 'col_grade', 'text']],
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
+                          ['course', 'col_course', 'text'], ['grade', 'col_grade', 'text']],
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'gradeband'],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id',
@@ -853,15 +852,14 @@ class catalogue {
                           JOIN {course} c ON c.id = gi.courseid
                           JOIN {user} u ON u.id = gg.userid AND u.deleted = 0
                          WHERE gg.finalgrade IS NOT NULL AND gg.hidden = 0 AND gg.excluded = 0 $fw";
-                $sql = "SELECT gg.id, u.firstname, u.lastname, u.idnumber, u.email, c.fullname AS course,
+                $sql = "SELECT gg.id, u.firstname, u.lastname, u.email, c.fullname AS course,
                                (100.0 * gg.finalgrade / NULLIF(gg.rawgrademax,0)) AS pct $body ORDER BY pct DESC";
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
                     $pct = $r->pct === null ? '—' : round($r->pct, 1) . '%';
                     $badge = $r->pct === null ? null : ($r->pct >= 50 ? 'g' : 'b');
-                    $sid = ($r->idnumber !== null && $r->idnumber !== '') ? $r->idnumber : '—';
-                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($sid), cell::text($r->email),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->email),
                                cell::text($r->course),
                                $badge ? cell::status($pct, $badge) : cell::text($pct)];
                 }
