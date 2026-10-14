@@ -2,6 +2,10 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.6.3] - 2026-10-14
+- **Not started:** removed the Student ID column (added in v2.6.0 in error).
+  The Email column and the Group filter remain.
+
 ## [v2.6.2] - 2026-10-14
 - **Grade summary:** removed the Student ID column (added in v2.6.0 in error).
   The Email column and the Group filter remain.

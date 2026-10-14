@@ -770,8 +770,8 @@ class catalogue {
             'id' => 'not_started', 'family' => 'engagement', 'icon' => 'moon', 'grain' => 'enrolment',
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_enrolled',
-            'columns' => [['learner', 'col_learner', 'text'], ['studentid', 'col_studentid', 'text'],
-                          ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
+                          ['course', 'col_course', 'text'],
                           ['enrolled', 'col_enrolled', 'text'], ['status', 'col_status', 'status']],
             'run' => function ($DB, $q, $limit) {
                 [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id', 'course' => 'e.courseid',
@@ -796,14 +796,13 @@ class catalogue {
                                        WHERE ra.userid = ue.userid)
                            $fw";
                 $params = ['cnow' => time()] + $fp;
-                $sql = "SELECT ue.id, u.firstname, u.lastname, u.idnumber, u.email,
+                $sql = "SELECT ue.id, u.firstname, u.lastname, u.email,
                                c.fullname AS course, ue.timecreated
                         $body ORDER BY ue.timecreated DESC";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $sid = ($r->idnumber !== null && $r->idnumber !== '') ? $r->idnumber : '—';
-                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($sid), cell::text($r->email),
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->email),
                                cell::text($r->course), cell::when($r->timecreated),
                                cell::status(get_string('status_neveropened', 'local_beacon'), 'b')];
                 }
