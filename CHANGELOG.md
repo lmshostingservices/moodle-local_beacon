@@ -2,6 +2,24 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.6.1] - 2026-10-14
+- **Not started:** removed the Group *column* added in v2.6.0 — only the Group
+  *filter* was requested. The Student ID and Email columns, the student-only and
+  commenced-course fixes, and the Group filter all remain.
+
+## [v2.6.0] - 2026-10-14
+- **Not started report fixed and expanded.** It now counts only genuine
+  **students** (users with a student role in the course), so trainers/managers
+  enrolled in a course no longer appear; and it counts only courses that have
+  **already commenced** (start date reached). Added a **Group** filter and
+  **Student ID**, **Email** and **Group** columns. It remains course-level
+  (based on course access), which is the intended behaviour.
+- **Grade changes:** attendance grade items are no longer shown as assessments;
+  numeric grades now display as a **percentage** of the item maximum (scale
+  grades such as C / NYC still show the word); added a **Student email** column.
+- **Grade summary:** added **Student ID** and **Email** columns and a **Group**
+  filter.
+
 ## [v2.5.5] - 2026-10-13
 - **Student absence alert: "Weeks missed" renamed to "Sessions missed".** The
   column counts attendance sessions marked Absent, and attendance sessions are

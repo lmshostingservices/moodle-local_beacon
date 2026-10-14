@@ -768,29 +768,46 @@ class catalogue {
 
         $defs[] = [
             'id' => 'not_started', 'family' => 'engagement', 'icon' => 'moon', 'grain' => 'enrolment',
-            'filters' => ['category', 'course', 'trainer', 'cohort', 'daterange'], 'datelabel' => 'col_enrolled',
-            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
+            'datelabel' => 'col_enrolled',
+            'columns' => [['learner', 'col_learner', 'text'], ['studentid', 'col_studentid', 'text'],
+                          ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
                           ['enrolled', 'col_enrolled', 'text'], ['status', 'col_status', 'status']],
             'run' => function ($DB, $q, $limit) {
-                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'e.courseid',
+                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id', 'course' => 'e.courseid',
                     'category' => 'e.courseid',
                     'trainer' => ['user' => 'u.id', 'course' => 'e.courseid'],
                     'daterange' => ['col' => 'ue.timecreated', 'label' => 'col_enrolled']]);
+                // Only learners who hold a STUDENT role in the course (so trainers /
+                // managers enrolled in the course are not counted), and only courses
+                // that have actually commenced (start date reached).
                 $body = "FROM {user_enrolments} ue
                           JOIN {enrol} e ON e.id = ue.enrolid
                           JOIN {course} c ON c.id = e.courseid
                           JOIN {user} u ON u.id = ue.userid AND u.deleted = 0 AND u.suspended = 0
                      LEFT JOIN {user_lastaccess} la ON la.userid = ue.userid AND la.courseid = e.courseid
-                         WHERE ue.status = 0 AND e.status = 0 AND la.id IS NULL $fw";
-                $sql = "SELECT ue.id, u.firstname, u.lastname, c.fullname AS course, ue.timecreated
+                         WHERE ue.status = 0 AND e.status = 0 AND la.id IS NULL
+                           AND c.startdate > 0 AND c.startdate <= :cnow
+                           AND EXISTS (SELECT 1 FROM {role_assignments} ra
+                                        JOIN {context} ctx ON ctx.id = ra.contextid
+                                             AND ctx.contextlevel = " . CONTEXT_COURSE . "
+                                             AND ctx.instanceid = e.courseid
+                                        JOIN {role} r ON r.id = ra.roleid AND r.archetype = 'student'
+                                       WHERE ra.userid = ue.userid)
+                           $fw";
+                $params = ['cnow' => time()] + $fp;
+                $sql = "SELECT ue.id, u.firstname, u.lastname, u.idnumber, u.email,
+                               c.fullname AS course, ue.timecreated
                         $body ORDER BY ue.timecreated DESC";
-                $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
-                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course), cell::when($r->timecreated),
+                    $sid = ($r->idnumber !== null && $r->idnumber !== '') ? $r->idnumber : '—';
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($sid), cell::text($r->email),
+                               cell::text($r->course), cell::when($r->timecreated),
                                cell::status(get_string('status_neveropened', 'local_beacon'), 'b')];
                 }
-                return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
+                return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
             },
         ];
 
@@ -822,11 +839,13 @@ class catalogue {
 
         $defs[] = [
             'id' => 'grade_summary', 'family' => 'assessment', 'icon' => 'doc', 'grain' => 'enrolment',
-            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+            'columns' => [['learner', 'col_learner', 'text'], ['studentid', 'col_studentid', 'text'],
+                          ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
                           ['grade', 'col_grade', 'text']],
-            'filters' => ['category', 'course', 'trainer', 'cohort', 'gradeband'],
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'gradeband'],
             'run' => function ($DB, $q, $limit) {
-                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'gi.courseid', 'category' => 'gi.courseid',
+                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id',
+                    'course' => 'gi.courseid', 'category' => 'gi.courseid',
                     'trainer' => ['user' => 'u.id', 'course' => 'gi.courseid'],
                     'gradeband' => '(100.0 * gg.finalgrade / NULLIF(gg.rawgrademax,0))']);
                 $body = "FROM {grade_grades} gg
@@ -834,14 +853,16 @@ class catalogue {
                           JOIN {course} c ON c.id = gi.courseid
                           JOIN {user} u ON u.id = gg.userid AND u.deleted = 0
                          WHERE gg.finalgrade IS NOT NULL AND gg.hidden = 0 AND gg.excluded = 0 $fw";
-                $sql = "SELECT gg.id, u.firstname, u.lastname, c.fullname AS course,
+                $sql = "SELECT gg.id, u.firstname, u.lastname, u.idnumber, u.email, c.fullname AS course,
                                (100.0 * gg.finalgrade / NULLIF(gg.rawgrademax,0)) AS pct $body ORDER BY pct DESC";
                 $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
                     $pct = $r->pct === null ? '—' : round($r->pct, 1) . '%';
                     $badge = $r->pct === null ? null : ($r->pct >= 50 ? 'g' : 'b');
-                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($r->course),
+                    $sid = ($r->idnumber !== null && $r->idnumber !== '') ? $r->idnumber : '—';
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::text($sid), cell::text($r->email),
+                               cell::text($r->course),
                                $badge ? cell::status($pct, $badge) : cell::text($pct)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $fp)];
@@ -853,7 +874,8 @@ class catalogue {
             'requirestable' => 'grade_grades_history',
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_changed',
-            'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
+                          ['course', 'col_course', 'text'],
                           ['item', 'col_assessment', 'text'], ['prev', 'col_prevresult', 'text'],
                           ['new', 'col_newresult', 'text'], ['changed', 'col_changed', 'date']],
             'run' => function ($DB, $q, $limit) {
@@ -872,8 +894,10 @@ class catalogue {
                     $window = ' AND gh.timemodified >= :gcfrom';
                     $params['gcfrom'] = time() - 7 * DAYSECS;
                 }
+                // Attendance grade items are not assessments — exclude them.
                 $body = "FROM {grade_grades_history} gh
                           JOIN {grade_items} gi ON gi.id = gh.itemid AND gi.gradetype IN (1, 2)
+                               AND (gi.itemmodule IS NULL OR gi.itemmodule <> 'attendance')
                           JOIN {course} c ON c.id = gi.courseid AND c.id <> 1
                           JOIN {user} u ON u.id = gh.userid AND u.deleted = 0
                      LEFT JOIN {grade_grades_history} ph ON ph.id = (
@@ -888,7 +912,8 @@ class catalogue {
                               OR (ph.finalgrade <> gh.finalgrade)
                                ) $fw";
                 $sql = "SELECT gh.id, gh.userid, gi.courseid, gi.itemname, gi.itemtype,
-                               gi.gradetype, gi.scaleid, u.firstname, u.lastname, c.fullname AS course,
+                               gi.gradetype, gi.scaleid, gi.grademax, u.firstname, u.lastname, u.email,
+                               c.fullname AS course,
                                ph.finalgrade AS prevgrade, gh.finalgrade AS newgrade, gh.timemodified AS changed
                         $body ORDER BY gh.timemodified DESC, c.fullname";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
@@ -906,6 +931,9 @@ class catalogue {
                         $scales[(int) $sc->id] = array_map('trim', explode(',', $sc->scale));
                     }
                 }
+                // Scale grades (e.g. C / NYC) show the word; numeric grades show a
+                // percentage of the item's maximum, which gives a clear indication
+                // of the size of the change.
                 $fmt = function ($fg, $r) use ($scales) {
                     if ($fg === null) {
                         return '—';
@@ -918,6 +946,10 @@ class catalogue {
                             return '—';
                         }
                         return $items[$idx - 1] ?? ('#' . $idx);
+                    }
+                    $max = (float) $r->grademax;
+                    if ($max > 0) {
+                        return round(100 * $fg / $max) . '%';
                     }
                     $s = rtrim(rtrim(number_format($fg, 2, '.', ''), '0'), '.');
                     return $s === '' || $s === '-' ? '0' : $s;
@@ -935,7 +967,8 @@ class catalogue {
                     } else {
                         $item = get_string('col_gradeitem', 'local_beacon');
                     }
-                    $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($r->course, $courseurl),
+                    $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($r->email),
+                               cell::text($r->course, $courseurl),
                                cell::text($item), cell::text($fmt($r->prevgrade, $r)),
                                cell::status($fmt($r->newgrade, $r), 'g'), cell::when((int) $r->changed)];
                 }

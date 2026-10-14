@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026101306;      // YYYYMMDDXX — 13 Oct 2026, sequence 06.
+$plugin->version   = 2026101401;      // YYYYMMDDXX — 14 Oct 2026, sequence 01.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.5.5';         // Student absence alert: renamed 'Weeks missed' to 'Sessions missed' (counts attendance sessions).
-$plugin->release_prev = '2.5.4';      // Previous release.
+$plugin->release   = '2.6.1';         // Not started: removed the Group column (keep the Group filter); other v2.6.0 changes retained.
+$plugin->release_prev = '2.6.0';      // Previous release.
