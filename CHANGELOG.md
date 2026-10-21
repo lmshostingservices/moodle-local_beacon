@@ -2,6 +2,26 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.7.0] - 2026-10-21
+- **Marking digest email now lists each trainer's own queue.** The daily
+  per-trainer digest previously sent only a count; it now includes a table of
+  that trainer's outstanding items, produced by running *My marking queue* under
+  the trainer's own viewer scope — so each trainer sees only their own learners'
+  work, never anyone else's. (Addresses a scheduled, admin-owned delivery that
+  had been emailing every course's marking queue to everyone.)
+- **Marking queue: added a Teacher / Non-editing teacher column.** Each row now
+  shows the trainer(s) responsible for that student — the course-level teacher
+  always, plus any group-level teacher who shares a group with the student.
+- **New site setting: Student email prefix.** When set (e.g. `aiop`), the learner
+  reports count only accounts whose email begins with that prefix, filtering out
+  staff/test logins. Blank leaves all accounts included. Applied to the marking
+  queue and the enrolment, not-started, grade-summary, grade-changes and
+  absence-alert reports.
+- **Teacher filter no longer pre-ticks every group.** When a teacher opens a
+  report their view is already limited to their own learners by viewer scope, so
+  the redundant pre-selection of all of their groups (which cluttered the filter
+  bar) has been removed.
+
 ## [v2.6.3] - 2026-10-14
 - **Not started:** removed the Student ID column (added in v2.6.0 in error).
   The Email column and the Group filter remain.

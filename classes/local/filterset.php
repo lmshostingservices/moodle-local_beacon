@@ -747,6 +747,22 @@ class filterset {
             }
         }
 
+        // Site-wide student email prefix: when the admin has set a prefix (e.g.
+        // "aiop"), reports that declare a learner email column only ever include
+        // learners whose email starts with it — a simple way to keep non-student
+        // accounts (staff, demo, test logins) out of every report at once.
+        if (isset($map['studentemail'])) {
+            $prefix = trim((string) get_config('local_beacon', 'studentemailprefix'));
+            if ($prefix !== '') {
+                $col = is_array($map['studentemail']) ? ($map['studentemail']['col'] ?? '') : $map['studentemail'];
+                if ($col !== '') {
+                    $p = 'bcf' . ($this->seq++);
+                    $frags[] = $DB->sql_like($col, ":$p", false, false);
+                    $params[$p] = $DB->sql_like_escape($prefix) . '%';
+                }
+            }
+        }
+
         $where = $frags ? ' AND (' . implode(') AND (', $frags) . ')' : '';
         return [$where, $params];
     }

@@ -88,11 +88,54 @@ class catalogue {
      * @return array{0:array,1:int} [rows, total]
      */
     private static function marking_queue_rows(\moodle_database $DB, filterset $q, int $limit): array {
+        // Subquery listing the responsible teacher(s) for a learner in a course,
+        // using the site's configured teacher roles: a course-level teacher covers
+        // the whole course; a group-level (non-editing) teacher covers learners in
+        // a group they share (or the whole course when it has no groups). Returns
+        // the teachers' names, comma-separated, or NULL when none.
+        $courseroles = roles::course_roleids();
+        $grouproles = roles::group_roleids();
+        $teachersub = function (string $coursecol, string $studentcol, string $pfx)
+                use ($DB, $courseroles, $grouproles) {
+            $clauses = [];
+            $params = [];
+            if ($courseroles) {
+                [$cin, $cp] = $DB->get_in_or_equal($courseroles, SQL_PARAMS_NAMED, $pfx . 'cr');
+                $clauses[] = "EXISTS (SELECT 1 FROM {role_assignments} tra
+                           JOIN {context} tctx ON tctx.id = tra.contextid
+                                AND tctx.contextlevel = " . CONTEXT_COURSE . " AND tctx.instanceid = $coursecol
+                          WHERE tra.userid = tu.id AND tra.roleid $cin)";
+                $params += $cp;
+            }
+            if ($grouproles) {
+                [$gin, $gp] = $DB->get_in_or_equal($grouproles, SQL_PARAMS_NAMED, $pfx . 'gr');
+                $clauses[] = "EXISTS (SELECT 1 FROM {role_assignments} tra
+                           JOIN {context} tctx ON tctx.id = tra.contextid
+                                AND tctx.contextlevel = " . CONTEXT_COURSE . " AND tctx.instanceid = $coursecol
+                          WHERE tra.userid = tu.id AND tra.roleid $gin
+                            AND (EXISTS (SELECT 1 FROM {groups_members} tgm
+                                           JOIN {groups} tg ON tg.id = tgm.groupid AND tg.courseid = $coursecol
+                                           JOIN {groups_members} tgs ON tgs.groupid = tg.id
+                                                AND tgs.userid = $studentcol
+                                          WHERE tgm.userid = tu.id)
+                                 OR NOT EXISTS (SELECT 1 FROM {groups} tg2 WHERE tg2.courseid = $coursecol)))";
+                $params += $gp;
+            }
+            if (!$clauses) {
+                return ['NULL', []];
+            }
+            $cond = '(' . implode(' OR ', $clauses) . ')';
+            $sql = "(SELECT " . $DB->sql_group_concat($DB->sql_fullname('tu.firstname', 'tu.lastname'), ', ') . "
+                       FROM {user} tu WHERE tu.deleted = 0 AND $cond)";
+            return [$sql, $params];
+        };
+
         // Assignments submitted but not yet graded.
         [$afw, $afp] = $q->where(['cohort' => 'u.id', 'course' => 'a.course', 'category' => 'a.course',
-            'group' => 's.userid',
+            'group' => 's.userid', 'studentemail' => 'u.email',
             'trainer' => ['user' => 's.userid', 'course' => 'a.course'],
             'daterange' => ['col' => 's.timemodified', 'label' => 'col_submitted']]);
+        [$atsub, $atp] = $teachersub('a.course', 's.userid', 'ta');
         $abody = "FROM {assign_submission} s
                    JOIN {assign} a ON a.id = s.assignment
                    JOIN {course} c ON c.id = a.course AND c.id <> 1
@@ -106,9 +149,10 @@ class catalogue {
                     AND (g.id IS NULL OR g.grade IS NULL OR g.grade < 0) $afw";
         $asql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid,
                         u.firstname, u.lastname, u.email, c.fullname AS course,
-                        a.name AS assessment, s.timemodified AS submitted, 'assign' AS atype
+                        a.name AS assessment, s.timemodified AS submitted, 'assign' AS atype,
+                        $atsub AS teachers
                  $abody ORDER BY s.timemodified ASC";
-        $arecs = $DB->get_records_sql($asql, $afp, 0, $limit);
+        $arecs = $DB->get_records_sql($asql, $afp + $atp, 0, $limit);
         $acount = $DB->count_records_sql("SELECT COUNT(*) $abody", $afp);
 
         // Quiz attempts with a question currently needing manual grading. A quiz
@@ -117,9 +161,10 @@ class catalogue {
         $qcount = 0;
         if ($DB->get_manager()->table_exists('quiz_attempts')) {
             [$qfw, $qfp] = $q->where(['cohort' => 'u.id', 'course' => 'qz.course', 'category' => 'qz.course',
-                'group' => 'qa.userid',
+                'group' => 'qa.userid', 'studentemail' => 'u.email',
                 'trainer' => ['user' => 'qa.userid', 'course' => 'qz.course'],
                 'daterange' => ['col' => 'qa.timefinish', 'label' => 'col_submitted']]);
+            [$qtsub, $qtp] = $teachersub('qz.course', 'qa.userid', 'tq');
             $qbody = "FROM {quiz_attempts} qa
                        JOIN {quiz} qz ON qz.id = qa.quiz
                        JOIN {course} c ON c.id = qz.course AND c.id <> 1
@@ -138,9 +183,10 @@ class catalogue {
                         $qfw";
             $qsql = "SELECT qa.id, qa.userid, qz.course AS courseid, cmq.id AS cmid,
                             u.firstname, u.lastname, u.email, c.fullname AS course,
-                            qz.name AS assessment, qa.timefinish AS submitted, 'quiz' AS atype
+                            qz.name AS assessment, qa.timefinish AS submitted, 'quiz' AS atype,
+                            $qtsub AS teachers
                      $qbody ORDER BY qa.timefinish ASC";
-            $qrecs = $DB->get_records_sql($qsql, $qfp, 0, $limit);
+            $qrecs = $DB->get_records_sql($qsql, $qfp + $qtp, 0, $limit);
             $qcount = $DB->count_records_sql("SELECT COUNT(*) $qbody", $qfp);
         }
 
@@ -173,8 +219,10 @@ class catalogue {
             }
             $wait = $r->submitted ? floor(($now - $r->submitted) / DAYSECS) . ' ' .
                     get_string('days', 'local_beacon') : '—';
+            $teachers = ($r->teachers !== null && $r->teachers !== '') ? format_string($r->teachers) : '—';
             $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($r->email),
-                       cell::text($r->course, $courseurl), cell::text(format_string($r->assessment), $alink),
+                       cell::text($r->course, $courseurl), cell::text($teachers),
+                       cell::text(format_string($r->assessment), $alink),
                        cell::when((int) $r->submitted, $glink), cell::status($wait, 'w')];
         }
         return [$rows, $acount + $qcount];
@@ -676,7 +724,8 @@ class catalogue {
             'columns' => [['learner', 'col_learner', 'text'], ['course', 'col_course', 'text'],
                           ['method', 'col_method', 'text'], ['joined', 'col_joined', 'text']],
             'run' => function ($DB, $q, $limit) {
-                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id', 'course' => 'e.courseid',
+                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id', 'studentemail' => 'u.email',
+                    'course' => 'e.courseid',
                     'category' => 'e.courseid', 'enrolmethod' => 'e.enrol',
                     'trainer' => ['user' => 'u.id', 'course' => 'e.courseid'],
                     'daterange' => ['col' => 'ue.timecreated', 'label' => 'col_joined']]);
@@ -774,7 +823,8 @@ class catalogue {
                           ['course', 'col_course', 'text'],
                           ['enrolled', 'col_enrolled', 'text'], ['status', 'col_status', 'status']],
             'run' => function ($DB, $q, $limit) {
-                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id', 'course' => 'e.courseid',
+                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id', 'studentemail' => 'u.email',
+                    'course' => 'e.courseid',
                     'category' => 'e.courseid',
                     'trainer' => ['user' => 'u.id', 'course' => 'e.courseid'],
                     'daterange' => ['col' => 'ue.timecreated', 'label' => 'col_enrolled']]);
@@ -842,7 +892,7 @@ class catalogue {
                           ['course', 'col_course', 'text'], ['grade', 'col_grade', 'text']],
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'gradeband'],
             'run' => function ($DB, $q, $limit) {
-                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id',
+                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'group' => 'u.id', 'studentemail' => 'u.email',
                     'course' => 'gi.courseid', 'category' => 'gi.courseid',
                     'trainer' => ['user' => 'u.id', 'course' => 'gi.courseid'],
                     'gradeband' => '(100.0 * gg.finalgrade / NULLIF(gg.rawgrademax,0))']);
@@ -880,7 +930,7 @@ class catalogue {
                 // against the immediately preceding history entry for the same item +
                 // learner (ph, found by MAX(id) < gh.id — portable, no window funcs).
                 // "blank → C" is a first entry (ph is NULL) or a prior NULL grade.
-                [$fw, $fp] = $q->where(['cohort' => 'gh.userid', 'group' => 'gh.userid',
+                [$fw, $fp] = $q->where(['cohort' => 'gh.userid', 'group' => 'gh.userid', 'studentemail' => 'u.email',
                     'course' => 'gi.courseid', 'category' => 'gi.courseid',
                     'trainer' => ['user' => 'gh.userid', 'course' => 'gi.courseid'],
                     'daterange' => ['col' => 'gh.timemodified', 'label' => 'col_changed']]);
@@ -1012,7 +1062,7 @@ class catalogue {
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_submitted',
             'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
-                          ['assessment', 'col_assessment', 'text'],
+                          ['teacher', 'col_teacher', 'text'], ['assessment', 'col_assessment', 'text'],
                           ['submitted', 'col_submitted', 'text'], ['waiting', 'col_waiting', 'text']],
             'run' => function ($DB, $q, $limit) {
                 // Ungraded assignment submissions + quiz attempts needing manual
@@ -1205,7 +1255,7 @@ class catalogue {
                 // description containing the word, so custom status sets still work. The
                 // LIKE patterns are fixed literals (not user input), kept inline to avoid
                 // repeated bound params and collation quirks across databases.
-                [$fw, $fp] = $q->where(['cohort' => 'l.studentid', 'group' => 'l.studentid',
+                [$fw, $fp] = $q->where(['cohort' => 'l.studentid', 'group' => 'l.studentid', 'studentemail' => 'u.email',
                     'course' => 'a.course', 'category' => 'a.course',
                     'trainer' => ['user' => 'l.studentid', 'course' => 'a.course'],
                     'daterange' => ['col' => 's.sessdate', 'label' => 'col_session']]);
@@ -1790,8 +1840,8 @@ class catalogue {
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_submitted',
             'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
-                          ['assessment', 'col_assessment', 'text'], ['submitted', 'col_submitted', 'text'],
-                          ['waiting', 'col_waiting', 'text']],
+                          ['teacher', 'col_teacher', 'text'], ['assessment', 'col_assessment', 'text'],
+                          ['submitted', 'col_submitted', 'text'], ['waiting', 'col_waiting', 'text']],
             'run' => function ($DB, $q, $limit) {
                 // Same marking queue as the admin report (ungraded assignments +
                 // quiz attempts needing manual grading), scoped to this trainer via

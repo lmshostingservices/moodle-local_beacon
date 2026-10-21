@@ -402,15 +402,11 @@ class detail implements renderable, templatable {
         if (!$seesall) {
             $filters->enable_option_scope();
             $filters->enable_viewer_scope((int) $USER->id);
-            // On a fresh open (before the viewer has touched the filter form) tick
-            // all of the teacher's own groups by default, so the Group filter shows
-            // what they're already seeing and they can quickly narrow to one.
-            // "f_touched" is emitted by the filter form, so a deliberate "clear
-            // all" is respected rather than re-defaulted.
-            if (in_array('group', $rep->filters, true) && !optional_param('f_touched', 0, PARAM_INT)) {
-                $groupids = array_map('intval', array_keys($filters->options('group')));
-                $filters->default_select('group', $groupids);
-            }
+            // No group is pre-selected: the viewer scope already limits the data to
+            // this teacher's own learners, so pre-ticking every one of their groups
+            // (which can be dozens across many courses) only clutters the filter bar
+            // without narrowing anything. The Group dropdown is still option-scoped
+            // to their own groups, so they can pick one to narrow when they want to.
         } else if ($rep->scopedfilters) {
             // A viewer-scoped report limits its filter option lists to what the
             // viewer may see, so the dropdowns match the rows they can reach.

@@ -59,6 +59,16 @@ if ($hassiteconfig) {
         ]
     ));
 
+    // Student accounts: restrict reports to genuine student logins by email
+    // prefix (e.g. "aiop" so only aiop…@ accounts appear). Blank = no restriction.
+    $settings->add(new admin_setting_configtext(
+        'local_beacon/studentemailprefix',
+        get_string('studentemailprefix', 'local_beacon'),
+        get_string('studentemailprefix_desc', 'local_beacon'),
+        '',
+        PARAM_TEXT
+    ));
+
     // Marking-queue heading.
     $settings->add(new admin_setting_heading(
         'local_beacon/markingheading',

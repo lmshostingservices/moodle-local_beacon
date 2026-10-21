@@ -25,10 +25,11 @@
 namespace local_beacon\task;
 
 /**
- * Once a day, emails every trainer who has submissions waiting a short digest:
- * the count and a link into their My marking queue report. The email carries
- * only the count and a link — never learner data — so no per-row capability
- * check is needed and there is no risk of showing a trainer someone else's data.
+ * Once a day, emails every trainer who has submissions waiting a digest: the
+ * count, their own outstanding marking queue, and a link into My marking queue.
+ * The list is produced by running the My marking queue report with the trainer's
+ * own viewer scope forced on (their user id bound into the scope predicate), so a
+ * trainer can only ever be shown their own learners' items — never anyone else's.
  */
 class send_marking_digest extends \core\task\scheduled_task {
     /**
@@ -85,7 +86,7 @@ class send_marking_digest extends \core\task\scheduled_task {
             ];
             $subject = get_string('digest_subject', 'local_beacon', $count);
             $text = get_string('digest_body', 'local_beacon', $a);
-            $html = get_string('digest_body_html', 'local_beacon', $a);
+            $html = get_string('digest_body_html', 'local_beacon', $a) . self::queue_table((int) $row->userid);
 
             if (email_to_user($user, $from, $subject, $text, $html)) {
                 $row->lastnotified = $today;
@@ -97,5 +98,57 @@ class send_marking_digest extends \core\task\scheduled_task {
         }
 
         mtrace("local_beacon: sent {$sent} marking digest email(s).");
+    }
+
+    /**
+     * Build an HTML table of one trainer's own outstanding marking queue, scoped
+     * to exactly what they are responsible for (their courses / groups), so the
+     * digest email lists the actual items — not just a count. Returns '' if the
+     * report can't be built or the trainer has nothing (the count path handles
+     * the "you have X to mark" line either way).
+     *
+     * @param int $uid Trainer user id.
+     * @return string HTML fragment (empty on error / no rows).
+     */
+    private static function queue_table(int $uid): string {
+        $context = \context_system::instance();
+        $filters = new \local_beacon\local\filterset($context, []);
+        // Hard-scope the report to this trainer's own learners (group-aware), the
+        // same scope the trainer sees in My marking queue. Runs under cron, so the
+        // viewer id is passed explicitly and forced.
+        $filters->enable_viewer_scope($uid, true);
+        $report = \local_beacon\local\catalogue::report('my_marking_queue');
+        if ($report === null || !$report->is_available()) {
+            return '';
+        }
+        $cap = 200;
+        $result = $report->run($filters, $cap);
+        if (!empty($result['error']) || empty($result['rows'])) {
+            return '';
+        }
+        $rows = $result['rows'];
+        $total = (int) ($result['total'] ?? count($rows));
+
+        $cell = 'padding:6px 9px;border-bottom:1px solid #e4e8f0;text-align:left;font-size:13px;';
+        $html = '<table style="border-collapse:collapse;margin-top:14px;width:100%;max-width:760px;">';
+        $html .= '<thead><tr>';
+        foreach ($report->columns as $c) {
+            $html .= '<th style="' . $cell . 'background:#12324f;color:#fff;">'
+                . s(get_string($c[1], 'local_beacon')) . '</th>';
+        }
+        $html .= '</tr></thead><tbody>';
+        foreach ($rows as $row) {
+            $html .= '<tr>';
+            foreach ($row as $c) {
+                $html .= '<td style="' . $cell . '">' . s((string) ($c['v'] ?? '')) . '</td>';
+            }
+            $html .= '</tr>';
+        }
+        $html .= '</tbody></table>';
+        if ($total > count($rows)) {
+            $html .= '<p style="font-size:12px;color:#8a94a6;">'
+                . s(get_string('digest_more', 'local_beacon', $total - count($rows))) . '</p>';
+        }
+        return $html;
     }
 }
