@@ -2,6 +2,9 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.11.1] - 2026-10-27
+- Version bump for release. No code changes from 2.11.0.
+
 ## [v2.11.0] - 2026-10-27
 Brings two parallel 2.10.x lines back together into one release.
 - **Other plugins can now add their own stat cards, KPIs and reports.** New hook

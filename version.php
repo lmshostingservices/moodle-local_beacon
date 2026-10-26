@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026102701;      // YYYYMMDDXX — 27 Oct 2026, sequence 01 (above both 2.10.x lines).
+$plugin->version   = 2026102702;      // YYYYMMDDXX — 27 Oct 2026, sequence 02.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.11.0';        // Merge: charts + finder + Unified Grader (2.10.0-2.10.2) with the collect_catalogue hook line.
-$plugin->release_prev = '2.10.2';      // Previous release.
+$plugin->release   = '2.11.1';        // Version bump for release (same code as 2.11.0).
+$plugin->release_prev = '2.11.0';      // Previous release.
