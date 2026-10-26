@@ -44,32 +44,13 @@ function local_beacon_get_fontawesome_icon_map(): array {
  * @return void
  */
 function local_beacon_extend_navigation(global_navigation $navigation): void {
-    $syscontext = context_system::instance();
-    // Staff (managers, and teachers in any course) get the reports library link;
-    // a learner with no staff access gets the "My reports" link instead.
-    $canview = isloggedin() && !isguestuser()
-        && \local_beacon\local\access::is_staff($syscontext);
-    $canmine = isloggedin() && !isguestuser()
-        && has_capability('local/beacon:viewmine', $syscontext);
-    if (!$canview && !$canmine) {
+    $link = \local_beacon\local\navlink::for_current_user();
+    if ($link === null) {
         return;
     }
-
-    // Which link this person gets: staff → library; learner-only → My reports.
-    if ($canview) {
-        $label = get_string('pluginname', 'local_beacon');
-        $url = new moodle_url('/local/beacon/index.php');
-        $key = 'localbeacon';
-    } else {
-        $label = get_string('myreports', 'local_beacon');
-        $url = new moodle_url('/local/beacon/myreports.php');
-        $key = 'localbeaconmine';
-    }
+    [$label, $url, $key] = [$link['label'], $link['url'], $link['key']];
     $icon = new pix_icon('icon', '', 'local_beacon');
-
-    // Chosen placements (default: main navigation).
-    $raw = get_config('local_beacon', 'navplacement');
-    $places = ($raw === false || $raw === null || $raw === '') ? ['nav'] : explode(',', $raw);
+    $places = \local_beacon\local\navlink::placements();
 
     $addto = function (string $parentkey) use ($navigation, $label, $url, $key, $icon) {
         $parent = $navigation->find($parentkey, null);
@@ -78,6 +59,9 @@ function local_beacon_extend_navigation(global_navigation $navigation): void {
         }
     };
 
+    // "Main navigation" here serves themes that still render the classic
+    // navigation tree (e.g. Classic). Boost-based themes' top bar is fed by the
+    // primary_extend hook instead — see \local_beacon\hook_callbacks.
     if (in_array('nav', $places, true)) {
         $navigation->add($label, $url, navigation_node::TYPE_CUSTOM, null, $key, $icon);
     }

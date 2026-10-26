@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026102602;      // YYYYMMDDXX — 26 Oct 2026, sequence 02.
+$plugin->version   = 2026102603;      // YYYYMMDDXX — 26 Oct 2026, sequence 03.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.8.2';         // Grade changes: percentages use the gradebook's own min/max (fixes >100% course totals).
-$plugin->release_prev = '2.8.1';      // Previous release.
+$plugin->release   = '2.8.3';         // Beacon link now appears in the top navigation bar on Moodle 4.4+ / 5.x.
+$plugin->release_prev = '2.8.2';      // Previous release.

@@ -2,6 +2,15 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.8.3] - 2026-10-26
+- **Fixed: "Main navigation" placement showed no Beacon link on Moodle 4.x / 5.x.**
+  Boost-based themes build the top navigation bar from Moodle's primary
+  navigation, which ignores links added the older way. Beacon now registers the
+  core `primary_extend` hook (db/hooks.php), so the Beacon link (staff) or
+  My reports link (learners) appears in the top bar and is highlighted while
+  you are inside Beacon. Themes that still use the classic navigation tree are
+  unchanged.
+
 ## [v2.8.2] - 2026-10-26
 - **Fixed: Grade changes showed course totals over 100% (e.g. 213%).** Percentages
   were worked out against the course total's item maximum. Moodle's gradebook
