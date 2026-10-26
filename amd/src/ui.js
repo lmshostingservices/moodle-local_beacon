@@ -191,9 +191,15 @@ define('local_beacon/ui', ['core/str'], function(Str) {
                     p.classList.toggle('on', p.getAttribute('data-panel') === t.getAttribute('data-tab'));
                 });
             });
+            // Open straight on a tab when linked with #stats / #kpis / #reports / #charts.
+            var want = (window.location.hash || '').replace('#', '');
+            var first = want ? tabs.querySelector('.bc-tab[data-tab="' + want + '"]') : null;
+            if (first) {
+                first.click();
+            }
         }
 
-        var groups = ['stats', 'kpis', 'reports'];
+        var groups = ['stats', 'kpis', 'reports', 'charts'];
 
         var refresh = function() {
             var counts = {};
@@ -210,11 +216,12 @@ define('local_beacon/ui', ['core/str'], function(Str) {
                     stats: counts.stats,
                     kpis: counts.kpis,
                     reports: counts.reports,
+                    charts: counts.charts,
                 }).then(function(s) {
                     sum.textContent = s;
                 }).catch(function() {
-                    sum.textContent = 'Showing ' + counts.stats + ' stat cards, ' +
-                        counts.kpis + ' KPI gauges and ' + counts.reports + ' reports on your dashboard.';
+                    sum.textContent = 'Showing ' + counts.stats + ' stat cards, ' + counts.kpis + ' KPI gauges, ' +
+                        counts.reports + ' reports and ' + counts.charts + ' charts.';
                 });
             }
         };

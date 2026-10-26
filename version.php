@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026102607;      // YYYYMMDDXX — 26 Oct 2026, sequence 07.
+$plugin->version   = 2026102608;      // YYYYMMDDXX — 26 Oct 2026, sequence 08.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.10.1';        // Low-annotation report: Unified Grader annotations + annotated PDF.
-$plugin->release_prev = '2.10.0';      // Previous release.
+$plugin->release   = '2.10.2';        // Charts chosen on the Choose what shows page, like stats, KPIs and reports.
+$plugin->release_prev = '2.10.1';      // Previous release.

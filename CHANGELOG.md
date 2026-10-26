@@ -2,6 +2,14 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.10.2] - 2026-10-26
+- **Charts are now chosen on the Choose what shows page**, in a new Charts tab
+  alongside Stat cards, KPI gauges and Reports — same check-list, select all /
+  clear all and live counts. The separate "Charts shown" option in Beacon
+  settings has been removed. The Charts page's "Choose what shows" button opens
+  straight on the Charts tab. Charts for activities not installed on the site
+  show as unavailable. Existing choices are kept.
+
 ## [v2.10.1] - 2026-10-26
 - **Low-annotation PDF submissions now supports Unified Grader
   (local_unifiedgrader).** When Unified Grader is installed and grading

@@ -197,8 +197,7 @@ $template = [
     'finder' => $finder,
     'hasfinder' => $totalcharts > 1,
     'cansettings' => has_capability('moodle/site:config', $syscontext),
-    'settingsurl' => (new moodle_url('/admin/settings.php', ['section' => 'local_beacon_settings'],
-        'admin-enabledcharts'))->out(false),
+    'settingsurl' => (new moodle_url('/local/beacon/configure.php', null, 'charts'))->out(false),
 ];
 
 echo $output->header();

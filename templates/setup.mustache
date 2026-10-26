@@ -22,7 +22,7 @@
     {
         "actionurl": "#", "sesskey": "x", "libraryurl": "#",
         "stats": [], "kpis": [], "reports": [],
-        "statsel": 0, "kpisel": 0, "reportsel": 0
+        "statsel": 0, "kpisel": 0, "reportsel": 0, "chartsel": 0
     }
 }}
 <div class="bc-root" data-region="beacon-setup">
@@ -43,6 +43,7 @@
       <button type="button" class="bc-tab on" data-tab="stats">{{#str}}sec_stats_h, local_beacon{{/str}} <span class="bc-tc" data-count="stats">{{statsel}}</span></button>
       <button type="button" class="bc-tab" data-tab="kpis">{{#str}}sec_kpis_h, local_beacon{{/str}} <span class="bc-tc" data-count="kpis">{{kpisel}}</span></button>
       <button type="button" class="bc-tab" data-tab="reports">{{#str}}sec_reports_h, local_beacon{{/str}} <span class="bc-tc" data-count="reports">{{reportsel}}</span></button>
+      <button type="button" class="bc-tab" data-tab="charts">{{#str}}sec_charts, local_beacon{{/str}} <span class="bc-tc" data-count="charts">{{chartsel}}</span></button>
     </div>
 
     <div class="bc-tab-panel on" data-panel="stats">
@@ -102,6 +103,26 @@
             </span>
           </label>
         {{/reports}}
+      </div>
+    </div>
+
+    <div class="bc-tab-panel" data-panel="charts">
+      <div class="bc-select-bar">
+        <div class="bc-select-lbl"><b data-role="cnt" data-for="charts">{{chartsel}}</b> {{#str}}setup_selected, local_beacon{{/str}}</div>
+        <div class="bc-select-acts"><button type="button" class="bc-linkbtn" data-role="all" data-for="charts">{{#str}}setup_selectall, local_beacon{{/str}}</button><button type="button" class="bc-linkbtn" data-role="none" data-for="charts">{{#str}}setup_clearall, local_beacon{{/str}}</button></div>
+      </div>
+      <div class="bc-check-list">
+        {{#charts}}
+          <label class="bc-check bcfam-{{family}} {{#checked}}sel{{/checked}} {{#unavailable}}bc-unavail{{/unavailable}}">
+            <input type="checkbox" name="enabledcharts[]" value="{{id}}" data-group="charts" {{#checked}}checked{{/checked}} {{#unavailable}}disabled{{/unavailable}}>
+            <span class="bc-cbox"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-11" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="bc-check-body">
+              <span class="bc-check-h"><span class="bc-ci"><svg viewBox="0 0 24 24" fill="none">{{{icon}}}</svg></span><span class="bc-nm">{{name}}</span><span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>{{#unavailable}}<span class="bc-tag">{{#str}}setup_unavailable, local_beacon{{/str}}</span>{{/unavailable}}</span>
+              <span class="bc-expl">{{expl}}</span>
+              <span class="bc-example"><span class="bc-ex-k">{{#str}}setup_example, local_beacon{{/str}}</span><span class="bc-ex-v">{{example}}</span></span>
+            </span>
+          </label>
+        {{/charts}}
       </div>
     </div>
 

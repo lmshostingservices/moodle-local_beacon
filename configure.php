@@ -43,6 +43,7 @@ $PAGE->add_body_class('local-beacon');
 $currentstats   = get_config('local_beacon', 'enabledstats');
 $currentkpis    = get_config('local_beacon', 'enabledkpis');
 $currentreports = get_config('local_beacon', 'enabledreports');
+$currentcharts  = get_config('local_beacon', 'enabledcharts');
 
 if (data_submitted() && confirm_sesskey()) {
     $stats   = optional_param_array('enabledstats', [], PARAM_ALPHANUMEXT);
@@ -51,6 +52,9 @@ if (data_submitted() && confirm_sesskey()) {
     set_config('enabledstats', implode(',', $stats), 'local_beacon');
     set_config('enabledkpis', implode(',', $kpis), 'local_beacon');
     set_config('enabledreports', implode(',', $reports), 'local_beacon');
+    $charts = optional_param_array('enabledcharts', [], PARAM_ALPHANUMEXT);
+    set_config('enabledcharts', implode(',', $charts), 'local_beacon');
+    \cache::make('local_beacon', 'reports')->purge();
     redirect(
         new moodle_url('/local/beacon/configure.php'),
         get_string('setup_saved', 'local_beacon'),
@@ -122,6 +126,27 @@ foreach (catalogue::reports() as $r) {
     $reports[] = $build($r, $currentreports);
 }
 
+// Charts: same check-list shape. A chart is "unavailable" when the activity it
+// needs is not installed on this site.
+$charts = [];
+$chartsecfamily = ['growth' => 'people'];
+foreach (\local_beacon\local\charts::definitions() as $chartid => $def) {
+    $available = empty($def['requirestable']) || $DB->get_manager()->table_exists($def['requirestable']);
+    $family = $chartsecfamily[$def['section']] ?? $def['section'];
+    $charts[] = [
+        'id'          => $chartid,
+        'name'        => get_string('chart_' . $chartid, 'local_beacon'),
+        'expl'        => get_string('chart_' . $chartid . '_desc', 'local_beacon'),
+        'example'     => get_string('chart_type_' . $def['type'], 'local_beacon'),
+        'family'      => $family,
+        'familylabel' => get_string('chartsec_' . $def['section'], 'local_beacon'),
+        'icon'        => icons::svg('chart'),
+        'checked'     => $ison($currentcharts, $chartid, true),
+        'available'   => $available,
+        'unavailable' => !$available,
+    ];
+}
+
 $countsel = fn($items) => count(array_filter($items, fn($i) => $i['checked']));
 
 $templatecontext = [
@@ -137,6 +162,9 @@ $templatecontext = [
     'statstotal'   => count($stats),
     'kpistotal'    => count($kpis),
     'reportstotal' => count($reports),
+    'charts'       => $charts,
+    'chartsel'     => $countsel($charts),
+    'chartstotal'  => count($charts),
 ];
 
 echo $OUTPUT->header();
