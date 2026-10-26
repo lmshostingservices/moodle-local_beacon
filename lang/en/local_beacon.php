@@ -648,3 +648,9 @@ $string['lowannot_off'] = 'Don\'t check';
 $string['lowannot_atleast'] = 'At least {$a}';
 $string['lowannot_reason_annots'] = 'Too few annotations';
 $string['lowannot_reason_comments'] = 'Too few comments';
+
+// Separate library pages + navigation dropdown (v2.9.0).
+$string['view_all'] = 'Overview';
+$string['view_stats_sub'] = 'Your headline numbers at a glance — click any card for the trend and the detail behind it.';
+$string['view_kpis_sub'] = 'Your key rates measured against target — green is on track, amber needs watching, red needs action.';
+$string['view_reports_sub'] = 'Ready-made reports, live from your Moodle data. Open one to filter, sort and export it.';

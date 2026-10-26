@@ -44,12 +44,17 @@ if (!\local_beacon\local\access::is_staff($context)) {
     require_capability('local/beacon:view', $context);
 }
 
-$url = new moodle_url('/local/beacon/index.php', $contextid ? ['contextid' => $contextid] : []);
+$view = optional_param('view', 'all', PARAM_ALPHA);
+if (!in_array($view, \local_beacon\output\library::views_for($context), true)) {
+    $view = 'all';
+}
+$url = \local_beacon\output\library::view_url($view, $context);
 $PAGE->set_url($url);
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('report');
 $PAGE->set_secondary_navigation(false);
-$PAGE->set_title(get_string('pluginname', 'local_beacon'));
+$PAGE->set_title($view === 'all' ? get_string('pluginname', 'local_beacon')
+    : \local_beacon\output\library::view_label($view) . ' | ' . get_string('pluginname', 'local_beacon'));
 $PAGE->set_heading(
     $context instanceof context_course
         ? format_string($COURSE->fullname) : format_string($SITE->fullname)
@@ -57,7 +62,7 @@ $PAGE->set_heading(
 $PAGE->add_body_class('local-beacon');
 
 $output = $PAGE->get_renderer('local_beacon');
-$page = new \local_beacon\output\library($context);
+$page = new \local_beacon\output\library($context, $view);
 
 echo $output->header();
 echo $output->render($page);

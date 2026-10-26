@@ -2,6 +2,17 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.9.0] - 2026-10-26
+- **Stat cards, KPI gauges and Reports now each have their own page.** The
+  library keeps an **Overview** page (everything, as before) plus separate pages
+  for Stat cards, KPI gauges and Reports, each with its own URL
+  (`index.php?view=stats|kpis|reports`) and a tab strip to move between them.
+  Only the selected section is computed, so the single-section pages load faster.
+- **Beacon is now a dropdown in the top navigation**, listing Overview, Stat
+  cards, KPI gauges and Reports. Teachers see only Overview and Reports (stat
+  cards and KPI gauges are site-wide figures, shown only to site-wide viewers).
+  Learners keep their single My reports link. The current page is highlighted.
+
 ## [v2.8.4] - 2026-10-26
 - **Fixed: the Low-annotation PDF submissions report did not appear after
   upgrading.** Existing sites keep a saved report selection, so the new report

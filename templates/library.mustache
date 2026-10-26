@@ -20,6 +20,8 @@
 
     Example context (json):
     {
+        "heading": "Reports", "sub": "Everything at a glance.", "hastabs": true,
+        "tabs": [{"label": "Overview", "url": "#", "on": true}, {"label": "Reports", "url": "#", "on": false}],
         "contextid": 1, "hasstats": false, "haskpis": false, "hasreports": false,
         "empty": true, "canrequest": true, "cansettings": true,
         "requesturl": "#", "settingsurl": "#",
@@ -31,8 +33,8 @@
 
     <div class="bc-page-head">
       <div>
-        <h1 class="bc-h1">{{#str}}libraryheading, local_beacon{{/str}}</h1>
-        <p class="bc-sub">{{#str}}librarysub, local_beacon{{/str}}</p>
+        <h1 class="bc-h1">{{heading}}</h1>
+        <p class="bc-sub">{{sub}}</p>
       </div>
       <div class="bc-head-actions">
         <button type="button" class="bc-btn bc-btn-ghost bc-theme-toggle" data-role="theme-toggle" aria-label="{{#str}}toggletheme, local_beacon{{/str}}" title="{{#str}}toggletheme, local_beacon{{/str}}">
@@ -49,6 +51,12 @@
         {{/canrequest}}
       </div>
     </div>
+
+    {{#hastabs}}
+    <nav class="bc-tabs bc-viewtabs" aria-label="{{#str}}pluginname, local_beacon{{/str}}">
+      {{#tabs}}<a class="bc-tab{{#on}} on{{/on}}" href="{{url}}"{{#on}} aria-current="page"{{/on}}>{{label}}</a>{{/tabs}}
+    </nav>
+    {{/hastabs}}
 
     {{#iscourse}}
     <div class="bc-scopebar">

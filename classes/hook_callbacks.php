@@ -54,7 +54,18 @@ class hook_callbacks {
         }
         $node = $primary->add($link['label'], $link['url'], \navigation_node::TYPE_CUSTOM, null,
             $link['key'], new \pix_icon('icon', '', 'local_beacon'));
-        // Highlight the tab while the user is anywhere inside Beacon.
+
+        // Staff: the Beacon entry becomes a dropdown of its pages (Overview,
+        // Stat cards, KPI gauges, Reports — whichever this viewer may open).
+        $current = navlink::current_view();
+        foreach (navlink::children($link) as $child) {
+            $sub = $node->add($child['label'], $child['url'], \navigation_node::TYPE_CUSTOM, null, $child['key']);
+            if ($current === $child['view']) {
+                $sub->make_active();
+            }
+        }
+
+        // Highlight the Beacon entry while the user is anywhere inside Beacon.
         global $PAGE;
         if (!empty($PAGE->url) && strpos($PAGE->url->get_path(false), '/local/beacon/') !== false) {
             $node->make_active();

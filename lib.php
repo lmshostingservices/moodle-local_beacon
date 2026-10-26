@@ -63,7 +63,10 @@ function local_beacon_extend_navigation(global_navigation $navigation): void {
     // navigation tree (e.g. Classic). Boost-based themes' top bar is fed by the
     // primary_extend hook instead — see \local_beacon\hook_callbacks.
     if (in_array('nav', $places, true)) {
-        $navigation->add($label, $url, navigation_node::TYPE_CUSTOM, null, $key, $icon);
+        $node = $navigation->add($label, $url, navigation_node::TYPE_CUSTOM, null, $key, $icon);
+        foreach (\local_beacon\local\navlink::children($link) as $child) {
+            $node->add($child['label'], $child['url'], navigation_node::TYPE_CUSTOM, null, $child['key']);
+        }
     }
     if (in_array('home', $places, true)) {
         $addto('home');

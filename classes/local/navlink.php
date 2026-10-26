@@ -52,6 +52,42 @@ class navlink {
     }
 
     /**
+     * The sub-pages shown under the staff "Beacon" menu: one per library page
+     * the viewer may open (teachers see Overview and Reports; site-wide viewers
+     * also see Stat cards and KPI gauges). Learners get no sub-pages.
+     *
+     * @param array $link The link from for_current_user().
+     * @return array[] Each ['key' => string, 'label' => string, 'url' => \moodle_url, 'view' => string].
+     */
+    public static function children(array $link): array {
+        if ($link['key'] !== 'localbeacon') {
+            return [];
+        }
+        $out = [];
+        $library = \local_beacon\output\library::class;
+        foreach ($library::views_for(\context_system::instance()) as $view) {
+            $out[] = ['key' => 'localbeacon_' . $view, 'label' => $library::view_label($view),
+                      'url' => $library::view_url($view), 'view' => $view];
+        }
+        return $out;
+    }
+
+    /**
+     * The library view the current page is showing, or null when the current
+     * page is not the library (so no sub-page is highlighted).
+     *
+     * @return string|null
+     */
+    public static function current_view(): ?string {
+        global $PAGE;
+        if (empty($PAGE->url) || $PAGE->url->get_path(false) !== '/local/beacon/index.php') {
+            return null;
+        }
+        $view = $PAGE->url->get_param('view');
+        return $view ? (string) $view : 'all';
+    }
+
+    /**
      * The placements the admin ticked (default: main navigation).
      *
      * @return string[]

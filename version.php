@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026102604;      // YYYYMMDDXX — 26 Oct 2026, sequence 04.
+$plugin->version   = 2026102605;      // YYYYMMDDXX — 26 Oct 2026, sequence 05.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.8.4';         // Upgrade switches on the Low-annotation PDF submissions report.
-$plugin->release_prev = '2.8.3';      // Previous release.
+$plugin->release   = '2.9.0';         // Separate Stat cards / KPI gauges / Reports pages + Beacon dropdown in the top navigation.
+$plugin->release_prev = '2.8.4';      // Previous release.

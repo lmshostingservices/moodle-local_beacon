@@ -34,16 +34,66 @@ use renderer_base;
  * The library: enabled stat cards, then KPI gauges, then report cards.
  */
 class library implements renderable, templatable {
+    /** The pages the library can show: everything, or one section on its own. */
+    public const VIEWS = ['all', 'stats', 'kpis', 'reports'];
+
     /** @var \context Context. */
     protected \context $context;
+
+    /** @var string Which page: one of VIEWS. */
+    protected string $view;
 
     /**
      * Constructor.
      *
      * @param \context $context Context.
+     * @param string $view One of VIEWS; anything else falls back to 'all'.
      */
-    public function __construct(\context $context) {
+    public function __construct(\context $context, string $view = 'all') {
         $this->context = $context;
+        $this->view = in_array($view, self::views_for($context), true) ? $view : 'all';
+    }
+
+    /**
+     * The pages this viewer may open in this context. Stat cards and KPI gauges
+     * are site-wide figures, so they exist only on the site dashboard and only
+     * for viewers entitled to site-wide data (local/beacon:viewall).
+     *
+     * @param \context $context Context.
+     * @return string[]
+     */
+    public static function views_for(\context $context): array {
+        $sitewide = !($context instanceof \context_course)
+            && has_capability('local/beacon:viewall', \context_system::instance());
+        return $sitewide ? self::VIEWS : ['all', 'reports'];
+    }
+
+    /**
+     * The URL of one library page.
+     *
+     * @param string $view One of VIEWS.
+     * @param \context|null $context Course context to keep, or null for site.
+     * @return \moodle_url
+     */
+    public static function view_url(string $view, ?\context $context = null): \moodle_url {
+        $params = [];
+        if ($context instanceof \context_course) {
+            $params['contextid'] = $context->id;
+        }
+        if ($view !== 'all') {
+            $params['view'] = $view;
+        }
+        return new \moodle_url('/local/beacon/index.php', $params);
+    }
+
+    /**
+     * The tab / menu label for a view.
+     *
+     * @param string $view One of VIEWS.
+     * @return string
+     */
+    public static function view_label(string $view): string {
+        return get_string($view === 'all' ? 'view_all' : 'sec_' . $view, 'local_beacon');
     }
 
     /**
@@ -64,16 +114,25 @@ class library implements renderable, templatable {
         // Stat cards and KPI gauges are computed at site scope, so they show only
         // on the site dashboard (not inside a single course) and only to viewers
         // entitled to site-wide figures.
+        $view = $this->view;
+        $wantstats = in_array($view, ['all', 'stats'], true);
+        $wantkpis = in_array($view, ['all', 'kpis'], true);
+        $wantreports = in_array($view, ['all', 'reports'], true);
+
         $stats = [];
         $kpis = [];
-        if (!$iscourse && $seesall) {
+        if (!$iscourse && $seesall && ($wantstats || $wantkpis)) {
             // One query loads every cached metric value for this context.
             \local_beacon\local\metric_cache::prefetch($ctxid);
-            foreach (config::stats() as $m) {
-                $stats[] = build::stat($m, $ctxid, $this->context);
+            if ($wantstats) {
+                foreach (config::stats() as $m) {
+                    $stats[] = build::stat($m, $ctxid, $this->context);
+                }
             }
-            foreach (config::kpis() as $m) {
-                $kpis[] = build::kpi($m, $ctxid, $this->context);
+            if ($wantkpis) {
+                foreach (config::kpis() as $m) {
+                    $kpis[] = build::kpi($m, $ctxid, $this->context);
+                }
             }
         }
 
@@ -81,7 +140,7 @@ class library implements renderable, templatable {
         // offer reports that can actually be scoped (to the course, or to the
         // teacher's own learners). Site-wide reports stay admin-only.
         $reports = [];
-        foreach (config::reports() as $r) {
+        foreach (($wantreports ? config::reports() : []) as $r) {
             if (($iscourse || !$seesall) && !$r->scopeable_for_teacher()) {
                 continue;
             }
@@ -91,7 +150,25 @@ class library implements renderable, templatable {
         $scopelabel = $iscourse
             ? format_string(get_course($this->context->instanceid)->fullname) : '';
 
+        // Page tabs: one per page this viewer may open (only when there is more
+        // than one), each a plain link so every page has its own URL.
+        $tabs = [];
+        $views = self::views_for($this->context);
+        if (count($views) > 1) {
+            foreach ($views as $v) {
+                $tabs[] = ['label' => self::view_label($v),
+                           'url' => self::view_url($v, $this->context)->out(false),
+                           'on' => $v === $view];
+            }
+        }
+        $heading = $view === 'all' ? get_string('libraryheading', 'local_beacon') : self::view_label($view);
+        $sub = get_string($view === 'all' ? 'librarysub' : 'view_' . $view . '_sub', 'local_beacon');
+
         return [
+            'heading'      => $heading,
+            'sub'          => $sub,
+            'hastabs'      => !empty($tabs),
+            'tabs'         => $tabs,
             'contextid'    => $ctxid,
             'iscourse'     => $iscourse,
             'scopelabel'   => $scopelabel,
