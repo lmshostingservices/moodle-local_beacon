@@ -53,7 +53,7 @@ class export {
      * @return string[]
      */
     private static function headers(report $report): array {
-        return array_map(fn($c) => get_string($c[1], 'local_beacon'), $report->columns);
+        return array_map(fn($c) => $report->columnlabel($c), $report->columns);
     }
 
     /**

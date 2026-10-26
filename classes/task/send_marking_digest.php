@@ -134,7 +134,7 @@ class send_marking_digest extends \core\task\scheduled_task {
         $html .= '<thead><tr>';
         foreach ($report->columns as $c) {
             $html .= '<th style="' . $cell . 'background:#12324f;color:#fff;">'
-                . s(get_string($c[1], 'local_beacon')) . '</th>';
+                . s($report->columnlabel($c)) . '</th>';
         }
         $html .= '</tr></thead><tbody>';
         foreach ($rows as $row) {

@@ -54,7 +54,11 @@ class report {
      *
      * @param array $d Definition.
      */
+    /** @var string plugin whose language file holds this report's strings */
+    public string $component = 'local_beacon';
+
     public function __construct(array $d) {
+        $this->component = $d['component'] ?? 'local_beacon';
         $this->id            = $d['id'];
         $this->family        = $d['family'];
         $this->icon          = $d['icon'] ?? 'doc';
@@ -133,7 +137,7 @@ class report {
      * @return string
      */
     public function name(): string {
-        return get_string('r_' . $this->id, 'local_beacon');
+        return get_string('r_' . $this->id, $this->component);
     }
 
     /**
@@ -142,7 +146,7 @@ class report {
      * @return string
      */
     public function description(): string {
-        return get_string('r_' . $this->id . '_desc', 'local_beacon');
+        return get_string('r_' . $this->id . '_desc', $this->component);
     }
 
     /**
@@ -151,7 +155,30 @@ class report {
      * @return string
      */
     public function grainlabel(): string {
-        return get_string('grain_' . $this->grain, 'local_beacon');
+        $sm = get_string_manager();
+        $component = $sm->string_exists('grain_' . $this->grain, 'local_beacon') ? 'local_beacon' : $this->component;
+        return get_string('grain_' . $this->grain, $component);
+    }
+
+    /**
+     * A column's label.
+     *
+     * @param array $c column definition [key, labelkey, type]
+     * @return string
+     */
+    public function columnlabel(array $c): string {
+        return get_string($c[1], $this->component);
+    }
+
+    /**
+     * A column's hover help, or ''.
+     *
+     * @param array $c column definition
+     * @return string
+     */
+    public function columnhelp(array $c): string {
+        $sm = get_string_manager();
+        return $sm->string_exists($c[1] . '_help', $this->component) ? get_string($c[1] . '_help', $this->component) : '';
     }
 
     /**

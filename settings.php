@@ -160,7 +160,7 @@ if ($hassiteconfig) {
             $dirkey = ($m->better === 'lower') ? 'kpi_dir_lower' : 'kpi_dir_higher';
             $kpipage->add(new admin_setting_heading(
                 'local_beacon/kpihead_' . $m->id,
-                get_string('m_' . $m->id, 'local_beacon'),
+                $m->name(),
                 get_string($dirkey, 'local_beacon')
             ));
             $kpipage->add(new admin_setting_configtext(

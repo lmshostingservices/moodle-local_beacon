@@ -70,7 +70,11 @@ class metric {
      *
      * @param array $d Definition.
      */
+    /** @var string plugin whose language file holds this metric's strings */
+    public string $component = 'local_beacon';
+
     public function __construct(array $d) {
+        $this->component = $d['component'] ?? 'local_beacon';
         $this->id            = $d['id'];
         $this->kind          = $d['kind'];
         $this->family        = $d['family'];
@@ -138,7 +142,7 @@ class metric {
      * @return string
      */
     public function name(): string {
-        return get_string('m_' . $this->id, 'local_beacon');
+        return get_string('m_' . $this->id, $this->component);
     }
 
     /**
@@ -147,7 +151,7 @@ class metric {
      * @return string
      */
     public function note(): string {
-        return get_string('m_' . $this->id . '_note', 'local_beacon');
+        return get_string('m_' . $this->id . '_note', $this->component);
     }
 
     /**
@@ -156,7 +160,7 @@ class metric {
      * @return string
      */
     public function explanation(): string {
-        return get_string('m_' . $this->id . '_expl', 'local_beacon');
+        return get_string('m_' . $this->id . '_expl', $this->component);
     }
 
     /**

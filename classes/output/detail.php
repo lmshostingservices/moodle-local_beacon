@@ -143,7 +143,7 @@ class detail implements renderable, templatable {
             $isdate = in_array($type, ['date'], true) || !empty($firstcells[$i]['datey']);
             $columns[] = [
                 'index'      => $i,
-                'label'      => get_string($c[1], 'local_beacon'),
+                'label'      => $rep->columnlabel($c),
                 'type'       => $type,
                 'numeric'    => $isnum,
                 'datey'      => $isdate && !$isnum,
@@ -425,19 +425,16 @@ class detail implements renderable, templatable {
         // numeric/datey flags that drive centring).
         $firstcells = $result['rows'][0] ?? [];
         $columns = [];
-        $sm = get_string_manager();
         foreach ($rep->columns as $i => $c) {
             $type = $c[2];
             // Plain-English hover text for the header, if one is defined for this
             // column (every column has a matching '<key>_help' string).
-            $helpkey = $c[1] . '_help';
-            $help = $sm->string_exists($helpkey, 'local_beacon')
-                ? get_string($helpkey, 'local_beacon') : '';
+            $help = $rep->columnhelp($c);
             $isnum = in_array($type, ['number'], true) || !empty($firstcells[$i]['numeric']);
             $isdate = in_array($type, ['date'], true) || !empty($firstcells[$i]['datey']);
             $columns[] = [
                 'index'      => $i,
-                'label'      => get_string($c[1], 'local_beacon'),
+                'label'      => $rep->columnlabel($c),
                 'type'       => $type,
                 'numeric'    => $isnum,
                 'datey'      => $isdate && !$isnum,

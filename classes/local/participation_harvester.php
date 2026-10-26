@@ -240,8 +240,13 @@ class participation_harvester {
                 // Otherwise find the instance column by testing which *-id column
                 // actually joins to a course module for this module.
                 $joincol = null;
-                foreach ($cols as $cn => $unused) {
+                foreach ($cols as $cn => $colinfo) {
                     if (in_array($cn, ['id', 'userid', 'groupid', 'usermodified'], true)) {
+                        continue;
+                    }
+                    // Only integer columns can join to an instance id. Text columns such as
+                    // bigbluebuttonbn_logs.meetingid fail on PostgreSQL with a type error.
+                    if (($colinfo->meta_type ?? 'I') !== 'I') {
                         continue;
                     }
                     if (substr($cn, -2) !== 'id' || !self::valid_ident($cn)) {

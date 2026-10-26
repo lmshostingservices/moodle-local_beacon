@@ -692,6 +692,11 @@ class catalogue {
         foreach ($defs as $d) {
             self::$metrics[$d['id']] = new metric($d);
         }
+        foreach (self::collected()->get_metrics() as $id => $d) {
+            if (!isset(self::$metrics[$id])) {
+                self::$metrics[$id] = new metric($d);
+            }
+        }
         return self::$metrics;
     }
 
@@ -2144,7 +2149,32 @@ class catalogue {
         foreach ($defs as $d) {
             self::$reports[$d['id']] = new report($d);
         }
+        foreach (self::collected()->get_reports() as $id => $d) {
+            if (!isset(self::$reports[$id])) {
+                self::$reports[$id] = new report($d);
+            }
+        }
         return self::$reports;
+    }
+
+    /** @var \local_beacon\hook\collect_catalogue|null items other plugins add, collected once per request */
+    private static $collected = null;
+
+    /**
+     * Ask other plugins for their metrics and reports (the collect_catalogue hook).
+     *
+     * @return \local_beacon\hook\collect_catalogue
+     */
+    private static function collected(): \local_beacon\hook\collect_catalogue {
+        if (self::$collected === null) {
+            self::$collected = new \local_beacon\hook\collect_catalogue();
+            try {
+                \core\di::get(\core\hook\manager::class)->dispatch(self::$collected);
+            } catch (\Throwable $e) {
+                debugging('Beacon: collect_catalogue failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+        }
+        return self::$collected;
     }
 
     /**

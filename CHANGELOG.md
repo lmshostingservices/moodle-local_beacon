@@ -2,6 +2,24 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.11.0] - 2026-10-27
+Brings two parallel 2.10.x lines back together into one release.
+- **Other plugins can now add their own stat cards, KPIs and reports.** New hook
+  `\local_beacon\hook\collect_catalogue`: a listener calls `add_metric()` and
+  `add_report()` with the same definitions Beacon uses for its own catalogue, plus
+  the plugin's `component` for its strings. Ids must start with the plugin name
+  (for example `fastgrade_turnaround`). Added items appear in the library, the
+  Choose what shows page, KPI settings, exports, scheduled deliveries and the
+  finder like any other. Fast Grade (local_fastgrade) uses this to add marking
+  turnaround, backlog and feedback reports.
+- **Fix:** the participation backfill no longer fails on PostgreSQL. It was testing
+  text columns (such as BigBlueButton's `meetingid`) as course-module instance ids,
+  which PostgreSQL rejects as a type error. Only integer columns are tested now.
+- Includes everything from 2.10.0–2.10.2 below (Charts page, finder, Unified
+  Grader support, charts on the Choose what shows page).
+- Note: a separate build was also labelled 2.10.0 (27 Oct, the hook and
+  backfill fix above). Its changes are all included here; 2.11.0 supersedes it.
+
 ## [v2.10.2] - 2026-10-26
 - **Charts are now chosen on the Choose what shows page**, in a new Charts tab
   alongside Stat cards, KPI gauges and Reports — same check-list, select all /
