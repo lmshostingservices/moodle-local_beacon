@@ -2,6 +2,12 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.8.4] - 2026-10-26
+- **Fixed: the Low-annotation PDF submissions report did not appear after
+  upgrading.** Existing sites keep a saved report selection, so the new report
+  was installed but switched off. The upgrade now adds it to the enabled reports
+  automatically (as earlier releases did for their new reports).
+
 ## [v2.8.3] - 2026-10-26
 - **Fixed: "Main navigation" placement showed no Beacon link on Moodle 4.x / 5.x.**
   Boost-based themes build the top navigation bar from Moodle's primary

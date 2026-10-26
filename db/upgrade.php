@@ -296,5 +296,17 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026092222, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026102604) {
+        // Version 2.8.4: switch on the Low-annotation PDF submissions report
+        // (added in 2.8.0) on existing sites. Every site has a saved report
+        // selection from install, so a new report stays hidden unless appended.
+        $cur = get_config('local_beacon', 'enabledreports');
+        if ($cur !== false && $cur !== '' && strpos(',' . $cur . ',', ',low_annotation,') === false) {
+            set_config('enabledreports', $cur . ',low_annotation', 'local_beacon');
+        }
+        \cache::make('local_beacon', 'reports')->purge();
+        upgrade_plugin_savepoint(true, 2026102604, 'local', 'beacon');
+    }
+
     return true;
 }
