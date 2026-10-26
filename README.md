@@ -24,6 +24,7 @@ Beacon is a curated reporting and analytics plugin for Moodle. It ships with 29 
 - 29 pre-built reports covering the full Moodle data model
 - Funding participation evidence — durable proof of ongoing engagement for funding audits, built from completion, submission and attempt records that persist beyond log retention
 - Trainer marking queue — a per-trainer view of submitted-but-unmarked assessments, scoped by role and group, with a daily digest email; every row deep-links into Moodle (learner, course, assignment, and click the submission date to open the grading screen). Works with rolling intakes and adds no page-load cost (counts are precomputed hourly)
+- Low-annotation PDF submissions — graded PDF work where the marker left fewer annotations or PDF comments than two admin-set minimums; a quick integrity check for language courses (e.g. possible machine translation)
 - Role-aware views: admins see site-wide data; teachers are hard-locked to their course; learners see only their own data
 - Server-side filter engine with active-filter chips and per-facet counts
 - Scheduled report delivery via Moodle's built-in SMTP (no external service)

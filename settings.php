@@ -84,6 +84,36 @@ if ($hassiteconfig) {
         1
     ));
 
+    // Low-annotation PDF submissions report: the two minimums. A graded PDF
+    // submission is flagged when it falls below either one; 0 switches a check off.
+    $settings->add(new admin_setting_heading(
+        'local_beacon/lowannot_heading',
+        get_string('lowannot_heading', 'local_beacon'),
+        get_string('lowannot_heading_desc', 'local_beacon')
+    ));
+    $lowannotoptions = [0 => get_string('lowannot_off', 'local_beacon')];
+    for ($i = 1; $i <= 20; $i++) {
+        $lowannotoptions[$i] = get_string('lowannot_atleast', 'local_beacon', $i);
+    }
+    $setting = new admin_setting_configselect(
+        'local_beacon/lowannot_minannotations',
+        get_string('lowannot_minannotations', 'local_beacon'),
+        get_string('lowannot_minannotations_desc', 'local_beacon'),
+        1,
+        $lowannotoptions
+    );
+    $setting->set_updatedcallback('local_beacon_purge_report_cache');
+    $settings->add($setting);
+    $setting = new admin_setting_configselect(
+        'local_beacon/lowannot_mincomments',
+        get_string('lowannot_mincomments', 'local_beacon'),
+        get_string('lowannot_mincomments_desc', 'local_beacon'),
+        0,
+        $lowannotoptions
+    );
+    $setting->set_updatedcallback('local_beacon_purge_report_cache');
+    $settings->add($setting);
+
     // Teacher roles: which of the site's real roles Beacon treats as teachers,
     // so custom roles (Trainer, Assessor, …) scope correctly — not just the
     // built-in archetypes.

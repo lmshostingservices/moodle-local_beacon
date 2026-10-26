@@ -118,3 +118,11 @@ function local_beacon_extend_navigation_course(
         new pix_icon('icon', '', 'local_beacon')
     );
 }
+
+/**
+ * Purge Beacon's short-lived report result cache, so a changed report setting
+ * (e.g. the low-annotation minimums) takes effect on the next open.
+ */
+function local_beacon_purge_report_cache(): void {
+    \cache::make('local_beacon', 'reports')->purge();
+}

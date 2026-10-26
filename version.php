@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026102100;      // YYYYMMDDXX — 21 Oct 2026, sequence 00.
+$plugin->version   = 2026102602;      // YYYYMMDDXX — 26 Oct 2026, sequence 02.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.7.0';         // Marking queue: per-trainer digest list, Teacher column, student-email-prefix filter.
-$plugin->release_prev = '2.6.3';      // Previous release.
+$plugin->release   = '2.8.2';         // Grade changes: percentages use the gradebook's own min/max (fixes >100% course totals).
+$plugin->release_prev = '2.8.1';      // Previous release.

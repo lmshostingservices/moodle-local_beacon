@@ -2,6 +2,45 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.8.2] - 2026-10-26
+- **Fixed: Grade changes showed course totals over 100% (e.g. 213%).** Percentages
+  were worked out against the course total's item maximum. Moodle's gradebook
+  measures course and category totals against each learner's *own* maximum
+  (stored on the grade), which with Natural aggregation can differ greatly from
+  the item maximum. The report now uses exactly the gradebook's rule — the
+  learner's raw min/max as recorded at the time of each change for course and
+  category totals (and for every item when the course's "Min and max grades used
+  in calculation" setting is "from the grade"), and (grade − min) / (max − min) —
+  so its figures match what the gradebook shows. Previous and New result are each
+  measured against the maximum that applied at the time.
+
+## [v2.8.1] - 2026-10-26
+- **Low-annotation PDF submissions: added a View PDF column.** Opens the marked-up
+  PDF the learner sees (Moodle's flattened Annotate PDF output) when the marker
+  added any annotations or comments; when there is no markup, it opens the
+  learner's submitted PDF instead, so the work itself can be checked in one click.
+  Links use Moodle's own file permissions, so only staff who can view the
+  submission can open them.
+
+## [v2.8.0] - 2026-10-26
+- **New report: Low-annotation PDF submissions** (Assessment family). Lists graded
+  PDF assignment submissions where the marker left fewer annotations (lines, pen
+  marks, highlights, shapes, stamps) and/or fewer PDF comment boxes than the
+  minimums set by the admin — useful in language courses, where work graded with
+  no corrections may be worth a second look (e.g. possible machine translation).
+  Flags work for review; it does not establish misconduct.
+  - Two new settings under Beacon settings: **Minimum annotations** (default: at
+    least 1) and **Minimum PDF comments** (default: don't check). A submission is
+    listed when it falls below either; 0 switches a check off. Changing either
+    clears the report cache so it takes effect immediately.
+  - Counts only released markup (not unsaved drafts), on the learner's latest
+    attempt, on assignments with Annotate PDF switched on, and only once graded.
+  - Columns: learner, email, course, assignment, submitted, grade (% or scale
+    word), grader, graded on (links to the grader), annotations, PDF comments,
+    written feedback, and a *Flagged for* status (red = no markup at all).
+  - Filters: category, course, group, teacher, cohort, graded date range. Teachers
+    are automatically scoped to their own learners, as on every report.
+
 ## [v2.7.0] - 2026-10-21
 - **Marking digest email now lists each trainer's own queue.** The daily
   per-trainer digest previously sent only a count; it now includes a table of

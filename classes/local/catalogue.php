@@ -77,6 +77,22 @@ class catalogue {
 
 
     /**
+     * One of the low-annotation report's minimums (admin setting), clamped to
+     * 0..20. 0 switches that check off. Unset settings fall back to the
+     * defaults: at least 1 annotation, comments not checked.
+     *
+     * @param string $name Config key: lowannot_minannotations or lowannot_mincomments.
+     * @return int
+     */
+    public static function annotation_minimum(string $name): int {
+        $raw = get_config('local_beacon', $name);
+        if ($raw === false || $raw === null || $raw === '') {
+            $raw = ($name === 'lowannot_minannotations') ? 1 : 0;
+        }
+        return max(0, min(20, (int) $raw));
+    }
+
+    /**
      * The marking queue, shared by the admin and per-trainer reports. Combines
      * assignment submissions awaiting grading with quiz attempts that have a
      * question needing manual grading (e.g. essay questions). Each row:
@@ -926,6 +942,8 @@ class catalogue {
                           ['item', 'col_assessment', 'text'], ['prev', 'col_prevresult', 'text'],
                           ['new', 'col_newresult', 'text'], ['changed', 'col_changed', 'date']],
             'run' => function ($DB, $q, $limit) {
+                global $CFG;
+                require_once($CFG->libdir . '/gradelib.php');
                 // Each row is a grade change: the current history entry (gh) compared
                 // against the immediately preceding history entry for the same item +
                 // learner (ph, found by MAX(id) < gh.id — portable, no window funcs).
@@ -959,9 +977,11 @@ class catalogue {
                               OR (ph.finalgrade <> gh.finalgrade)
                                ) $fw";
                 $sql = "SELECT gh.id, gh.userid, gi.courseid, gi.itemname, gi.itemtype,
-                               gi.gradetype, gi.scaleid, gi.grademax, u.firstname, u.lastname, u.email,
-                               c.fullname AS course,
-                               ph.finalgrade AS prevgrade, gh.finalgrade AS newgrade, gh.timemodified AS changed
+                               gi.gradetype, gi.scaleid, gi.grademax, gi.grademin, gi.calculation,
+                               u.firstname, u.lastname, u.email, c.fullname AS course,
+                               ph.finalgrade AS prevgrade, ph.rawgrademax AS prevrawmax, ph.rawgrademin AS prevrawmin,
+                               gh.finalgrade AS newgrade, gh.rawgrademax AS newrawmax, gh.rawgrademin AS newrawmin,
+                               gh.timemodified AS changed
                         $body ORDER BY gh.timemodified DESC, c.fullname";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
 
@@ -978,10 +998,26 @@ class catalogue {
                         $scales[(int) $sc->id] = array_map('trim', explode(',', $sc->scale));
                     }
                 }
+                // Which min/max each course uses, exactly as Moodle's gradebook does
+                // (grade_grade::get_grade_min_and_max): course and category totals
+                // (unless calculated) — and every item when the course setting
+                // "Min and max grades used in calculation" is "from the grade" — are
+                // measured against the learner's own raw min/max recorded on that
+                // grade, not the item's. With Natural aggregation a course total's
+                // item maximum can differ from a learner's real maximum, which is
+                // what produced impossible figures such as 213%.
+                $minmaxfromgrade = [];
+                foreach ($recs as $r) {
+                    $cid = (int) $r->courseid;
+                    if (!isset($minmaxfromgrade[$cid])) {
+                        $minmaxfromgrade[$cid] = (int) grade_get_setting($cid, 'minmaxtouse',
+                            get_config('core', 'grade_minmaxtouse')) === 2; // GRADE_MIN_MAX_FROM_GRADE_GRADE.
+                    }
+                }
                 // Scale grades (e.g. C / NYC) show the word; numeric grades show a
-                // percentage of the item's maximum, which gives a clear indication
-                // of the size of the change.
-                $fmt = function ($fg, $r) use ($scales) {
+                // percentage, computed the way the gradebook does:
+                // (grade - min) / (max - min).
+                $fmt = function ($fg, $r, $rawmin, $rawmax) use ($scales, $minmaxfromgrade) {
                     if ($fg === null) {
                         return '—';
                     }
@@ -994,9 +1030,13 @@ class catalogue {
                         }
                         return $items[$idx - 1] ?? ('#' . $idx);
                     }
-                    $max = (float) $r->grademax;
-                    if ($max > 0) {
-                        return round(100 * $fg / $max) . '%';
+                    $aggregate = in_array($r->itemtype, ['course', 'category'], true)
+                        && ($r->calculation === null || $r->calculation === '');
+                    $usegrade = ($aggregate || !empty($minmaxfromgrade[(int) $r->courseid])) && $rawmax !== null;
+                    $min = $usegrade ? (float) $rawmin : (float) $r->grademin;
+                    $max = $usegrade ? (float) $rawmax : (float) $r->grademax;
+                    if ($max - $min > 0) {
+                        return round(100 * ($fg - $min) / ($max - $min)) . '%';
                     }
                     $s = rtrim(rtrim(number_format($fg, 2, '.', ''), '0'), '.');
                     return $s === '' || $s === '-' ? '0' : $s;
@@ -1016,8 +1056,9 @@ class catalogue {
                     }
                     $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($r->email),
                                cell::text($r->course, $courseurl),
-                               cell::text($item), cell::text($fmt($r->prevgrade, $r)),
-                               cell::status($fmt($r->newgrade, $r), 'g'), cell::when((int) $r->changed)];
+                               cell::text($item), cell::text($fmt($r->prevgrade, $r, $r->prevrawmin, $r->prevrawmax)),
+                               cell::status($fmt($r->newgrade, $r, $r->newrawmin, $r->newrawmax), 'g'),
+                               cell::when((int) $r->changed)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
             },
@@ -1070,6 +1111,192 @@ class catalogue {
                 // and an admin's selected trainer flow through the shared helper's
                 // 'trainer' binding, so the correct viewer is used even under cron.
                 return self::marking_queue_rows($DB, $q, $limit);
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'low_annotation', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'submission',
+            'requirestable' => 'assignfeedback_editpdf_annot',
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
+            'datelabel' => 'col_gradedon',
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
+                          ['course', 'col_course', 'text'], ['assignment', 'col_assignment', 'text'],
+                          ['submitted', 'col_submitted', 'text'], ['grade', 'col_grade', 'text'],
+                          ['grader', 'col_grader', 'text'], ['gradedon', 'col_gradedon', 'text'],
+                          ['annotations', 'col_annotations', 'number'], ['comments', 'col_pdfcomments', 'number'],
+                          ['feedback', 'col_writtenfeedback', 'text'], ['flag', 'col_flaggedfor', 'status'],
+                          ['viewpdf', 'col_viewpdf', 'text']],
+            'run' => function ($DB, $q, $limit) {
+                // Graded PDF submissions on which the marker left fewer annotations
+                // (lines, pen, highlights, shapes, stamps) and/or fewer PDF comment
+                // boxes than the admin-set minimums. In a language course, a
+                // submission graded with no corrections at all is worth a second
+                // look (e.g. possible machine translation). Only released markup
+                // (draft = 0) counts — what the learner actually sees.
+                $minannots = self::annotation_minimum('lowannot_minannotations');
+                $mincmnts = self::annotation_minimum('lowannot_mincomments');
+                $below = [];
+                $tparams = [];
+                if ($minannots > 0) {
+                    $below[] = 'COALESCE(an.cnt, 0) < :lamina';
+                    $tparams['lamina'] = $minannots;
+                }
+                if ($mincmnts > 0) {
+                    $below[] = 'COALESCE(cmt.cnt, 0) < :laminc';
+                    $tparams['laminc'] = $mincmnts;
+                }
+                if (!$below) {
+                    // Both checks switched off: nothing can be flagged.
+                    return [[], 0];
+                }
+                $belowsql = '(' . implode(' OR ', $below) . ')';
+
+                [$fw, $fp] = $q->where(['cohort' => 'u.id', 'course' => 'a.course', 'category' => 'a.course',
+                    'group' => 's.userid', 'studentemail' => 'u.email',
+                    'trainer' => ['user' => 's.userid', 'course' => 'a.course'],
+                    'daterange' => ['col' => 'g.timemodified', 'label' => 'col_gradedon']]);
+                $params = [
+                    'lactx' => CONTEXT_MODULE, 'lacomp' => 'assignsubmission_file',
+                    'laarea' => 'submission_files', 'lamime' => 'application/pdf', 'ladot' => '.',
+                    'laplug' => 'editpdf', 'latype' => 'assignfeedback', 'laname' => 'enabled', 'laval' => '1',
+                ] + $tparams + $fp;
+                $hasfb = $DB->sql_isnotempty('assignfeedback_comments', 'fc.commenttext', true, true);
+                $body = "FROM {assign_submission} s
+                          JOIN {assign} a ON a.id = s.assignment
+                          JOIN {course} c ON c.id = a.course AND c.id <> 1
+                          JOIN {user} u ON u.id = s.userid AND u.deleted = 0
+                          JOIN {modules} md ON md.name = 'assign'
+                          JOIN {course_modules} cm ON cm.instance = a.id AND cm.module = md.id
+                               AND cm.course = a.course AND cm.deletioninprogress = 0
+                          JOIN {context} ctx ON ctx.instanceid = cm.id AND ctx.contextlevel = :lactx
+                          JOIN {assign_plugin_config} apc ON apc.assignment = a.id AND apc.plugin = :laplug
+                               AND apc.subtype = :latype AND apc.name = :laname AND apc.value = :laval
+                          JOIN (SELECT f.contextid, f.itemid
+                                  FROM {files} f
+                                 WHERE f.component = :lacomp AND f.filearea = :laarea
+                                   AND f.mimetype = :lamime AND f.filename <> :ladot
+                              GROUP BY f.contextid, f.itemid) pf ON pf.contextid = ctx.id AND pf.itemid = s.id
+                          JOIN {assign_grades} g ON g.assignment = s.assignment AND g.userid = s.userid
+                               AND g.attemptnumber = s.attemptnumber
+                     LEFT JOIN (SELECT gradeid, COUNT(*) AS cnt FROM {assignfeedback_editpdf_annot}
+                                 WHERE draft = 0 GROUP BY gradeid) an ON an.gradeid = g.id
+                     LEFT JOIN (SELECT gradeid, COUNT(*) AS cnt FROM {assignfeedback_editpdf_cmnt}
+                                 WHERE draft = 0 GROUP BY gradeid) cmt ON cmt.gradeid = g.id
+                         WHERE s.latest = 1 AND s.status = 'submitted' AND s.userid > 0
+                           AND g.grade IS NOT NULL AND g.grade >= 0
+                           AND $belowsql $fw";
+                $sql = "SELECT s.id, s.userid, a.course AS courseid, cm.id AS cmid, g.id AS gradeid, ctx.id AS ctxid,
+                               u.firstname, u.lastname, u.email, c.fullname AS course, a.name AS assignment,
+                               s.timemodified AS submitted, g.grade, a.grade AS maxgrade, g.grader,
+                               g.timemodified AS gradedon,
+                               COALESCE(an.cnt, 0) AS annotations, COALESCE(cmt.cnt, 0) AS comments,
+                               (SELECT COUNT(*) FROM {assignfeedback_comments} fc
+                                 WHERE fc.grade = g.id AND $hasfb) AS hasfeedback
+                        $body
+                      ORDER BY COALESCE(an.cnt, 0) + COALESCE(cmt.cnt, 0) ASC, g.timemodified DESC";
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+
+                // Grader names and scale items, fetched once for the page of rows.
+                $graderids = array_unique(array_filter(array_map(fn($r) => (int) $r->grader, $recs), fn($v) => $v > 0));
+                $graders = $graderids
+                    ? $DB->get_records_list('user', 'id', $graderids, '',
+                        'id, firstname, lastname, firstnamephonetic, lastnamephonetic, middlename, alternatename')
+                    : [];
+                $scaleids = array_unique(array_filter(array_map(fn($r) => -(int) $r->maxgrade, $recs), fn($v) => $v > 0));
+                $scales = $scaleids ? $DB->get_records_list('scale', 'id', $scaleids, '', 'id, scale') : [];
+
+                // Files to open, fetched once for the page of rows: the annotated
+                // PDF Moodle flattens on save (assignfeedback_editpdf / download,
+                // keyed by grade id — only exists when there is some markup), and
+                // the learner's submitted PDF(s) as the fallback.
+                $annotated = [];
+                $submitted = [];
+                if ($recs) {
+                    [$gin, $gp] = $DB->get_in_or_equal(array_map(fn($r) => (int) $r->gradeid, $recs),
+                        SQL_PARAMS_NAMED, 'lagr');
+                    $files = $DB->get_records_sql("SELECT id, contextid, itemid, filepath, filename
+                                                     FROM {files}
+                                                    WHERE component = 'assignfeedback_editpdf' AND filearea = 'download'
+                                                      AND filename <> '.' AND itemid $gin
+                                                 ORDER BY id DESC", $gp);
+                    foreach ($files as $f) {
+                        $annotated[(int) $f->itemid] = $annotated[(int) $f->itemid] ?? $f;
+                    }
+                    [$sin, $sp] = $DB->get_in_or_equal(array_keys($recs), SQL_PARAMS_NAMED, 'lasb');
+                    $files = $DB->get_records_sql("SELECT id, contextid, itemid, filepath, filename
+                                                     FROM {files}
+                                                    WHERE component = 'assignsubmission_file'
+                                                      AND filearea = 'submission_files'
+                                                      AND mimetype = 'application/pdf' AND filename <> '.'
+                                                      AND itemid $sin
+                                                 ORDER BY itemid, filepath, filename", $sp);
+                    foreach ($files as $f) {
+                        $submitted[(int) $f->itemid][] = $f;
+                    }
+                }
+
+                $rows = [];
+                foreach ($recs as $r) {
+                    $userid = (int) $r->userid;
+                    $courseid = (int) $r->courseid;
+                    $cmid = (int) $r->cmid;
+
+                    if (isset($annotated[(int) $r->gradeid])) {
+                        $f = $annotated[(int) $r->gradeid];
+                        $pdfurl = \moodle_url::make_pluginfile_url($f->contextid, 'assignfeedback_editpdf', 'download',
+                            $f->itemid, $f->filepath, $f->filename, true)->out(false);
+                        $pdfcell = cell::text(get_string('lowannot_link_annotated', 'local_beacon'), $pdfurl);
+                    } else if (!empty($submitted[(int) $r->id])) {
+                        $list = $submitted[(int) $r->id];
+                        $f = $list[0];
+                        $pdfurl = \moodle_url::make_pluginfile_url($f->contextid, 'assignsubmission_file', 'submission_files',
+                            $f->itemid, $f->filepath, $f->filename, false)->out(false);
+                        $label = count($list) > 1
+                            ? get_string('lowannot_link_submitted_n', 'local_beacon', count($list))
+                            : get_string('lowannot_link_submitted', 'local_beacon');
+                        $pdfcell = cell::text($label, $pdfurl);
+                    } else {
+                        $pdfcell = cell::text('—');
+                    }
+
+                    $profile = (new \moodle_url('/user/view.php', ['id' => $userid, 'course' => $courseid]))->out(false);
+                    $courseurl = (new \moodle_url('/course/view.php', ['id' => $courseid]))->out(false);
+                    $alink = (new \moodle_url('/mod/assign/view.php', ['id' => $cmid]))->out(false);
+                    $glink = (new \moodle_url('/mod/assign/view.php',
+                        ['id' => $cmid, 'action' => 'grader', 'userid' => $userid]))->out(false);
+
+                    $max = (float) $r->maxgrade;
+                    $grade = (float) $r->grade;
+                    if ($max > 0) {
+                        $pct = round($grade * 100 / $max);
+                        $gradecell = cell::number($pct, $pct . '%');
+                    } else {
+                        $items = isset($scales[-(int) $max]) ? explode(',', $scales[-(int) $max]->scale) : [];
+                        $word = trim($items[(int) $grade - 1] ?? '');
+                        $gradecell = cell::text($word !== '' ? $word : '—');
+                    }
+
+                    $gr = $graders[(int) $r->grader] ?? null;
+                    $gradername = $gr ? self::fullname_of($gr) : '—';
+
+                    $reasons = [];
+                    if ($minannots > 0 && (int) $r->annotations < $minannots) {
+                        $reasons[] = get_string('lowannot_reason_annots', 'local_beacon');
+                    }
+                    if ($mincmnts > 0 && (int) $r->comments < $mincmnts) {
+                        $reasons[] = get_string('lowannot_reason_comments', 'local_beacon');
+                    }
+                    $nomarks = ((int) $r->annotations + (int) $r->comments) === 0;
+
+                    $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($r->email),
+                               cell::text($r->course, $courseurl), cell::text(format_string($r->assignment), $alink),
+                               cell::when((int) $r->submitted), $gradecell, cell::text($gradername),
+                               cell::when((int) $r->gradedon, $glink),
+                               cell::number((int) $r->annotations), cell::number((int) $r->comments),
+                               cell::text(get_string(((int) $r->hasfeedback > 0) ? 'yes' : 'no')),
+                               cell::status(implode(', ', $reasons), $nomarks ? 'b' : 'w'), $pdfcell];
+                }
+                return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
             },
         ];
 
