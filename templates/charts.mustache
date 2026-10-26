@@ -1,0 +1,173 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+
+    @template local_beacon/charts
+
+    The Charts page.
+
+    Example context (json):
+    {
+        "heading": "Charts", "sub": "Trends and breakdowns.", "hastabs": false, "tabs": [],
+        "iscourse": false, "scoped": false, "hassections": true, "hasfinder": false, "cansettings": false,
+        "controls": {"period": [{"value": 12, "label": "Last 12 months", "selected": true}],
+                     "showentity": false, "hascohorts": false, "reseturl": "#", "contextid": 0},
+        "sections": [{"key": "growth", "label": "Growth", "count": 1, "charts": [
+            {"id": "enrolments", "title": "New enrolments", "desc": "Per month.", "family": "growth",
+             "headline": "120", "note": "in this period", "hasdelta": true, "delta": "+12.0%",
+             "deltaclass": "up", "deltanote": "vs previous period", "html": "", "empty": true,
+             "error": false, "wide": true, "section": "growth", "search": "new enrolments"}
+        ]}]
+    }
+}}
+<div class="bc-root" data-region="beacon-charts">
+  <div class="bc-wrap">
+
+    <div class="bc-page-head">
+      <div>
+        <h1 class="bc-h1">{{heading}}</h1>
+        <p class="bc-sub">{{sub}}</p>
+      </div>
+      <div class="bc-head-actions">
+        <button type="button" class="bc-btn bc-btn-ghost bc-theme-toggle" data-role="theme-toggle" aria-label="{{#str}}toggletheme, local_beacon{{/str}}" title="{{#str}}toggletheme, local_beacon{{/str}}">
+          <svg class="bc-ico-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg class="bc-ico-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+        {{#cansettings}}
+          <a class="bc-btn bc-btn-ghost" href="{{settingsurl}}">{{#str}}chart_choose, local_beacon{{/str}}</a>
+        {{/cansettings}}
+      </div>
+    </div>
+
+    {{#hastabs}}
+    <nav class="bc-tabs bc-viewtabs" aria-label="{{#str}}pluginname, local_beacon{{/str}}">
+      {{#tabs}}<a class="bc-tab{{#on}} on{{/on}}" href="{{url}}"{{#on}} aria-current="page"{{/on}}>{{label}}</a>{{/tabs}}
+    </nav>
+    {{/hastabs}}
+
+    {{#iscourse}}
+    <div class="bc-scopebar">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      {{#str}}coursescope, local_beacon{{/str}} — <b>{{scopelabel}}</b>
+    </div>
+    {{/iscourse}}
+    {{#scoped}}
+    <div class="bc-scopebar">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      {{#str}}chart_scoped, local_beacon{{/str}}
+    </div>
+    {{/scoped}}
+
+    {{#controls}}
+    <form class="bc-chart-controls" method="get" action="charts.php">
+      {{#contextid}}<input type="hidden" name="contextid" value="{{contextid}}">{{/contextid}}
+      <label class="bc-cc-field">
+        <span>{{#str}}chart_f_period, local_beacon{{/str}}</span>
+        <select name="period" class="custom-select">
+          {{#period}}<option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>{{/period}}
+        </select>
+      </label>
+      {{#showentity}}
+      <label class="bc-cc-field">
+        <span>{{#str}}chart_f_category, local_beacon{{/str}}</span>
+        <select name="f_cat[]" class="custom-select">
+          <option value="">{{#str}}chart_f_all, local_beacon{{/str}}</option>
+          {{#categories}}<option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>{{/categories}}
+        </select>
+      </label>
+      <label class="bc-cc-field bc-cc-wide">
+        <span>{{#str}}chart_f_course, local_beacon{{/str}}</span>
+        <select name="f_course[]" class="custom-select">
+          <option value="">{{#str}}chart_f_all, local_beacon{{/str}}</option>
+          {{#courses}}<option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>{{/courses}}
+        </select>
+      </label>
+      {{#hascohorts}}
+      <label class="bc-cc-field">
+        <span>{{#str}}chart_f_cohort, local_beacon{{/str}}</span>
+        <select name="f_cohort[]" class="custom-select">
+          <option value="">{{#str}}chart_f_all, local_beacon{{/str}}</option>
+          {{#cohorts}}<option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>{{/cohorts}}
+        </select>
+      </label>
+      {{/hascohorts}}
+      {{/showentity}}
+      <div class="bc-cc-actions">
+        <button type="submit" class="bc-btn bc-btn-primary">{{#str}}chart_apply, local_beacon{{/str}}</button>
+        <a class="bc-btn bc-btn-ghost" href="{{reseturl}}">{{#str}}chart_reset, local_beacon{{/str}}</a>
+      </div>
+    </form>
+    {{/controls}}
+
+    {{#hasfinder}}{{#finder}}{{> local_beacon/finder}}{{/finder}}{{/hasfinder}}
+
+    {{^hassections}}
+      <div class="bc-empty">
+        <div class="bc-empty-ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5M4 19h16M8 16v-4M12 16V8M16 16v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <h2>{{#str}}chart_none_h, local_beacon{{/str}}</h2>
+        <p>{{#str}}chart_none, local_beacon{{/str}}</p>
+      </div>
+    {{/hassections}}
+
+    {{#sections}}
+    <section class="bc-sec" id="bc-charts-{{key}}" data-finder-section data-finder-group>
+      <div class="bc-sec-head"><span class="bc-k">{{label}}</span>
+        <span class="bc-count" data-finder-groupcount>{{count}}</span><span class="bc-rule"></span></div>
+      <div class="bc-chart-grid">
+        {{#charts}}
+        <article class="bc-chart-card bcfam-{{family}}{{#wide}} bc-chart-wide{{/wide}}{{#tall}} bc-chart-tall{{/tall}}" id="bc-chart-{{id}}" data-finder-item data-family="{{section}}" data-search="{{search}}">
+          <header class="bc-chart-head">
+            <div class="bc-chart-titles">
+              <h3>{{title}}</h3>
+              <p>{{desc}}</p>
+            </div>
+            {{^error}}
+            <div class="bc-chart-figure">
+              <div class="bc-chart-value">{{headline}}</div>
+              <div class="bc-chart-note">{{note}}</div>
+              {{#hasdelta}}<div class="bc-chart-delta {{deltaclass}}" title="{{deltanote}}">{{delta}} <span>{{deltanote}}</span></div>{{/hasdelta}}
+            </div>
+            {{/error}}
+          </header>
+          <div class="bc-chart-body">
+            {{#error}}<div class="bc-chart-msg">{{#str}}chart_error, local_beacon{{/str}}</div>{{/error}}
+            {{#empty}}<div class="bc-chart-msg">{{#str}}chart_empty, local_beacon{{/str}}</div>{{/empty}}
+            {{{html}}}
+          </div>
+          {{#csvurl}}
+          <footer class="bc-chart-foot">
+            <a href="{{csvurl}}">{{#str}}chart_csv, local_beacon{{/str}}</a>
+            {{#reporturl}}<a href="{{reporturl}}">{{#str}}chart_openreport, local_beacon{{/str}} →</a>{{/reporturl}}
+          </footer>
+          {{/csvurl}}
+          {{^csvurl}}{{#reporturl}}
+          <footer class="bc-chart-foot"><a href="{{reporturl}}">{{#str}}chart_openreport, local_beacon{{/str}} →</a></footer>
+          {{/reporturl}}{{/csvurl}}
+        </article>
+        {{/charts}}
+      </div>
+    </section>
+    {{/sections}}
+
+    <div class="bc-finder-none" data-finder-none hidden>{{#str}}finder_none, local_beacon{{/str}}</div>
+
+  </div>
+</div>
+{{#js}}
+require(['local_beacon/ui', 'local_beacon/finder'], function(UI, Finder) {
+    UI.init();
+    Finder.init('[data-region="beacon-charts"]');
+});
+{{/js}}

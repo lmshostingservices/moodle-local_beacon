@@ -45,6 +45,9 @@ if (!\local_beacon\local\access::is_staff($context)) {
 }
 
 $view = optional_param('view', 'all', PARAM_ALPHA);
+if ($view === 'charts') {
+    redirect(\local_beacon\output\library::view_url('charts', $context));
+}
 if (!in_array($view, \local_beacon\output\library::views_for($context), true)) {
     $view = 'all';
 }

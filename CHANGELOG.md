@@ -2,6 +2,47 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.10.1] - 2026-10-26
+- **Low-annotation PDF submissions now supports Unified Grader
+  (local_unifiedgrader).** When Unified Grader is installed and grading
+  assignments, its annotations are counted alongside Moodle's Annotate PDF:
+  comments count as PDF comments; pen, highlight, text highlight,
+  strikethrough, stamp and shape marks count as annotations. Assignments
+  qualify even without Annotate PDF switched on, and **View PDF** opens Unified
+  Grader's annotated PDF when it exists. Counting is done in portable SQL
+  (verified on PostgreSQL and MariaDB, including non-Latin comment text).
+- Compatibility check: Unified Grader saves grades through Moodle's assignment
+  and quiz grading (assign_grades, gradebook, question engine), so every other
+  Beacon report, stat, KPI and chart that reads grades or marking status works
+  with it unchanged.
+
+## [v2.10.0] - 2026-10-26
+- **New Charts page** (also in the Beacon menu and page tabs) with 21 charts in
+  five sections — Growth, Engagement, Progress, Assessment, Compliance:
+  new enrolments, new user accounts, largest courses, enrolment methods; active
+  learners, daily activity (90 days), busiest days of the week, busiest times of
+  day, time since learners last visited; course completions, where learners are
+  up to, completion rate by course; submitted vs graded, marking turnaround,
+  marking backlog by age and by course, course grade distribution, average quiz
+  score by course, quiz attempts; certificates issued, badges awarded.
+  - Trend charts overlay the **previous period**, and every chart has a
+    headline figure with the % change vs the previous period (coloured by
+    whether the change is good — e.g. lower turnaround is green).
+  - Filters: period (3/6/12/24 months), category, course and cohort. Built on
+    Beacon's report filter engine, so teachers automatically see only their own
+    learners and the student-email prefix applies.
+  - Each chart: **Download CSV**, **Open report** (the related report, carrying
+    the same filters), and Moodle's accessible "Show chart data" table.
+  - Uses Moodle's built-in chart library (theme-aware, no third-party code).
+    Months follow the viewer's timezone; activity patterns use permanent
+    records (completions, submissions, attempts, posts), not the purgeable log.
+  - Admins choose which charts appear (Beacon settings → Charts shown).
+- **Finder on every library page and on Charts.** A search box (press "/" to
+  jump to it) and type chips with live counts filter the cards instantly; cards
+  are grouped under their type heading (People, Progress, Assessment,
+  Engagement, Compliance, Operations) instead of one long list. The last search
+  is remembered per page for the browser session.
+
 ## [v2.9.0] - 2026-10-26
 - **Stat cards, KPI gauges and Reports now each have their own page.** The
   library keeps an **Overview** page (everything, as before) plus separate pages

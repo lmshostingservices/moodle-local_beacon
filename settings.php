@@ -114,6 +114,28 @@ if ($hassiteconfig) {
     $setting->set_updatedcallback('local_beacon_purge_report_cache');
     $settings->add($setting);
 
+    // Charts page: which charts appear (all by default).
+    $settings->add(new admin_setting_heading(
+        'local_beacon/chartsheading',
+        get_string('chartsheading', 'local_beacon'),
+        get_string('chartsheading_desc', 'local_beacon')
+    ));
+    if ($ADMIN->fulltree) {
+        $chartchoices = [];
+        foreach (array_keys(\local_beacon\local\charts::definitions()) as $chartid) {
+            $chartchoices[$chartid] = get_string('chart_' . $chartid, 'local_beacon');
+        }
+        $setting = new admin_setting_configmulticheckbox(
+            'local_beacon/enabledcharts',
+            get_string('enabledcharts', 'local_beacon'),
+            get_string('enabledcharts_desc', 'local_beacon'),
+            array_fill_keys(array_keys($chartchoices), 1),
+            $chartchoices
+        );
+        $setting->set_updatedcallback('local_beacon_purge_report_cache');
+        $settings->add($setting);
+    }
+
     // Teacher roles: which of the site's real roles Beacon treats as teachers,
     // so custom roles (Trainer, Assessor, …) scope correctly — not just the
     // built-in archetypes.

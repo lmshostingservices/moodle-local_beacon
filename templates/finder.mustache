@@ -1,0 +1,45 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+
+    @template local_beacon/finder
+
+    Search box + type chips that filter the cards on a page, live.
+
+    Example context (json):
+    {
+        "placeholder": "Search reports", "total": 12, "haschips": true,
+        "chips": [{"family": "people", "label": "People", "count": 4}]
+    }
+}}
+<div class="bc-finder" data-finder data-total="{{total}}">
+  <div class="bc-finder-search">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <input type="search" data-finder-input placeholder="{{placeholder}}" aria-label="{{placeholder}}" autocomplete="off">
+    <kbd class="bc-finder-kbd" aria-hidden="true">/</kbd>
+  </div>
+  {{#haschips}}
+  <div class="bc-finder-chips" role="group" aria-label="{{#str}}finder_types, local_beacon{{/str}}">
+    <button type="button" class="bc-fchip on" data-finder-chip="" aria-pressed="true">{{#str}}finder_all, local_beacon{{/str}} <span class="bc-tc" data-finder-chipcount="">{{total}}</span></button>
+    {{#chips}}
+    <button type="button" class="bc-fchip bcfam-{{family}}" data-finder-chip="{{family}}" aria-pressed="false"><span class="bc-d"></span>{{label}} <span class="bc-tc" data-finder-chipcount="{{family}}">{{count}}</span></button>
+    {{/chips}}
+  </div>
+  {{/haschips}}
+  <div class="bc-finder-status" aria-live="polite">
+    <span data-finder-status data-tpl="{{#str}}finder_showing, local_beacon{{/str}}"></span>
+    <button type="button" class="bc-linkbtn" data-finder-clear hidden>{{#str}}finder_clear, local_beacon{{/str}}</button>
+  </div>
+</div>

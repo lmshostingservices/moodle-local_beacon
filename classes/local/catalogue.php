@@ -43,7 +43,7 @@ class catalogue {
      * @param bool $trackingonly Restrict to completion-tracking courses.
      * @return string
      */
-    private static function live_enrolments(bool $trackingonly = false): string {
+    public static function live_enrolments(bool $trackingonly = false): string {
         $extra = $trackingonly ? 'JOIN {course} c ON c.id = e.courseid AND c.enablecompletion = 1' : '';
         return "SELECT ue.userid, e.courseid
                   FROM {user_enrolments} ue
@@ -321,7 +321,7 @@ class catalogue {
      * @param \moodle_database $DB Database.
      * @return string A SQL sub-select producing columns userid, courseid, ts.
      */
-    private static function activity_union(\moodle_database $DB): string {
+    public static function activity_union(\moodle_database $DB): string {
         $man = $DB->get_manager();
         $parts = [];
         // Activity completions — core, always present.
@@ -1135,14 +1135,44 @@ class catalogue {
                 // (draft = 0) counts — what the learner actually sees.
                 $minannots = self::annotation_minimum('lowannot_minannotations');
                 $mincmnts = self::annotation_minimum('lowannot_mincomments');
+
+                // Unified Grader (local_unifiedgrader) keeps its own annotations: one
+                // row per page holding Fabric.js JSON, each object tagged with an
+                // "annotationType" (comment, pen, highlight, texthighlight,
+                // strikethrough, stamp, shape). When it grades assignments on this
+                // site, its markup is counted alongside Moodle's Annotate PDF, and
+                // assignments qualify even without Annotate PDF switched on. Objects
+                // are counted by occurrences of the tag in the JSON — portable SQL.
+                $ugon = $DB->get_manager()->table_exists('local_unifiedgrader_annot')
+                    && get_config('local_unifiedgrader', 'enable_assign');
+                $annexpr = 'COALESCE(an.cnt, 0)';
+                $cmtexpr = 'COALESCE(cmt.cnt, 0)';
+                $ugjoin = '';
+                if ($ugon) {
+                    $tagall = '\'"annotationType":\'';
+                    $tagcmt = '\'"annotationType":"comment"\'';
+                    $occ = function (string $tag, int $len) use ($DB) {
+                        return '(' . $DB->sql_length('ua.annotationdata') . ' - '
+                            . $DB->sql_length("REPLACE(ua.annotationdata, $tag, '')") . ") / $len";
+                    };
+                    $ugjoin = "LEFT JOIN (SELECT sf.itemid AS subid, SUM(" . $occ($tagall, 17) . ") AS objs,
+                                                 SUM(" . $occ($tagcmt, 26) . ") AS cmnts
+                                            FROM {local_unifiedgrader_annot} ua
+                                            JOIN {files} sf ON sf.id = ua.fileid AND sf.component = 'assignsubmission_file'
+                                                 AND sf.filearea = 'submission_files'
+                                        GROUP BY sf.itemid) ug ON ug.subid = s.id";
+                    $annexpr = 'COALESCE(an.cnt, 0) + COALESCE(ug.objs, 0) - COALESCE(ug.cmnts, 0)';
+                    $cmtexpr = 'COALESCE(cmt.cnt, 0) + COALESCE(ug.cmnts, 0)';
+                }
+
                 $below = [];
                 $tparams = [];
                 if ($minannots > 0) {
-                    $below[] = 'COALESCE(an.cnt, 0) < :lamina';
+                    $below[] = "$annexpr < :lamina";
                     $tparams['lamina'] = $minannots;
                 }
                 if ($mincmnts > 0) {
-                    $below[] = 'COALESCE(cmt.cnt, 0) < :laminc';
+                    $below[] = "$cmtexpr < :laminc";
                     $tparams['laminc'] = $mincmnts;
                 }
                 if (!$below) {
@@ -1158,8 +1188,15 @@ class catalogue {
                 $params = [
                     'lactx' => CONTEXT_MODULE, 'lacomp' => 'assignsubmission_file',
                     'laarea' => 'submission_files', 'lamime' => 'application/pdf', 'ladot' => '.',
-                    'laplug' => 'editpdf', 'latype' => 'assignfeedback', 'laname' => 'enabled', 'laval' => '1',
                 ] + $tparams + $fp;
+                // Only assignments where markup is possible: Annotate PDF switched on,
+                // or every assignment when Unified Grader grades assignments.
+                $editpdfjoin = '';
+                if (!$ugon) {
+                    $editpdfjoin = "JOIN {assign_plugin_config} apc ON apc.assignment = a.id AND apc.plugin = :laplug
+                               AND apc.subtype = :latype AND apc.name = :laname AND apc.value = :laval";
+                    $params += ['laplug' => 'editpdf', 'latype' => 'assignfeedback', 'laname' => 'enabled', 'laval' => '1'];
+                }
                 $hasfb = $DB->sql_isnotempty('assignfeedback_comments', 'fc.commenttext', true, true);
                 $body = "FROM {assign_submission} s
                           JOIN {assign} a ON a.id = s.assignment
@@ -1169,8 +1206,7 @@ class catalogue {
                           JOIN {course_modules} cm ON cm.instance = a.id AND cm.module = md.id
                                AND cm.course = a.course AND cm.deletioninprogress = 0
                           JOIN {context} ctx ON ctx.instanceid = cm.id AND ctx.contextlevel = :lactx
-                          JOIN {assign_plugin_config} apc ON apc.assignment = a.id AND apc.plugin = :laplug
-                               AND apc.subtype = :latype AND apc.name = :laname AND apc.value = :laval
+                          $editpdfjoin
                           JOIN (SELECT f.contextid, f.itemid
                                   FROM {files} f
                                  WHERE f.component = :lacomp AND f.filearea = :laarea
@@ -1182,6 +1218,7 @@ class catalogue {
                                  WHERE draft = 0 GROUP BY gradeid) an ON an.gradeid = g.id
                      LEFT JOIN (SELECT gradeid, COUNT(*) AS cnt FROM {assignfeedback_editpdf_cmnt}
                                  WHERE draft = 0 GROUP BY gradeid) cmt ON cmt.gradeid = g.id
+                     $ugjoin
                          WHERE s.latest = 1 AND s.status = 'submitted' AND s.userid > 0
                            AND g.grade IS NOT NULL AND g.grade >= 0
                            AND $belowsql $fw";
@@ -1189,11 +1226,11 @@ class catalogue {
                                u.firstname, u.lastname, u.email, c.fullname AS course, a.name AS assignment,
                                s.timemodified AS submitted, g.grade, a.grade AS maxgrade, g.grader,
                                g.timemodified AS gradedon,
-                               COALESCE(an.cnt, 0) AS annotations, COALESCE(cmt.cnt, 0) AS comments,
+                               $annexpr AS annotations, $cmtexpr AS comments,
                                (SELECT COUNT(*) FROM {assignfeedback_comments} fc
                                  WHERE fc.grade = g.id AND $hasfb) AS hasfeedback
                         $body
-                      ORDER BY COALESCE(an.cnt, 0) + COALESCE(cmt.cnt, 0) ASC, g.timemodified DESC";
+                      ORDER BY $annexpr + $cmtexpr ASC, g.timemodified DESC";
                 $recs = $DB->get_records_sql($sql, $params, 0, $limit);
 
                 // Grader names and scale items, fetched once for the page of rows.
@@ -1211,6 +1248,7 @@ class catalogue {
                 // the learner's submitted PDF(s) as the fallback.
                 $annotated = [];
                 $submitted = [];
+                $ugannotated = [];
                 if ($recs) {
                     [$gin, $gp] = $DB->get_in_or_equal(array_map(fn($r) => (int) $r->gradeid, $recs),
                         SQL_PARAMS_NAMED, 'lagr');
@@ -1233,6 +1271,26 @@ class catalogue {
                     foreach ($files as $f) {
                         $submitted[(int) $f->itemid][] = $f;
                     }
+                    // Unified Grader's flattened annotated PDF: itemid = the submitted
+                    // file's id, path /<student id>/ (its own pluginfile handler).
+                    $subfileids = [];
+                    foreach ($submitted as $subid => $list) {
+                        foreach ($list as $f) {
+                            $subfileids[(int) $f->id] = (int) $subid;
+                        }
+                    }
+                    if ($ugon && $subfileids) {
+                        [$uin, $up] = $DB->get_in_or_equal(array_keys($subfileids), SQL_PARAMS_NAMED, 'laug');
+                        $files = $DB->get_records_sql("SELECT id, contextid, itemid, filepath, filename
+                                                         FROM {files}
+                                                        WHERE component = 'local_unifiedgrader' AND filearea = 'annotatedpdf'
+                                                          AND filename <> '.' AND itemid $uin
+                                                     ORDER BY id DESC", $up);
+                        foreach ($files as $f) {
+                            $subid = $subfileids[(int) $f->itemid];
+                            $ugannotated[$subid] = $ugannotated[$subid] ?? $f;
+                        }
+                    }
                 }
 
                 $rows = [];
@@ -1241,7 +1299,12 @@ class catalogue {
                     $courseid = (int) $r->courseid;
                     $cmid = (int) $r->cmid;
 
-                    if (isset($annotated[(int) $r->gradeid])) {
+                    if (isset($ugannotated[(int) $r->id])) {
+                        $f = $ugannotated[(int) $r->id];
+                        $pdfurl = \moodle_url::make_pluginfile_url($f->contextid, 'local_unifiedgrader', 'annotatedpdf',
+                            $f->itemid, $f->filepath, $f->filename, false)->out(false);
+                        $pdfcell = cell::text(get_string('lowannot_link_annotated', 'local_beacon'), $pdfurl);
+                    } else if (isset($annotated[(int) $r->gradeid])) {
                         $f = $annotated[(int) $r->gradeid];
                         $pdfurl = \moodle_url::make_pluginfile_url($f->contextid, 'assignfeedback_editpdf', 'download',
                             $f->itemid, $f->filepath, $f->filename, true)->out(false);

@@ -58,6 +58,8 @@
     </nav>
     {{/hastabs}}
 
+    {{#hasfinder}}{{#finder}}{{> local_beacon/finder}}{{/finder}}{{/hasfinder}}
+
     {{#iscourse}}
     <div class="bc-scopebar">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -75,13 +77,16 @@
     {{/empty}}
 
     {{#hasstats}}
-    <section class="bc-sec">
+    <section class="bc-sec" data-finder-section>
       <div class="bc-sec-head"><span class="bc-k">{{#str}}sec_stats, local_beacon{{/str}}</span>
         <h2>{{#str}}sec_stats_h, local_beacon{{/str}}</h2>
         <span class="bc-count">{{statcount}}</span><span class="bc-rule"></span></div>
+      {{#statgroups}}
+      <div class="bc-fgroup" data-finder-group>
+        <div class="bc-fgroup-head"><span class="bc-pill bcfam-{{family}}"><span class="bc-d"></span>{{label}}</span><span class="bc-count" data-finder-groupcount>{{count}}</span></div>
       <div class="bc-grid bc-grid-stats">
-        {{#stats}}
-          <a class="bc-stat bcfam-{{family}} bc-enter" href="{{url}}">
+        {{#items}}
+          <a class="bc-stat bcfam-{{family}} bc-enter" href="{{url}}" data-finder-item data-family="{{family}}" data-search="{{search}}">
             <div class="bc-stat-top">
               <span class="bc-ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">{{{icon}}}</svg></span>
               <span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>
@@ -102,19 +107,24 @@
               {{/hasspark}}
             </div>
           </a>
-        {{/stats}}
+        {{/items}}
       </div>
+      </div>
+      {{/statgroups}}
     </section>
     {{/hasstats}}
 
     {{#haskpis}}
-    <section class="bc-sec">
+    <section class="bc-sec" data-finder-section>
       <div class="bc-sec-head"><span class="bc-k">{{#str}}sec_kpis, local_beacon{{/str}}</span>
         <h2>{{#str}}sec_kpis_h, local_beacon{{/str}}</h2>
         <span class="bc-count">{{kpicount}}</span><span class="bc-rule"></span></div>
+      {{#kpigroups}}
+      <div class="bc-fgroup" data-finder-group>
+        <div class="bc-fgroup-head"><span class="bc-pill bcfam-{{family}}"><span class="bc-d"></span>{{label}}</span><span class="bc-count" data-finder-groupcount>{{count}}</span></div>
       <div class="bc-grid bc-grid-kpis">
-        {{#kpis}}
-          <a class="bc-kpi bcfam-{{family}} bc-enter" href="{{url}}">
+        {{#items}}
+          <a class="bc-kpi bcfam-{{family}} bc-enter" href="{{url}}" data-finder-item data-family="{{family}}" data-search="{{search}}">
             <div class="bc-kpi-top">
               <div><div class="bc-title">{{name}}</div><div class="bc-desc">{{desc}}</div></div>
               <span class="bc-pill"><span class="bc-d"></span>{{familylabel}}</span>
@@ -136,19 +146,24 @@
               <span class="bc-target">{{#str}}target, local_beacon{{/str}} <b>{{target}}%</b></span>
             </div>
           </a>
-        {{/kpis}}
+        {{/items}}
       </div>
+      </div>
+      {{/kpigroups}}
     </section>
     {{/haskpis}}
 
     {{#hasreports}}
-    <section class="bc-sec">
+    <section class="bc-sec" data-finder-section>
       <div class="bc-sec-head"><span class="bc-k">{{#str}}sec_reports, local_beacon{{/str}}</span>
         <h2>{{#str}}sec_reports_h, local_beacon{{/str}}</h2>
         <span class="bc-count">{{reportcount}}</span><span class="bc-rule"></span></div>
+      {{#reportgroups}}
+      <div class="bc-fgroup" data-finder-group>
+        <div class="bc-fgroup-head"><span class="bc-pill bcfam-{{family}}"><span class="bc-d"></span>{{label}}</span><span class="bc-count" data-finder-groupcount>{{count}}</span></div>
       <div class="bc-grid bc-grid-reports">
-        {{#reports}}
-          <a class="bc-report bcfam-{{family}} bc-enter" href="{{url}}">
+        {{#items}}
+          <a class="bc-report bcfam-{{family}} bc-enter" href="{{url}}" data-finder-item data-family="{{family}}" data-search="{{search}}">
             <div class="bc-rep-top">
               <span class="bc-rep-ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">{{{icon}}}</svg></span>
               <h3>{{name}}</h3>
@@ -160,7 +175,11 @@
               <span class="bc-go"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
             </div>
           </a>
-        {{/reports}}
+        {{/items}}
+      </div>
+      </div>
+      {{/reportgroups}}
+      <div class="bc-grid bc-grid-reports">
 
         {{#canrequest}}
         <div class="bc-suggest bc-enter">
@@ -173,10 +192,13 @@
     </section>
     {{/hasreports}}
 
+    <div class="bc-finder-none" data-finder-none hidden>{{#str}}finder_none, local_beacon{{/str}}</div>
+
   </div>
 </div>
 {{#js}}
-require(['local_beacon/ui'], function(UI) {
+require(['local_beacon/ui', 'local_beacon/finder'], function(UI, Finder) {
     UI.init();
+    Finder.init('[data-region="beacon-library"]');
 });
 {{/js}}

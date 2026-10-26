@@ -80,7 +80,13 @@ class navlink {
      */
     public static function current_view(): ?string {
         global $PAGE;
-        if (empty($PAGE->url) || $PAGE->url->get_path(false) !== '/local/beacon/index.php') {
+        if (empty($PAGE->url)) {
+            return null;
+        }
+        if ($PAGE->url->get_path(false) === '/local/beacon/charts.php') {
+            return 'charts';
+        }
+        if ($PAGE->url->get_path(false) !== '/local/beacon/index.php') {
             return null;
         }
         $view = $PAGE->url->get_param('view');

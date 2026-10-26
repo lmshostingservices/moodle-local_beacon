@@ -3170,3 +3170,333 @@ textarea.bc-control {
         transform: none !important;
     }
 }
+
+/* ================================================================ charts page */
+.bc-viewtabs {
+    margin: 18px 0 6px;
+}
+.bc-chart-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 16px;
+    margin: 18px 0 8px;
+    padding: 16px 18px;
+    background: var(--bc-surface);
+    border: 1px solid var(--bc-line);
+    border-radius: var(--bc-r);
+    box-shadow: var(--bc-sh-1);
+}
+.bc-cc-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0;
+    min-width: 170px;
+}
+.bc-cc-wide {
+    min-width: 260px;
+    flex: 1 1 260px;
+}
+.bc-cc-field > span {
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--bc-ink3);
+}
+.bc-cc-field select {
+    max-width: 100%;
+}
+.bc-cc-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+.bc-chart-jump {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0 6px;
+}
+.bc-chart-jump .bc-pill {
+    text-decoration: none;
+}
+.bc-chart-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.bc-chart-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--bc-surface);
+    border: 1px solid var(--bc-line);
+    border-top: 3px solid var(--fam);
+    border-radius: var(--bc-r);
+    box-shadow: var(--bc-sh-1);
+    padding: 18px 20px 14px;
+}
+.bc-chart-wide {
+    grid-column: span 2;
+}
+.bc-chart-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+.bc-chart-titles h3 {
+    font-size: 16.5px;
+    font-weight: 750;
+    letter-spacing: -.01em;
+    margin: 0 0 4px;
+    color: var(--bc-ink);
+}
+.bc-chart-titles p {
+    font-size: 13.5px;
+    color: var(--bc-ink3);
+    margin: 0;
+    line-height: 1.45;
+}
+.bc-chart-figure {
+    text-align: right;
+    flex: none;
+}
+.bc-chart-value {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1.1;
+    color: var(--fam);
+}
+.bc-chart-note {
+    font-size: 12px;
+    color: var(--bc-ink3);
+    margin-top: 2px;
+}
+.bc-chart-delta {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 750;
+    padding: 2px 9px;
+    border-radius: var(--bc-r-pill);
+    background: var(--bc-line);
+    color: var(--bc-ink2);
+}
+.bc-chart-delta span {
+    font-weight: 600;
+    opacity: .8;
+}
+.bc-chart-delta.up {
+    background: var(--bc-good-wash);
+    color: var(--bc-good);
+}
+.bc-chart-delta.down {
+    background: var(--bc-bad-wash);
+    color: var(--bc-bad);
+}
+.bc-chart-body {
+    flex: 1;
+    min-height: 0;
+}
+.bc-root .bc-chart-body .chart-area .chart-image {
+    position: relative;
+    width: 100%;
+    height: 280px;
+    margin: 0;
+}
+.bc-root .bc-chart-wide .bc-chart-body .chart-area .chart-image {
+    height: 300px;
+}
+.bc-root .bc-chart-tall .bc-chart-body .chart-area .chart-image {
+    height: 420px;
+}
+.bc-chart-body .chart-table {
+    font-size: 12.5px;
+    margin-top: 6px;
+}
+.bc-chart-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--bc-ink3);
+    font-size: 14px;
+    background: var(--bc-a-wash);
+    border-radius: var(--bc-r-sm);
+}
+.bc-chart-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--bc-line);
+    font-size: 13px;
+    font-weight: 650;
+}
+.bc-chart-foot a {
+    color: var(--bc-a2);
+}
+@media (max-width: 960px) {
+    .bc-chart-grid {
+        grid-template-columns: 1fr;
+    }
+    .bc-chart-wide {
+        grid-column: auto;
+    }
+    .bc-cc-actions {
+        margin-left: 0;
+    }
+}
+
+/* ================================================================ finder */
+/* Search + type chips above the cards on every library page and on Charts. */
+.bc-root .bcfam-growth {
+    --fam: var(--bc-fam-people);
+    --fam-w: var(--bc-fam-people-w);
+}
+.bc-root .bc-f-out {
+    display: none !important;
+}
+.bc-finder {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+    margin: 18px 0 10px;
+    padding: 14px 16px;
+    background: var(--bc-surface);
+    border: 1px solid var(--bc-line);
+    border-radius: var(--bc-r);
+    box-shadow: var(--bc-sh-1);
+}
+.bc-finder-search {
+    position: relative;
+    flex: 1 1 280px;
+    max-width: 460px;
+}
+.bc-finder-search svg {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    width: 18px;
+    height: 18px;
+    transform: translateY(-50%);
+    color: var(--bc-ink3);
+    pointer-events: none;
+}
+.bc-root .bc-finder-search input {
+    width: 100%;
+    height: 42px;
+    padding: 0 40px 0 40px;
+    font-size: 14.5px;
+    color: var(--bc-ink);
+    background: var(--bc-surface);
+    border: 1px solid var(--bc-line);
+    border-radius: var(--bc-r-pill);
+    outline: none;
+}
+.bc-root .bc-finder-search input:focus {
+    border-color: var(--bc-a);
+    box-shadow: 0 0 0 3px var(--bc-a-wash);
+}
+.bc-finder-kbd {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--bc-ink3);
+    border: 1px solid var(--bc-line);
+    border-radius: 5px;
+    padding: 1px 6px;
+    background: var(--bc-surface);
+}
+.bc-finder-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.bc-root .bc-fchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: var(--bc-r-pill);
+    border: 1px solid var(--bc-line);
+    background: var(--bc-surface);
+    color: var(--bc-ink2);
+    cursor: pointer;
+    transition: .15s var(--bc-ease);
+}
+.bc-root .bc-fchip .bc-d {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--fam);
+}
+.bc-root .bc-fchip:hover {
+    background: var(--fam-w, var(--bc-a-wash));
+}
+.bc-root .bc-fchip.on,
+.bc-root .bc-fchip.on:hover,
+.bc-root .bc-fchip.on:focus {
+    background: var(--fam, var(--bc-a));
+    border-color: var(--fam, var(--bc-a));
+    color: #fff;
+}
+.bc-root .bc-fchip.on .bc-d {
+    background: #fff;
+}
+.bc-root .bc-fchip:not([class*="bcfam-"]).on {
+    background: var(--bc-grad);
+    border-color: transparent;
+}
+.bc-finder-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 650;
+    color: var(--bc-ink3);
+}
+.bc-fgroup + .bc-fgroup {
+    margin-top: 22px;
+}
+.bc-fgroup-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.bc-fgroup-head .bc-pill {
+    font-size: 12.5px;
+    padding: 5px 11px;
+}
+.bc-finder-none {
+    margin: 24px 0;
+    padding: 28px;
+    text-align: center;
+    color: var(--bc-ink3);
+    font-weight: 600;
+    background: var(--bc-surface);
+    border: 1px dashed var(--bc-line);
+    border-radius: var(--bc-r);
+}
+@media (max-width: 700px) {
+    .bc-finder-status {
+        margin-left: 0;
+    }
+    .bc-finder-kbd {
+        display: none;
+    }
+}

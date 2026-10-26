@@ -35,7 +35,7 @@ use renderer_base;
  */
 class library implements renderable, templatable {
     /** The pages the library can show: everything, or one section on its own. */
-    public const VIEWS = ['all', 'stats', 'kpis', 'reports'];
+    public const VIEWS = ['all', 'stats', 'kpis', 'reports', 'charts'];
 
     /** @var \context Context. */
     protected \context $context;
@@ -65,7 +65,7 @@ class library implements renderable, templatable {
     public static function views_for(\context $context): array {
         $sitewide = !($context instanceof \context_course)
             && has_capability('local/beacon:viewall', \context_system::instance());
-        return $sitewide ? self::VIEWS : ['all', 'reports'];
+        return $sitewide ? self::VIEWS : ['all', 'reports', 'charts'];
     }
 
     /**
@@ -80,10 +80,63 @@ class library implements renderable, templatable {
         if ($context instanceof \context_course) {
             $params['contextid'] = $context->id;
         }
+        if ($view === 'charts') {
+            return new \moodle_url('/local/beacon/charts.php', $params);
+        }
         if ($view !== 'all') {
             $params['view'] = $view;
         }
         return new \moodle_url('/local/beacon/index.php', $params);
+    }
+
+    /** Type (family) order used for grouping and chips. */
+    public const FAMILIES = ['people', 'progress', 'assessment', 'engagement', 'compliance', 'operations'];
+
+    /**
+     * Group cards under their type, in FAMILIES order, adding the text the
+     * finder searches on to each card.
+     *
+     * @param array[] $items Card contexts (each with family, familylabel, name).
+     * @return array[] Each ['family', 'label', 'count', 'items'].
+     */
+    public static function group(array $items): array {
+        $byfam = [];
+        foreach ($items as $item) {
+            $item['search'] = \core_text::strtolower(trim(($item['name'] ?? '') . ' ' . ($item['desc'] ?? '') . ' '
+                . ($item['note'] ?? '') . ' ' . ($item['familylabel'] ?? '') . ' ' . ($item['grain'] ?? '')));
+            $byfam[$item['family']][] = $item;
+        }
+        $out = [];
+        $order = array_merge(self::FAMILIES, array_diff(array_keys($byfam), self::FAMILIES));
+        foreach ($order as $f) {
+            if (empty($byfam[$f])) {
+                continue;
+            }
+            $out[] = ['family' => $f, 'label' => $byfam[$f][0]['familylabel'], 'count' => count($byfam[$f]),
+                      'items' => $byfam[$f]];
+        }
+        return $out;
+    }
+
+    /**
+     * The page tabs for a viewer: one per page they may open, each a plain link.
+     * Empty when there is only one page.
+     *
+     * @param \context $context Context.
+     * @param string $current The page being shown.
+     * @return array[]
+     */
+    public static function tabs(\context $context, string $current): array {
+        $views = self::views_for($context);
+        if (count($views) < 2) {
+            return [];
+        }
+        $tabs = [];
+        foreach ($views as $v) {
+            $tabs[] = ['label' => self::view_label($v), 'url' => self::view_url($v, $context)->out(false),
+                       'on' => $v === $current];
+        }
+        return $tabs;
     }
 
     /**
@@ -150,17 +203,28 @@ class library implements renderable, templatable {
         $scopelabel = $iscourse
             ? format_string(get_course($this->context->instanceid)->fullname) : '';
 
-        // Page tabs: one per page this viewer may open (only when there is more
-        // than one), each a plain link so every page has its own URL.
-        $tabs = [];
-        $views = self::views_for($this->context);
-        if (count($views) > 1) {
-            foreach ($views as $v) {
-                $tabs[] = ['label' => self::view_label($v),
-                           'url' => self::view_url($v, $this->context)->out(false),
-                           'on' => $v === $view];
+        $tabs = self::tabs($this->context, $view);
+
+        // Finder: every card is grouped under its type (family) heading, and the
+        // toolbar offers a search box plus one chip per type present, with counts.
+        $statgroups = self::group($stats);
+        $kpigroups = self::group($kpis);
+        $reportgroups = self::group($reports);
+        $chips = [];
+        foreach (array_merge($stats, $kpis, $reports) as $item) {
+            $f = $item['family'];
+            if (!isset($chips[$f])) {
+                $chips[$f] = ['family' => $f, 'label' => $item['familylabel'], 'count' => 0];
             }
+            $chips[$f]['count']++;
         }
+        $chips = array_values(array_filter(array_map(fn($f) => $chips[$f] ?? null, self::FAMILIES)));
+        $finder = [
+            'placeholder' => get_string('finder_placeholder_' . $view, 'local_beacon'),
+            'chips' => $chips,
+            'haschips' => count($chips) > 1,
+            'total' => count($stats) + count($kpis) + count($reports),
+        ];
         $heading = $view === 'all' ? get_string('libraryheading', 'local_beacon') : self::view_label($view);
         $sub = get_string($view === 'all' ? 'librarysub' : 'view_' . $view . '_sub', 'local_beacon');
 
@@ -168,6 +232,11 @@ class library implements renderable, templatable {
             'heading'      => $heading,
             'sub'          => $sub,
             'hastabs'      => !empty($tabs),
+            'statgroups'   => $statgroups,
+            'kpigroups'    => $kpigroups,
+            'reportgroups' => $reportgroups,
+            'finder'       => $finder,
+            'hasfinder'    => $finder['total'] > 1,
             'tabs'         => $tabs,
             'contextid'    => $ctxid,
             'iscourse'     => $iscourse,
