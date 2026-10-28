@@ -1541,52 +1541,100 @@ class catalogue {
             'requirestable' => 'attendance_log',
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_session',
-            'columns' => [['learner', 'col_learner', 'text'], ['studentid', 'col_studentid', 'text'],
-                          ['email', 'col_email', 'text'], ['class', 'col_class', 'text'],
-                          ['absences', 'col_sessionsmissed', 'number'], ['lastattended', 'col_lastattended', 'date']],
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
+                          ['class', 'col_class', 'text'], ['held', 'col_sessionsheld', 'number'],
+                          ['attendance', 'col_attendancepct', 'number'],
+                          ['absentsince', 'col_absentsince', 'number'],
+                          ['dayssince', 'col_dayssince', 'number'],
+                          ['lastattended', 'col_lastattended', 'date']],
             'run' => function ($DB, $q, $limit) {
-                // Flags learners with 2+ sessions marked Absent in a course (mod_attendance).
-                // "Absent"/"Present" are matched by the standard status acronym (A / P) or a
-                // description containing the word, so custom status sets still work. The
-                // LIKE patterns are fixed literals (not user input), kept inline to avoid
-                // repeated bound params and collation quirks across databases.
+                // "Who is disengaging right now": learners with 6+ sessions marked
+                // Absent SINCE they last attended (6 = two weeks at 3 sessions/week),
+                // in an ongoing class they are still actively enrolled in.
+                //
+                // Attendance definitions (mod_attendance), matched by the standard
+                // status acronym or a description word so custom status sets still
+                // work. All LIKE patterns are fixed literals (not user input):
+                //   Attended = Present OR Late (P / L)
+                //   Absent   = A
+                //   Excused / Authorised is counted as NEITHER — it is removed from
+                //   the sessions the percentage is calculated over.
                 [$fw, $fp] = $q->where(['cohort' => 'l.studentid', 'group' => 'l.studentid', 'studentemail' => 'u.email',
                     'course' => 'a.course', 'category' => 'a.course',
                     'trainer' => ['user' => 'l.studentid', 'course' => 'a.course'],
                     'daterange' => ['col' => 's.sessdate', 'label' => 'col_session']]);
+                $attended = "(UPPER(st.acronym) IN ('P', 'L') "
+                    . "OR LOWER(st.description) LIKE '%present%' OR LOWER(st.description) LIKE '%late%')";
                 $absent = "(UPPER(st.acronym) = 'A' OR LOWER(st.description) LIKE '%absent%')";
-                $present = "(UPPER(st.acronym) = 'P' OR LOWER(st.description) LIKE '%present%')";
+                // Each learner's genuine last attended date (Present/Late, all time),
+                // used to decide which absences are "since last attended".
+                $lastattsub = "LEFT JOIN (
+                                   SELECT l2.studentid AS sid, a2.course AS cid, MAX(s2.sessdate) AS lastatt
+                                     FROM {attendance_log} l2
+                                     JOIN {attendance_sessions} s2 ON s2.id = l2.sessionid
+                                     JOIN {attendance} a2 ON a2.id = s2.attendanceid
+                                     JOIN {attendance_statuses} st2 ON st2.id = l2.statusid AND st2.deleted = 0
+                                    WHERE (UPPER(st2.acronym) IN ('P', 'L')
+                                           OR LOWER(st2.description) LIKE '%present%'
+                                           OR LOWER(st2.description) LIKE '%late%')
+                                 GROUP BY l2.studentid, a2.course
+                               ) la ON la.sid = l.studentid AND la.cid = a.course";
+                $sincexpr = "SUM(CASE WHEN $absent AND (la.lastatt IS NULL OR s.sessdate > la.lastatt) "
+                    . "THEN 1 ELSE 0 END)";
+                $now = time();
                 $body = "FROM {attendance_log} l
                           JOIN {attendance_sessions} s ON s.id = l.sessionid
                           JOIN {attendance} a ON a.id = s.attendanceid
                           JOIN {course} c ON c.id = a.course AND c.id <> 1
                           JOIN {attendance_statuses} st ON st.id = l.statusid AND st.deleted = 0
                           JOIN {user} u ON u.id = l.studentid AND u.deleted = 0
-                         WHERE 1 = 1 $fw";
-                $abssum = "SUM(CASE WHEN $absent THEN 1 ELSE 0 END)";
+                          $lastattsub
+                         WHERE 1 = 1 $fw
+                           AND (c.enddate = 0 OR c.enddate > :bcnowend)
+                           AND EXISTS (SELECT 1 FROM {user_enrolments} ue
+                                         JOIN {enrol} e ON e.id = ue.enrolid AND e.courseid = a.course
+                                        WHERE ue.userid = l.studentid AND ue.status = 0 AND e.status = 0
+                                          AND (ue.timeend = 0 OR ue.timeend > :bcnowenr))";
+                $params = $fp + ['bcnowend' => $now, 'bcnowenr' => $now];
                 $sql = "SELECT MIN(l.id) AS id,
                                l.studentid AS userid, a.course AS courseid, c.fullname AS classname,
-                               u.firstname, u.lastname, u.idnumber, u.email,
-                               $abssum AS absences,
-                               MAX(CASE WHEN $present THEN s.sessdate ELSE NULL END) AS lastattended
+                               u.firstname, u.lastname, u.email,
+                               SUM(CASE WHEN $attended THEN 1 ELSE 0 END) AS attended,
+                               SUM(CASE WHEN $absent THEN 1 ELSE 0 END) AS absent,
+                               $sincexpr AS absentsince,
+                               la.lastatt AS lastattended
                         $body
-                     GROUP BY l.studentid, a.course, c.fullname, u.firstname, u.lastname, u.idnumber, u.email
-                       HAVING $abssum >= 2
-                     ORDER BY absences DESC, u.lastname, u.firstname";
-                $recs = $DB->get_records_sql($sql, $fp, 0, $limit);
+                     GROUP BY l.studentid, a.course, c.fullname, u.firstname, u.lastname, u.email, la.lastatt
+                       HAVING $sincexpr >= 6
+                     ORDER BY absentsince DESC, absent DESC, u.lastname, u.firstname";
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
                 $rows = [];
                 foreach ($recs as $r) {
                     $profile = (new \moodle_url('/user/view.php',
                         ['id' => (int) $r->userid, 'course' => (int) $r->courseid]))->out(false);
                     $courseurl = (new \moodle_url('/course/view.php', ['id' => (int) $r->courseid]))->out(false);
-                    $sid = ($r->idnumber !== null && $r->idnumber !== '') ? $r->idnumber : '—';
-                    $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($sid),
+                    $attendedn = (int) $r->attended;
+                    $absentn = (int) $r->absent;
+                    $held = $attendedn + $absentn;            // Excused excluded from the denominator.
+                    $pct = $held > 0 ? (int) round(100 * $attendedn / $held) : 0;
+                    $last = (int) $r->lastattended;
+                    if ($last > 0) {
+                        $days = (int) floor(($now - $last) / DAYSECS);
+                        $dayscell = cell::number($days);
+                        $lastcell = cell::when($last);
+                    } else {
+                        // Never attended: sort to the top (most disengaged) and label it.
+                        $dayscell = cell::number(PHP_INT_MAX, get_string('never', 'local_beacon'));
+                        $lastcell = cell::text(get_string('neverattended', 'local_beacon'));
+                    }
+                    $rows[] = [cell::text(self::fullname_of($r), $profile),
                                cell::text($r->email), cell::text($r->classname, $courseurl),
-                               cell::number((int) $r->absences), cell::when((int) $r->lastattended)];
+                               cell::number($held), cell::number($pct, $pct . '%'),
+                               cell::number((int) $r->absentsince), $dayscell, $lastcell];
                 }
                 $countsql = "SELECT COUNT(*) FROM (SELECT l.studentid $body
-                             GROUP BY l.studentid, a.course HAVING $abssum >= 2) bc";
-                return [$rows, $DB->count_records_sql($countsql, $fp)];
+                             GROUP BY l.studentid, a.course, la.lastatt HAVING $sincexpr >= 6) bc";
+                return [$rows, $DB->count_records_sql($countsql, $params)];
             },
         ];
 

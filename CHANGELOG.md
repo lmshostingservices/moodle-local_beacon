@@ -2,6 +2,25 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.12.0] - 2026-10-28
+- **Student absence alert rebuilt around disengagement.** The report now flags
+  actively-enrolled learners in an ongoing class who have **6 or more sessions
+  marked Absent since they last attended** (6 = two weeks at three sessions a
+  week) — rather than simply 2+ absences ever. New columns: Sessions held,
+  Attendance %, Absent since last attended, Days since last attended, and Last
+  attended (Student ID removed; Email kept).
+  - **Attended now counts Present *and* Late** everywhere (last attended,
+    attendance %, absent-since).
+  - **Excused / Authorised is removed from the total** — it counts as neither
+    attended nor absent, so it neither helps nor hurts the percentage and never
+    counts toward the 6.
+  - Only **active enrolments** in **ongoing classes** (course not past its end
+    date) are included; learners who have never attended are shown and labelled
+    "Never attended", sorted to the top. Sort: most absences-since-last-attended
+    first, then most total absences.
+- **New "Moodle Workplace" report family/tag.** A dedicated colour-coded family
+  (like Assessment, Compliance, …) ready for the forthcoming multi-tenant suite.
+
 ## [v2.11.1] - 2026-10-27
 - Version bump for release. No code changes from 2.11.0.
 

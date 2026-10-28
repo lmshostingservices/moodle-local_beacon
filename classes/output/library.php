@@ -90,7 +90,7 @@ class library implements renderable, templatable {
     }
 
     /** Type (family) order used for grouping and chips. */
-    public const FAMILIES = ['people', 'progress', 'assessment', 'engagement', 'compliance', 'operations'];
+    public const FAMILIES = ['people', 'progress', 'assessment', 'engagement', 'compliance', 'operations', 'workplace'];
 
     /**
      * Group cards under their type, in FAMILIES order, adding the text the

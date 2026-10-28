@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026102702;      // YYYYMMDDXX — 27 Oct 2026, sequence 02.
+$plugin->version   = 2026102800;      // YYYYMMDDXX — 28 Oct 2026, sequence 00.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 501];      // Moodle 4.4 through 5.1.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.11.1';        // Version bump for release (same code as 2.11.0).
-$plugin->release_prev = '2.11.0';      // Previous release.
+$plugin->release   = '2.12.0';        // Student absence alert rebuilt (6+ absent since last attended); Moodle Workplace family.
+$plugin->release_prev = '2.11.1';     // Previous release.
