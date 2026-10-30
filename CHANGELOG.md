@@ -2,6 +2,18 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.13.0] - 2026-10-30
+- **New report: Activity completion — by activity.** The per-learner companion to
+  Activity completion. One row per learner per completion-tracked activity,
+  listing each activity (quizzes, books, assignments …) with its **type**,
+  whether the learner has **completed** it, and **when**. Activity names and
+  types are resolved through Moodle's module info, so every activity type is
+  supported. Only tracked, visible activities are listed.
+- **Verified on Moodle 5.2** (installed and run on MariaDB): plugin installs and
+  upgrades cleanly, and reports execute end to end. `supported` raised to 5.2.
+  (Activity completion totals confirmed to match Moodle's own activity completion
+  report exactly.)
+
 ## [v2.12.0] - 2026-10-28
 - **Student absence alert rebuilt around disengagement.** The report now flags
   actively-enrolled learners in an ongoing class who have **6 or more sessions

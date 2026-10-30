@@ -837,6 +837,70 @@ class catalogue {
         ];
 
         $defs[] = [
+            'id' => 'activity_completion_detail', 'family' => 'progress', 'icon' => 'check', 'grain' => 'activity',
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort'],
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
+                          ['course', 'col_course', 'text'], ['activity', 'col_activity', 'text'],
+                          ['type', 'col_activitytype', 'text'], ['status', 'col_status', 'status'],
+                          ['completedon', 'col_completedon', 'date']],
+            'run' => function ($DB, $q, $limit) {
+                // One row per learner per completion-tracked, visible activity — so
+                // trainers can see each quiz / book / assignment and whether the
+                // learner has completed it, not just a Done/Total tally.
+                [$fw, $fp] = $q->where(['cohort' => 'enr.userid', 'group' => 'enr.userid',
+                    'course' => 'enr.courseid', 'category' => 'enr.courseid',
+                    'trainer' => ['user' => 'enr.userid', 'course' => 'enr.courseid']]);
+                $params = ['now' => time()] + $fp;
+                $body = "FROM (" . self::live_enrolments() . ") enr
+                          JOIN {user} u ON u.id = enr.userid
+                          JOIN {course} c ON c.id = enr.courseid
+                          JOIN {course_modules} cm ON cm.course = enr.courseid
+                               AND cm.completion > 0 AND cm.deletioninprogress = 0 AND cm.visible = 1
+                          JOIN {modules} m ON m.id = cm.module
+                     LEFT JOIN {course_modules_completion} cmc
+                               ON cmc.coursemoduleid = cm.id AND cmc.userid = enr.userid
+                         WHERE 1 = 1 $fw";
+                $sql = "SELECT " . $DB->sql_concat('enr.userid', "'-'", 'cm.id') . " AS bcrowid,
+                               enr.userid, enr.courseid, u.firstname, u.lastname, u.email, c.fullname AS course,
+                               cm.id AS cmid, m.name AS modname, COALESCE(cmc.completionstate, 0) AS cstate,
+                               cmc.timemodified AS completedon
+                        $body ORDER BY c.fullname, u.lastname, u.firstname, cm.id";
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+                $rows = [];
+                $modinfo = [];
+                foreach ($recs as $r) {
+                    $cid = (int) $r->courseid;
+                    // Resolve the real activity name + type via Moodle's module info
+                    // (cached per course), which works for every activity type.
+                    $name = $r->modname . ' #' . (int) $r->cmid;
+                    $type = $r->modname;
+                    try {
+                        if (!isset($modinfo[$cid])) {
+                            $modinfo[$cid] = get_fast_modinfo($cid);
+                        }
+                        $cm = $modinfo[$cid]->get_cm((int) $r->cmid);
+                        $name = $cm->get_formatted_name();
+                        $sm = get_string_manager();
+                        $type = $sm->string_exists('pluginname', 'mod_' . $r->modname)
+                            ? get_string('pluginname', 'mod_' . $r->modname) : $r->modname;
+                    } catch (\Throwable $e) {
+                        $name = format_string($name);
+                    }
+                    $done = in_array((int) $r->cstate, [1, 2, 3], true);
+                    $status = $done ? cell::status(get_string('completed_yes', 'local_beacon'), 'g')
+                                    : cell::status(get_string('completed_no', 'local_beacon'), '');
+                    $completed = ($done && (int) $r->completedon > 0) ? cell::when((int) $r->completedon) : cell::when(0);
+                    $profile = (new \moodle_url('/user/view.php', ['id' => (int) $r->userid, 'course' => $cid]))->out(false);
+                    $courseurl = (new \moodle_url('/course/view.php', ['id' => $cid]))->out(false);
+                    $rows[] = [cell::text(self::fullname_of($r), $profile), cell::text($r->email),
+                               cell::text($r->course, $courseurl), cell::text($name), cell::text($type),
+                               $status, $completed];
+                }
+                return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
+            },
+        ];
+
+        $defs[] = [
             'id' => 'not_started', 'family' => 'engagement', 'icon' => 'moon', 'grain' => 'enrolment',
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_enrolled',
