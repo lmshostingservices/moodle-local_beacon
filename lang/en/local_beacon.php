@@ -798,3 +798,45 @@ $string['chart_type_bar'] = 'Bar chart';
 $string['chart_type_hbar'] = 'Ranked bar chart';
 $string['chart_type_doughnut'] = 'Doughnut chart · share';
 
+
+// ---- Report Studio ----
+$string['studio'] = 'Report Studio';
+$string['studio_tagline'] = 'Describe the report you need — Beacon builds it, no AI.';
+$string['studio_intro'] = 'Type what you want to see in plain English. Beacon maps your words onto its curated, audited building blocks, shows you exactly the query it will run, and draws the right chart — all with hand-written SQL and no AI, no AI credits, and nothing sent to any model.';
+$string['studio_ask'] = 'What report do you need?';
+$string['studio_placeholder'] = 'e.g. course completion rate by course';
+$string['studio_build'] = 'Build my report';
+$string['studio_examples'] = 'Try one of these';
+$string['studio_readas'] = 'Here\'s what I read that as';
+$string['studio_thequery'] = 'The exact query Beacon will run';
+$string['studio_results'] = 'Results';
+$string['studio_showsql'] = 'Show the SQL';
+$string['studio_hidesql'] = 'Hide the SQL';
+$string['studio_grain'] = 'Grain: {$a}';
+$string['studio_norows'] = 'No rows matched that request.';
+$string['studio_by'] = 'by';
+$string['studio_none'] = '(none)';
+$string['studio_noai'] = 'No AI · curated SQL · teacher-scoped · read-only';
+$string['studio_error'] = 'That request could not be built into a safe query. Try rephrasing, or pick an example.';
+$string['studio_exportcsv'] = 'Download CSV';
+
+// Spec explanation
+$string['studio_explain_total'] = 'Showing {$a->measure} overall.';
+$string['studio_explain_grouped'] = 'Showing {$a->measure} by {$a->dimension}.';
+$string['studio_explain_where'] = 'Filtered to: {$a}.';
+
+// Notes
+$string['studio_note_defaulted'] = 'I wasn\'t certain what you meant, so I defaulted to enrolments. Try an example below.';
+$string['studio_note_topn'] = 'Showing the top {$a} rows.';
+
+// Filter labels
+$string['studio_f_completed'] = 'completed only';
+$string['studio_f_inprogress'] = 'in progress only';
+$string['studio_f_notstarted'] = 'not started';
+$string['studio_f_notloggedin'] = 'not logged in for {$a} days';
+$string['studio_f_enrolledsince'] = 'enrolled in the last {$a} days';
+$string['studio_f_dormant'] = 'dormant for {$a} days';
+$string['studio_f_active'] = 'active in the last 30 days';
+$string['studio_f_never'] = 'never logged in';
+$string['studio_f_course'] = 'course is {$a}';
+$string['studio_note_unsupported'] = 'Beacon Studio can\'t build a report on {$a} yet — showing the closest it can. It currently covers enrolments, completion, learners, quizzes and activity completions.';

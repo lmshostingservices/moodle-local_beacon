@@ -69,6 +69,9 @@ class navlink {
             $out[] = ['key' => 'localbeacon_' . $view, 'label' => $library::view_label($view),
                       'url' => $library::view_url($view), 'view' => $view];
         }
+        // Report Studio — the plain-language report builder.
+        $out[] = ['key' => 'localbeacon_studio', 'label' => get_string('studio', 'local_beacon'),
+                  'url' => new \moodle_url('/local/beacon/studio.php'), 'view' => 'studio'];
         return $out;
     }
 

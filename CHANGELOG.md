@@ -2,6 +2,30 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.14.1] - 2026-11-04
+- **Report Studio — hardened after a 200+ query QA pass** (0 SQL errors across 131
+  adversarial queries). Stronger course-name matching (distinctive words like
+  "Coxswain" or "Shipboard Safety" now resolve a course on their own); learner-grained
+  queries scope correctly to a named course; **out-of-scope requests now return an
+  honest caveat** ("Beacon can't build a report on that yet") instead of a confident
+  wrong number — covering demographics, badges, certificates, revenue, forum, page
+  views, attendance, duration, surveys, per-learner lists, grade distributions, marking
+  workload, multi-course membership and ranked/side-by-side comparisons; added phrasings
+  (bare "dormant"/"inactive", "never started", "hasn't logged in"); fixed a group-by
+  mis-fire ("rank courses by completion" now groups by course).
+
+## [v2.14.0] - 2026-11-04
+- **New feature: Report Studio.** Describe a report in plain English and Beacon builds
+  it — mapping the words onto a curated catalogue of safe building blocks, showing
+  "here's what I read that as", running **read-only, teacher-scoped, hand-written SQL**,
+  and **auto-choosing the chart** (bar / line / doughnut / headline). **No AI, no AI
+  credits, no ChatGPT**; "Show the SQL" reveals the exact query. Covers enrolments,
+  learners, quiz attempts and activity completions, with filters (course, completion
+  status, not started, inactivity windows, enrolled-since, active/dormant/never) and
+  group-bys (course, status, month, activity type, quiz).
+- **Verified on Moodle 5.3** (installed and upgraded on PostgreSQL). `supported` raised
+  to 5.3.
+
 ## [v2.13.0] - 2026-10-30
 - **New report: Activity completion — by activity.** The per-learner companion to
   Activity completion. One row per learner per completion-tracked activity,

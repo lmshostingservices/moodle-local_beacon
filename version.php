@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026103000;      // YYYYMMDDXX — 30 Oct 2026, sequence 00.
+$plugin->version   = 2026110401;      // 4 Nov 2026 .01 — Report Studio parsing hardening.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
-$plugin->supported = [404, 502];      // Moodle 4.4 through 5.2 (install-tested on 5.2).
+$plugin->supported = [404, 503];      // Moodle 4.4 through 5.3 (install-tested on 5.3).
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.13.0';        // Activity completion by activity (per-activity listing).
-$plugin->release_prev = '2.12.0';     // Previous release.
+$plugin->release   = '2.14.1';        // Report Studio: hardened NL parsing + honesty caveats.
+$plugin->release_prev = '2.14.0';

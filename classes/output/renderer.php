@@ -59,4 +59,14 @@ class renderer extends plugin_renderer_base {
     public function render_mylibrary(mylibrary $page): string {
         return $this->render_from_template('local_beacon/mylibrary', $page->export_for_template($this));
     }
+
+    /**
+     * The Report Studio page.
+     *
+     * @param studio $page Page.
+     * @return string
+     */
+    public function render_studio(studio $page): string {
+        return $this->render_from_template('local_beacon/studio', $page->export_for_template($this));
+    }
 }
