@@ -89,6 +89,9 @@ class navlink {
         if ($PAGE->url->get_path(false) === '/local/beacon/charts.php') {
             return 'charts';
         }
+        if ($PAGE->url->get_path(false) === '/local/beacon/studio.php') {
+            return 'studio';
+        }
         if ($PAGE->url->get_path(false) !== '/local/beacon/index.php') {
             return null;
         }

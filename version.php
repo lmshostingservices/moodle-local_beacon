@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026110401;      // 4 Nov 2026 .01 — Report Studio parsing hardening.
+$plugin->version   = 2026110501;      // 5 Nov 2026 .01 — Report Studio workspace redesign.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 503];      // Moodle 4.4 through 5.3 (install-tested on 5.3).
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.14.1';        // Report Studio: hardened NL parsing + honesty caveats.
-$plugin->release_prev = '2.14.0';
+$plugin->release   = '2.14.3';        // Report Studio workspace redesign.
+$plugin->release_prev = '2.14.2';

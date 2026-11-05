@@ -2,6 +2,22 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.14.3] - 2026-11-05
+- **Report Studio redesigned as a workspace.** A compose panel on the left (larger
+  prompt box, Enter to build), a "How Beacon read it" recipe that shows each building
+  block (data, measure, grouped by, filters, one row per), and examples as one-click
+  rows. On the right, a canvas with a Chart / Table switch, row count, Download CSV,
+  a single-figure view for totals, an empty-state guide, and the SQL in a code panel
+  with a Copy button. Works in light and dark mode; the dark-mode toggle on this page
+  now works.
+
+## [v2.14.2] - 2026-11-05
+- **Report Studio menu item.** "Report Studio" is now a tab in Beacon's page tab bar
+  (Overview · Stat cards · KPI gauges · Reports · Charts · Report Studio) on every
+  Beacon page, the Report Studio page now shows the same tab bar, and the Beacon
+  dropdown in the main navigation highlights it while you're on it. Course-scoped
+  teachers keep their course context when switching to Studio.
+
 ## [v2.14.1] - 2026-11-04
 - **Report Studio — hardened after a 200+ query QA pass** (0 SQL errors across 131
   adversarial queries). Stronger course-name matching (distinctive words like

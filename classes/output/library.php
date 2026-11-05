@@ -136,6 +136,11 @@ class library implements renderable, templatable {
             $tabs[] = ['label' => self::view_label($v), 'url' => self::view_url($v, $context)->out(false),
                        'on' => $v === $current];
         }
+        // Report Studio — always the last tab.
+        $params = $context instanceof \context_course ? ['contextid' => $context->id] : [];
+        $tabs[] = ['label' => get_string('studio', 'local_beacon'),
+                   'url' => (new \moodle_url('/local/beacon/studio.php', $params))->out(false),
+                   'on' => $current === 'studio'];
         return $tabs;
     }
 

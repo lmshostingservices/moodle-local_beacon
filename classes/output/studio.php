@@ -88,8 +88,11 @@ class studio implements renderable, templatable {
             ];
         }
 
+        $tabs = \local_beacon\output\library::tabs($this->context, 'studio');
         $ctx = [
             'heading' => get_string('studio', 'local_beacon'),
+            'tabs' => $tabs,
+            'hastabs' => !empty($tabs),
             'tagline' => get_string('studio_tagline', 'local_beacon'),
             'intro' => get_string('studio_intro', 'local_beacon'),
             'ask' => get_string('studio_ask', 'local_beacon'),
@@ -102,6 +105,7 @@ class studio implements renderable, templatable {
             'query' => $this->query,
             'examples' => $examples,
             'hasresult' => false,
+            'uniqid' => \html_writer::random_id('bcstudio'),
         ];
 
         if ($this->query === '') {
@@ -116,10 +120,23 @@ class studio implements renderable, templatable {
         $ctx['explanation'] = $result->explanation;
         $ctx['grain'] = get_string('studio_grain', 'local_beacon', $result->grain);
         $ctx['notes'] = array_map(fn($n) => ['text' => $n], $result->notes);
+        $ctx['hasnotes'] = !empty($result->notes);
         $ctx['resultslabel'] = get_string('studio_results', 'local_beacon');
         $ctx['sqllabel'] = get_string('studio_thequery', 'local_beacon');
         $ctx['showsql'] = get_string('studio_showsql', 'local_beacon');
         $ctx['sqlpreview'] = $result->sqlpreview;
+
+        // The recipe: how Beacon read the request, one building block per row.
+        $filters = array_map(fn($f) => ['label' => $f->label], $spec->filters ?? []);
+        $ctx['recipe'] = [
+            'subject' => $spec->subject['label'] ?? '',
+            'measure' => $result->measurelabel,
+            'dimension' => $result->dimensionlabel ?: get_string('studio_nogroup', 'local_beacon'),
+            'grouped' => !empty($result->dimensionlabel),
+            'filters' => $filters,
+            'hasfilters' => !empty($filters),
+            'grain' => $result->grain,
+        ];
 
         if ($result->error) {
             $ctx['error'] = get_string('studio_error', 'local_beacon');
@@ -131,11 +148,14 @@ class studio implements renderable, templatable {
             $ctx['hasheadline'] = true;
             $ctx['headline'] = $result->headline;
             $ctx['headlinelabel'] = $result->measurelabel;
+            $ctx['charttype'] = get_string('studio_single', 'local_beacon');
         } else {
             if ($result->chart) {
                 $ctx['haschart'] = true;
                 $ctx['charttype'] = get_string('chart_type_' . $result->chart->type, 'local_beacon');
                 $ctx['charthtml'] = $output->render_chart($result->chart->chart, false);
+            } else {
+                $ctx['charttype'] = get_string('studio_tableonly', 'local_beacon');
             }
             $cols = [];
             foreach ($result->columns as $c) {
@@ -150,7 +170,10 @@ class studio implements renderable, templatable {
                 $rows[] = ['cells' => $cells];
             }
             $ctx['table'] = ['columns' => $cols, 'rows' => $rows];
+            $ctx['hasrows'] = !empty($rows);
             $ctx['rowcount'] = count($rows);
+            $ctx['rowcountlabel'] = get_string('studio_rowcount', 'local_beacon', count($rows));
+            $ctx['csvname'] = clean_filename(\core_text::strtolower($this->query)) . '.csv';
         }
 
         return $ctx;

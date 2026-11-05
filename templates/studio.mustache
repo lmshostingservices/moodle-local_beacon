@@ -24,20 +24,33 @@
         "intro": "Type what you want.", "ask": "What report do you need?",
         "placeholder": "e.g. completion by course", "buildlabel": "Build my report",
         "exampleslabel": "Try one of these", "noai": "No AI", "formaction": "#",
-        "contextid": 1, "query": "", "examples": [{"label": "Enrolments per month", "url": "#"}],
-        "hasresult": false
+        "contextid": 1, "query": "", "hastabs": true, "tabs": [{"label": "Overview", "url": "#", "on": false}, {"label": "Studio", "url": "#", "on": true}], "examples": [{"label": "Enrolments per month", "url": "#"}],
+        "uniqid": "bcstudio1", "hasresult": false
     }
 }}
-<div class="bc-root" data-region="beacon-studio">
+<div class="bc-root bc-studio" data-region="beacon-studio" id="{{uniqid}}">
   <div class="bc-wrap">
 
-    <div class="bc-page-head">
-      <div>
-        <h1 class="bc-h1">{{heading}}</h1>
-        <p class="bc-sub">{{tagline}}</p>
+    <div class="bc-page-head bc-studio-head">
+      <div class="bc-studio-title">
+        <span class="bc-studio-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.8"/><path d="M7.5 15.5v-3M12 15.5v-7M16.5 15.5v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </span>
+        <div>
+          <h1 class="bc-h1">{{heading}}</h1>
+          <p class="bc-sub">{{tagline}}</p>
+        </div>
       </div>
       <div class="bc-head-actions">
-        <span class="bc-studio-badge">{{noai}}</span>
+        <span class="bc-studio-pill" title="{{noai}}">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{#str}}studio_pill_noai, local_beacon{{/str}}
+        </span>
+        <span class="bc-studio-pill">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2.5" stroke="currentColor" stroke-width="1.9"/><path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5" stroke="currentColor" stroke-width="1.9"/></svg>{{#str}}studio_pill_readonly, local_beacon{{/str}}
+        </span>
+        <span class="bc-studio-pill">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.9"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>{{#str}}studio_pill_scoped, local_beacon{{/str}}
+        </span>
         <button type="button" class="bc-btn bc-btn-ghost bc-theme-toggle" data-role="theme-toggle" aria-label="{{#str}}toggletheme, local_beacon{{/str}}" title="{{#str}}toggletheme, local_beacon{{/str}}">
           <svg class="bc-ico-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           <svg class="bc-ico-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
@@ -45,68 +58,221 @@
       </div>
     </div>
 
-    <p class="bc-studio-intro">{{intro}}</p>
+    {{#hastabs}}
+    <nav class="bc-tabs bc-viewtabs" aria-label="{{#str}}pluginname, local_beacon{{/str}}">
+      {{#tabs}}<a class="bc-tab{{#on}} on{{/on}}" href="{{url}}"{{#on}} aria-current="page"{{/on}}>{{label}}</a>{{/tabs}}
+    </nav>
+    {{/hastabs}}
 
-    <form class="bc-studio-form" method="get" action="{{formaction}}" role="search">
-      <input type="hidden" name="contextid" value="{{contextid}}">
-      <label class="bc-studio-ask" for="bc-studio-q">{{ask}}</label>
-      <div class="bc-studio-inputrow">
-        <svg class="bc-studio-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <input id="bc-studio-q" class="bc-studio-input" type="text" name="q" value="{{query}}" placeholder="{{placeholder}}" autocomplete="off" autofocus>
-        <button type="submit" class="bc-btn bc-btn-primary bc-studio-go">{{buildlabel}}</button>
-      </div>
-    </form>
+    <div class="bc-studio-ws">
 
-    <div class="bc-studio-examples">
-      <span class="bc-studio-examples-label">{{exampleslabel}}</span>
-      {{#examples}}<a class="bc-chip" href="{{url}}">{{label}}</a>{{/examples}}
+      {{! ===== Left: compose + recipe + examples ===== }}
+      <aside class="bc-studio-side">
+
+        <section class="bc-studio-card">
+          <div class="bc-studio-cardhead"><span class="bc-studio-step">1</span>{{#str}}studio_compose, local_beacon{{/str}}</div>
+          <form class="bc-studio-form" method="get" action="{{formaction}}" role="search">
+            <input type="hidden" name="contextid" value="{{contextid}}">
+            <label class="bc-studio-ask" for="{{uniqid}}-q">{{ask}}</label>
+            <textarea id="{{uniqid}}-q" class="bc-studio-input" name="q" rows="3" placeholder="{{placeholder}}" autocomplete="off" spellcheck="false" {{^query}}autofocus{{/query}}>{{query}}</textarea>
+            <div class="bc-studio-formfoot">
+              <span class="bc-studio-hint">{{#str}}studio_hint, local_beacon{{/str}}</span>
+              <button type="submit" class="bc-btn bc-btn-primary bc-studio-go">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                {{buildlabel}}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {{#hasresult}}
+        <section class="bc-studio-card">
+          <div class="bc-studio-cardhead"><span class="bc-studio-step">2</span>{{readaslabel}}</div>
+          <p class="bc-studio-explain">{{explanation}}</p>
+          {{#recipe}}
+          <dl class="bc-studio-recipe">
+            {{#subject}}<div class="bc-studio-rrow"><dt>{{#str}}studio_part_subject, local_beacon{{/str}}</dt><dd><span class="bc-studio-block">{{subject}}</span></dd></div>{{/subject}}
+            <div class="bc-studio-rrow"><dt>{{#str}}studio_part_measure, local_beacon{{/str}}</dt><dd><span class="bc-studio-block is-measure">{{measure}}</span></dd></div>
+            <div class="bc-studio-rrow"><dt>{{#str}}studio_part_dimension, local_beacon{{/str}}</dt><dd><span class="bc-studio-block{{#grouped}} is-dim{{/grouped}}{{^grouped}} is-muted{{/grouped}}">{{dimension}}</span></dd></div>
+            <div class="bc-studio-rrow"><dt>{{#str}}studio_part_filters, local_beacon{{/str}}</dt><dd>{{#hasfilters}}{{#filters}}<span class="bc-studio-block is-filter">{{label}}</span>{{/filters}}{{/hasfilters}}{{^hasfilters}}<span class="bc-studio-block is-muted">{{#str}}studio_nofilters, local_beacon{{/str}}</span>{{/hasfilters}}</dd></div>
+            {{#grain}}<div class="bc-studio-rrow"><dt>{{#str}}studio_part_grain, local_beacon{{/str}}</dt><dd><span class="bc-studio-block is-muted">{{grain}}</span></dd></div>{{/grain}}
+          </dl>
+          {{/recipe}}
+          {{#hasnotes}}<div class="bc-studio-notes">{{#notes}}<div class="bc-studio-note"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.9"/><path d="M12 7.5v5.5M12 16.4v.1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><span>{{text}}</span></div>{{/notes}}</div>{{/hasnotes}}
+        </section>
+        {{/hasresult}}
+
+        <section class="bc-studio-card bc-studio-examplescard">
+          <div class="bc-studio-cardhead">{{exampleslabel}}</div>
+          <ul class="bc-studio-examples">
+            {{#examples}}<li><a class="bc-studio-ex" href="{{url}}"><span>{{label}}</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a></li>{{/examples}}
+          </ul>
+        </section>
+      </aside>
+
+      {{! ===== Right: the canvas ===== }}
+      <section class="bc-studio-stage" aria-live="polite">
+        <div class="bc-studio-toolbar">
+          <div class="bc-studio-tbl">
+            <span class="bc-studio-step">3</span>
+            <span class="bc-studio-tbtitle">{{#hasresult}}{{charttype}}{{/hasresult}}{{^hasresult}}{{#str}}studio_canvas, local_beacon{{/str}}{{/hasresult}}</span>
+            {{#rowcountlabel}}<span class="bc-studio-count">{{rowcountlabel}}</span>{{/rowcountlabel}}
+          </div>
+          {{#hasrows}}
+          <div class="bc-studio-tbr">
+            {{#haschart}}
+            <div class="bc-studio-seg" role="tablist">
+              <button type="button" class="on" role="tab" aria-selected="true" data-studio-mode="chart">{{#str}}studio_view_chart, local_beacon{{/str}}</button>
+              <button type="button" role="tab" aria-selected="false" data-studio-mode="table">{{#str}}studio_view_table, local_beacon{{/str}}</button>
+            </div>
+            {{/haschart}}
+            <button type="button" class="bc-studio-tool" data-studio-csv="{{csvname}}">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              {{#str}}studio_exportcsv, local_beacon{{/str}}
+            </button>
+          </div>
+          {{/hasrows}}
+        </div>
+
+        <div class="bc-studio-canvaswrap{{^hasresult}} is-empty{{/hasresult}}">
+          {{^hasresult}}
+          <div class="bc-studio-empty">
+            <div class="bc-studio-ghost" aria-hidden="true">
+              <span style="height:38%"></span><span style="height:62%"></span><span style="height:48%"></span><span style="height:84%"></span><span style="height:70%"></span><span style="height:92%"></span>
+            </div>
+            <h2 class="bc-studio-emptytitle">{{#str}}studio_empty_title, local_beacon{{/str}}</h2>
+            <p class="bc-studio-emptysub">{{#str}}studio_empty_sub, local_beacon{{/str}}</p>
+            <ol class="bc-studio-flow">
+              <li><span class="bc-studio-step">1</span>{{#str}}studio_step1, local_beacon{{/str}}</li>
+              <li><span class="bc-studio-step">2</span>{{#str}}studio_step2, local_beacon{{/str}}</li>
+              <li><span class="bc-studio-step">3</span>{{#str}}studio_step3, local_beacon{{/str}}</li>
+            </ol>
+          </div>
+          {{/hasresult}}
+
+          {{#hasresult}}
+          {{#error}}<div class="bc-studio-error">{{error}}</div>{{/error}}
+
+          {{#hasheadline}}
+          <div class="bc-studio-headline">
+            <div class="bc-studio-headline-value">{{headline}}</div>
+            <div class="bc-studio-headline-label">{{headlinelabel}}</div>
+          </div>
+          {{/hasheadline}}
+
+          {{#haschart}}
+          <div class="bc-studio-view" data-studio-view="chart">
+            <div class="bc-studio-canvas">{{{charthtml}}}</div>
+          </div>
+          {{/haschart}}
+
+          {{#table}}
+          <div class="bc-studio-view{{#haschart}} bc-studio-js-hide{{/haschart}}" data-studio-view="table">
+            <div class="bc-studio-tablewrap">
+              <table class="bc-studio-table">
+                <thead><tr>{{#columns}}<th scope="col">{{label}}</th>{{/columns}}</tr></thead>
+                <tbody>
+                  {{#rows}}<tr>{{#cells}}<td class="{{#first}}bc-studio-c0{{/first}}{{^first}}bc-studio-cn{{/first}}">{{v}}</td>{{/cells}}</tr>{{/rows}}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {{/table}}
+          {{/hasresult}}
+        </div>
+
+        {{#sqlpreview}}
+        <details class="bc-studio-sql">
+          <summary>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {{showsql}} <span class="bc-studio-sqlnote">· {{sqllabel}}</span>
+          </summary>
+          <div class="bc-studio-code">
+            <div class="bc-studio-codehead">
+              <span class="bc-studio-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span>{{#str}}studio_sqlhead, local_beacon{{/str}}</span>
+              <button type="button" class="bc-studio-copy" data-studio-copy data-done="{{#str}}studio_copied, local_beacon{{/str}}">{{#str}}studio_copy, local_beacon{{/str}}</button>
+            </div>
+            <pre class="bc-studio-sqlpre">{{sqlpreview}}</pre>
+          </div>
+        </details>
+        {{/sqlpreview}}
+      </section>
     </div>
-
-    {{#hasresult}}
-    <div class="bc-studio-panel">
-      <div class="bc-studio-readas">
-        <div class="bc-studio-readas-head">{{readaslabel}}</div>
-        <div class="bc-studio-explain">{{explanation}}</div>
-        <div class="bc-studio-meta">{{grain}}</div>
-        {{#notes}}<div class="bc-studio-note">{{text}}</div>{{/notes}}
-      </div>
-
-      {{#error}}<div class="bc-studio-error">{{error}}</div>{{/error}}
-
-      {{#hasheadline}}
-      <div class="bc-studio-headline">
-        <div class="bc-studio-headline-value">{{headline}}</div>
-        <div class="bc-studio-headline-label">{{headlinelabel}}</div>
-      </div>
-      {{/hasheadline}}
-
-      {{#haschart}}
-      <div class="bc-studio-chart">
-        <div class="bc-studio-charttype"><span class="bc-studio-dot"></span>{{charttype}}</div>
-        <div class="bc-studio-canvas">{{{charthtml}}}</div>
-      </div>
-      {{/haschart}}
-
-      {{#table}}
-      <div class="bc-studio-results">
-        <div class="bc-studio-results-head">{{resultslabel}}</div>
-        <table class="bc-studio-table">
-          <thead><tr>{{#columns}}<th>{{label}}</th>{{/columns}}</tr></thead>
-          <tbody>
-            {{#rows}}<tr>{{#cells}}<td class="{{#first}}bc-studio-c0{{/first}}{{^first}}bc-studio-cn{{/first}}">{{v}}</td>{{/cells}}</tr>{{/rows}}
-          </tbody>
-        </table>
-      </div>
-      {{/table}}
-
-      {{#sqlpreview}}
-      <details class="bc-studio-sql">
-        <summary>{{showsql}} <span class="bc-studio-sqlnote">· {{sqllabel}}</span></summary>
-        <pre class="bc-studio-sqlpre">{{sqlpreview}}</pre>
-      </details>
-      {{/sqlpreview}}
-    </div>
-    {{/hasresult}}
 
   </div>
 </div>
+{{#js}}
+require(['local_beacon/ui'], function(UI) {
+    UI.init();
+});
+(function() {
+    var root = document.getElementById('{{uniqid}}');
+    if (!root) {
+        return;
+    }
+    root.classList.add('bc-studio-js');
+    var q = root.querySelector('.bc-studio-input');
+    if (q) {
+        q.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (q.value.trim() !== '') {
+                    q.form.submit();
+                }
+            }
+        });
+    }
+    root.querySelectorAll('[data-studio-mode]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var mode = btn.getAttribute('data-studio-mode');
+            root.querySelectorAll('[data-studio-mode]').forEach(function(b) {
+                var on = b === btn;
+                b.classList.toggle('on', on);
+                b.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            root.querySelectorAll('[data-studio-view]').forEach(function(v) {
+                v.classList.toggle('bc-studio-js-hide', v.getAttribute('data-studio-view') !== mode);
+            });
+            window.dispatchEvent(new Event('resize'));
+        });
+    });
+    var csv = root.querySelector('[data-studio-csv]');
+    if (csv) {
+        csv.addEventListener('click', function() {
+            var lines = [];
+            root.querySelectorAll('.bc-studio-table tr').forEach(function(tr) {
+                var cells = [];
+                tr.querySelectorAll('th,td').forEach(function(c) {
+                    cells.push('"' + c.textContent.trim().replace(/"/g, '""') + '"');
+                });
+                lines.push(cells.join(','));
+            });
+            var blob = new Blob(['﻿' + lines.join('\r\n')], {type: 'text/csv;charset=utf-8'});
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = csv.getAttribute('data-studio-csv') || 'report.csv';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function() {
+                URL.revokeObjectURL(a.href);
+                a.remove();
+            }, 500);
+        });
+    }
+    var copy = root.querySelector('[data-studio-copy]');
+    if (copy && navigator.clipboard) {
+        copy.addEventListener('click', function(e) {
+            e.preventDefault();
+            var pre = root.querySelector('.bc-studio-sqlpre');
+            var label = copy.textContent;
+            navigator.clipboard.writeText(pre.textContent).then(function() {
+                copy.textContent = copy.getAttribute('data-done');
+                setTimeout(function() {
+                    copy.textContent = label;
+                }, 1600);
+            });
+        });
+    }
+})();
+{{/js}}
