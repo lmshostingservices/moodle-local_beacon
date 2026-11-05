@@ -52,12 +52,18 @@ class engine {
     public static function parse(string $text): \stdClass {
         $norm = self::normalise($text);
         $subjects = catalog::subjects();
+        $notes = [];
+
+        // 0. Who is being counted: learners (default), teaching staff, or everyone.
+        $who = self::detect_who($norm);
 
         // Detect an explicit "group by" noun ("by course", "per month", "in each
-        // course", "broken down by status") so we can both bias the subject choice
-        // toward one that can satisfy it and pick that dimension.
+        // course", "broken down by status"). A breakdown is ONLY produced when the
+        // request asks for one: "course completion rate" is one number, not a
+        // per-course table, even though it mentions "course".
         $groupnoun = null;
-        if (preg_match('/\b(?:by|per|grouped by|split by|broken down by|for each|in each|across each|each)\s+([a-z]+)/', $norm, $gm)) {
+        if (preg_match('/ (?:by|per|grouped by|split by|broken down by|for each|in each|across each|each|across) ([a-z]+)/',
+                $norm, $gm)) {
             $groupnoun = $gm[1];
             // "by completion", "by pass rate" name a measure, not a group-by — don't
             // let them be misread as a dimension (e.g. "rank courses by completion").
@@ -66,29 +72,45 @@ class engine {
                 $groupnoun = null;
             }
         }
+        $temporal = self::has_any($norm, ['monthly', 'over time', 'trend', 'per month', 'by month', 'each month']);
 
         // 1. Score each subject by how many of its words (subject/measure/dimension
         //    synonyms) appear in the request, plus a strong bonus if it can satisfy
-        //    the requested group-by. Enrolments is the default when nothing hits.
+        //    the requested group-by. Subjects that cannot count the requested people
+        //    (e.g. quiz results for teachers) are skipped.
+        $canexact = [];
+        if ($groupnoun !== null) {
+            foreach ($subjects as $sid => $s) {
+                if (in_array($who, $s['roles'], true) && self::dim_exact($s, $groupnoun)) {
+                    $canexact[$sid] = true;
+                }
+            }
+        }
         $best = null; $bestscore = 0;
         foreach ($subjects as $sid => $s) {
+            if (!in_array($who, $s['roles'], true)) {
+                continue;
+            }
+            // An explicit breakdown ("by course") rules out subjects that can't do it.
+            if ($canexact && empty($canexact[$sid])) {
+                continue;
+            }
             $score = self::phrase_hits($norm, $s['syn']) * 2;
             foreach ($s['measures'] as $m) {
                 $score += self::phrase_hits($norm, $m['syn']);
             }
-            foreach ($s['dimensions'] as $d) {
-                $score += self::phrase_hits($norm, $d['syn']);
-            }
             if ($groupnoun !== null && self::subject_dim_for_noun($s, $groupnoun) !== null) {
                 $score += 3;
+            }
+            if ($temporal && self::temporal_dim($s) !== null) {
+                $score += 1;
             }
             if ($score > $bestscore) {
                 $bestscore = $score; $best = $sid;
             }
         }
-        $notes = [];
         if ($best === null) {
-            $best = 'enrolments';
+            $best = $who === 'learners' ? 'enrolments' : 'people';
             $notes[] = get_string('studio_note_defaulted', 'local_beacon');
         }
         $subject = $subjects[$best];
@@ -106,28 +128,28 @@ class engine {
             if ($h > $mscore) { $mscore = $h; $measureid = $mid; }
         }
         if ($measureid === null) {
-            // No specific measure named: honour an explicit default-measure synonym,
-            // else just use the default.
             $measureid = $defaultid ?? array_key_first($subject['measures']);
         }
 
-        // 3. Dimension (group-by): an explicit group-by noun wins; otherwise the
-        //    strongest dimension synonym match, if any.
-        $dimensionid = null; $dscore = 0;
-        foreach ($subject['dimensions'] as $did => $d) {
-            $h = self::phrase_weight($norm, $d['syn']);
-            if ($h > $dscore) { $dscore = $h; $dimensionid = $did; }
-        }
+        // 3. Dimension: only from an explicit group-by noun or a time phrase.
+        $dimensionid = null;
         if ($groupnoun !== null) {
-            $byn = self::subject_dim_for_noun($subject, $groupnoun);
-            if ($byn !== null) {
-                $dimensionid = $byn;
-            }
+            $dimensionid = self::subject_dim_for_noun($subject, $groupnoun);
+        }
+        if ($dimensionid === null && $temporal) {
+            $dimensionid = self::temporal_dim($subject);
+        }
+        if ($groupnoun !== null && $dimensionid === null && !self::has_any(' ' . $groupnoun . ' ', ['month', 'months'])) {
+            $notes[] = get_string('studio_note_nogroup', 'local_beacon', $groupnoun);
         }
 
-        // 4. Filters: run each recogniser the subject allows.
+        // 4. Filters: run each recogniser the subject allows. A completion rate is
+        //    never filtered to completed/in-progress rows (it would be 100% or 0%).
         $filters = [];
         foreach ($subject['filters'] as $fid) {
+            if (in_array($measureid, ['completion', 'completed'], true) && in_array($fid, ['completed', 'inprogress'], true)) {
+                continue;
+            }
             $f = self::recognise_filter($fid, $norm, $subject);
             if ($f !== null) {
                 $filters[] = $f;
@@ -145,12 +167,94 @@ class engine {
         $spec = new \stdClass();
         $spec->subjectid = $best;
         $spec->subject = $subject;
+        $spec->who = $who;
         $spec->measureid = $measureid;
         $spec->dimensionid = $dimensionid;
         $spec->filters = $filters;
         $spec->notes = $notes;
         $spec->explanation = self::explain($spec);
         return $spec;
+    }
+
+    /**
+     * Who the request counts: 'teachers' when it names teaching staff, 'everyone'
+     * when it asks about all users/accounts (or names both staff and learners),
+     * otherwise 'learners'.
+     *
+     * @param string $norm
+     * @return string
+     */
+    private static function detect_who(string $norm): string {
+        $staff = self::has_any($norm, catalog::staff_words());
+        $learner = self::has_any($norm, catalog::learner_words());
+        if ($staff && $learner) {
+            return 'everyone';
+        }
+        if ($staff) {
+            return 'teachers';
+        }
+        if (!$learner && self::has_any($norm, catalog::everyone_words())) {
+            return 'everyone';
+        }
+        return 'learners';
+    }
+
+    /**
+     * Whether a subject has a dimension with this exact synonym.
+     *
+     * @param array $subject
+     * @param string $noun
+     * @return bool
+     */
+    private static function dim_exact(array $subject, string $noun): bool {
+        foreach ($subject['dimensions'] as $d) {
+            if (in_array($noun, array_map('trim', $d['syn']), true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The subject's time (month) dimension id, or null.
+     *
+     * @param array $subject
+     * @return string|null
+     */
+    private static function temporal_dim(array $subject): ?string {
+        foreach ($subject['dimensions'] as $did => $d) {
+            if ($d['type'] === 'temporal') {
+                return $did;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The display label of a measure for the people being counted.
+     *
+     * @param array $measure
+     * @param string $who
+     * @return string
+     */
+    public static function measure_label(array $measure, string $who): string {
+        $whol = ['learners' => 'Learners', 'teachers' => 'Teachers', 'everyone' => 'Users'][$who] ?? 'Learners';
+        return str_replace('{who}', $whol, $measure['label']);
+    }
+
+    /**
+     * Role ids that make someone a learner (Student-archetype roles) or a teacher
+     * (Beacon's configured teacher roles).
+     *
+     * @param string $who
+     * @return int[]
+     */
+    private static function who_roleids(string $who): array {
+        global $DB;
+        if ($who === 'teachers') {
+            return roles::all_roleids();
+        }
+        return array_map('intval', $DB->get_fieldset_select('role', 'id', "archetype = 'student'"));
     }
 
     /**
@@ -167,9 +271,17 @@ class engine {
 
         $subject = $spec->subject;
         $measure = $subject['measures'][$spec->measureid];
+        $measure['label'] = self::measure_label($measure, $spec->who ?? 'learners');
         $dim = $spec->dimensionid ? $subject['dimensions'][$spec->dimensionid] : null;
 
-        $params = ['now' => time()];
+        $now = time();
+        $params = [];
+        // Fixed placeholders the catalogue's FROM/WHERE may use (each used once).
+        foreach (['nowstart' => $now, 'nowend' => $now, 'guestid' => (int) ($GLOBALS['CFG']->siteguest ?? 1)] as $k => $v) {
+            if (strpos($subject['from'] . ' ' . $subject['basewhere'], ':' . $k) !== false) {
+                $params[$k] = $v;
+            }
+        }
         $select = [];
         $groupby = [];
         $orderby = '';
@@ -180,13 +292,12 @@ class engine {
                 $dexpr = self::month_expr($dim['tscol']);
                 $orderby = 'd ASC';
             } else {
-                $dexpr = $dim['sql'];
+                // Server-computed integer cut-offs are inlined ({DAYS:30}), so the
+                // expression can repeat in SELECT and GROUP BY without duplicate
+                // bound-parameter names.
+                $dexpr = preg_replace_callback('/\{DAYS:(\d+)\}/',
+                    fn($m) => (string) ($now - ((int) $m[1]) * DAYSECS), $dim['sql']);
                 $orderby = 'm DESC';
-            }
-            if (!empty($dim['params'])) {
-                foreach ($dim['params'] as $k => $v) {
-                    $params[$k] = self::resolve_param($v);
-                }
             }
             $select[] = "$dexpr AS d";
             $groupby[] = $dexpr;
@@ -195,16 +306,29 @@ class engine {
 
         // WHERE = base conditions + filters + mandatory viewer scope.
         $where = ['(' . $subject['basewhere'] . ')'];
+        $coursefilter = null;
         foreach ($spec->filters as $f) {
+            if (!empty($f->courseid) && empty($subject['cols']['course'])) {
+                // People subject: the course is applied inside the role check below.
+                $coursefilter = (int) $f->courseid;
+                continue;
+            }
             $where[] = '(' . $f->sql . ')';
             foreach ($f->params as $k => $v) {
                 $params[$k] = $v;
             }
         }
-        [$scopesql, $scopeparams] = self::scope_where($subject, $context, $USER->id);
-        if ($scopesql !== '') {
-            $where[] = $scopesql;
-            $params += $scopeparams;
+        [$whosql, $whoparams] = self::who_where($subject, $spec->who ?? 'learners', $coursefilter, $context, (int) $USER->id);
+        if ($whosql !== '') {
+            $where[] = $whosql;
+            $params += $whoparams;
+        }
+        if (!empty($subject['cols']['course'])) {
+            [$scopesql, $scopeparams] = self::scope_where($subject, $context, $USER->id);
+            if ($scopesql !== '') {
+                $where[] = $scopesql;
+                $params += $scopeparams;
+            }
         }
 
         $sql = 'SELECT ' . implode(', ', $select) . "\n" . $subject['from']
@@ -329,11 +453,15 @@ class engine {
      * @return string|null
      */
     private static function subject_dim_for_noun(array $subject, string $noun): ?string {
-        foreach ($subject['dimensions'] as $did => $d) {
-            foreach ($d['syn'] as $p) {
-                $p = trim($p);
-                if ($p === $noun || strpos(' ' . $p . ' ', ' ' . $noun . ' ') !== false) {
-                    return $did;
+        // Exact synonym first ("status" → the status dimension), then a synonym
+        // that merely contains the word ("activity status").
+        foreach ([true, false] as $exact) {
+            foreach ($subject['dimensions'] as $did => $d) {
+                foreach ($d['syn'] as $p) {
+                    $p = trim($p);
+                    if ($exact ? $p === $noun : strpos(' ' . $p . ' ', ' ' . $noun . ' ') !== false) {
+                        return $did;
+                    }
                 }
             }
         }
@@ -368,6 +496,11 @@ class engine {
                 ['grade distribution', 'distribution of grades', 'score below', 'scored below', 'below 50', 'failed', 'failing'],
             'marking workload' =>
                 ['marking', 'awaiting grading', 'awaiting marking', 'unmarked', 'to be marked', 'needs grading', 'waiting to be graded'],
+            'assignments and submissions' => ['assignment', 'assignments', 'submission', 'submissions', 'submitted'],
+            'groups and cohorts' => ['group', 'groups', 'cohort', 'cohorts'],
+            'course categories' => ['category', 'categories'],
+            'gradebook and course grades' => ['gradebook', 'course grade', 'course grades', 'final grade', 'final grades'],
+            'managers and other non-teaching roles' => ['manager', 'managers', 'admins', 'administrators'],
             'learners across multiple courses' =>
                 ['more than one course', 'multiple courses', 'how many courses', 'across courses'],
             'ranked lists or side-by-side comparisons' =>
@@ -436,7 +569,7 @@ class engine {
                 }
                 return null;
             case 'enrolledsince':
-                if (preg_match('/enrolled (?:in )?(?:the )?last (\d+) days?/', $norm, $mt)
+                if (preg_match('/(?:enrolled|enrolments|enrollments|enrolment|enrollment|enrolled in) (?:in |within |over |during )?(?:the )?(?:last|past) (\d+) days?/', $norm, $mt)
                         || preg_match('/new (?:enrolments|enrollments|enrolment|enrollment).* (\d+) days?/', $norm, $mt)) {
                     $days = (int) $mt[1];
                     $ph = self::ph('since');
@@ -444,8 +577,19 @@ class engine {
                               $cols['enrolled'] . " > :$ph", [$ph => time() - $days * DAYSECS]);
                 }
                 return null;
+            case 'notloggedinsite':
+                // "Not logged in for N days" includes people who never logged in.
+                if (preg_match('/(?:not|havent|hasnt|haven t|hasn t) (?:logged|signed) (?:in|on)(?: for| in| within| over)?(?: the last| the past)? (\d+) days?/',
+                        $norm, $mt)) {
+                    $days = (int) $mt[1];
+                    $ph = self::ph('cut');
+                    return $mk(get_string('studio_f_notloggedin', 'local_beacon', $days),
+                              $cols['lastaccess'] . " < :$ph", [$ph => time() - $days * DAYSECS]);
+                }
+                return null;
             case 'dormant':
-                if (preg_match('/(?:inactive|dormant|not (?:logged|signed) in)(?: for)?(?: the last)? (\d+) days?/', $norm, $mt)) {
+                // Dormant = has logged in before, but not in the last N days.
+                if (preg_match('/(?:inactive|dormant)(?: for)?(?: the last)? (\d+) days?/', $norm, $mt)) {
                     $days = (int) $mt[1];
                 } else if (self::has_any($norm, ['dormant', 'inactive learners', 'inactive students', 'gone quiet'])) {
                     $days = 30; // Bare "dormant"/"inactive learners": default to 30 days.
@@ -495,7 +639,14 @@ class engine {
             // "since" or "attendance", and a short name made only of ordinary
             // report words (e.g. "Course") never counts. One-letter short names
             // (e.g. "e") are too ambiguous to recognise from text at all.
-            if (\core_text::strlen($short) >= 2 && strpos($norm, ' ' . $short . ' ') !== false) {
+            // One- or two-letter short names are only recognised right next to the
+            // word "course" ("the e course", "course CE") or after "in".
+            $isshort = \core_text::strlen($short) <= 2;
+            $hit = $isshort
+                ? (strpos($norm, ' ' . $short . ' course ') !== false || strpos($norm, ' course ' . $short . ' ') !== false
+                   || (\core_text::strlen($short) === 2 && strpos($norm, ' ' . $short . ' ') !== false))
+                : strpos($norm, ' ' . $short . ' ') !== false;
+            if ($short !== '' && $hit) {
                 $shortwords = explode(' ', $short);
                 if (array_diff($shortwords, $vocab)) {
                     $score += 5;
@@ -524,14 +675,13 @@ class engine {
         $ph = self::ph('crs');
         $o = new \stdClass();
         $o->label = get_string('studio_f_course', 'local_beacon', $bestname);
+        $o->courseid = $bestid;
         if (!empty($subject['cols']['course'])) {
             // Subject already carries a course column (enrolments, quizzes, activities).
             $o->sql = $subject['cols']['course'] . " = :$ph";
         } else {
-            // Learner-grained subject: scope to learners enrolled in that course.
-            $o->sql = "EXISTS (SELECT 1 FROM {user_enrolments} lcue
-                                JOIN {enrol} lcen ON lcen.id = lcue.enrolid
-                               WHERE lcue.userid = " . $subject['cols']['user'] . " AND lcen.courseid = :$ph)";
+            // People subject: applied inside the role check (see who_where()).
+            $o->sql = '1 = 1';
         }
         $o->params = [$ph => $bestid];
         return $o;
@@ -575,6 +725,93 @@ class engine {
     }
 
     // ------------------------------------------------------------- query parts --
+
+    /**
+     * Restrict rows to the people being counted.
+     *
+     * Course-keyed subjects: the person holds a learner (or teacher) role in that
+     * course. The people subject: the person is actively enrolled in a course where
+     * they hold that role — optionally a named course, and (for a teacher viewer)
+     * only a course the viewer teaches. "Everyone" on the people subject is every
+     * active account, unless a course or teacher scope applies.
+     *
+     * @param array $subject
+     * @param string $who learners|teachers|everyone
+     * @param int|null $courseid Named course (people subject only).
+     * @param \context $context
+     * @param int $viewerid
+     * @return array{0:string,1:array}
+     */
+    private static function who_where(array $subject, string $who, ?int $courseid, \context $context, int $viewerid): array {
+        global $DB;
+        $cols = $subject['cols'];
+        $params = [];
+        $rolesql = '';
+        if ($who !== 'everyone') {
+            $ids = self::who_roleids($who);
+            if (!$ids) {
+                return ['1 = 0', []];
+            }
+            [$rin, $params] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, self::ph('wr'));
+            $rolesql = $rin;
+        }
+        if (!empty($cols['course'])) {
+            if ($rolesql === '') {
+                return ['', []];
+            }
+            return ["EXISTS (SELECT 1 FROM {role_assignments} wra
+                              JOIN {context} wctx ON wctx.id = wra.contextid
+                                   AND wctx.contextlevel = " . CONTEXT_COURSE . "
+                                   AND wctx.instanceid = " . $cols['course'] . "
+                             WHERE wra.userid = " . $cols['user'] . " AND wra.roleid $rolesql)", $params];
+        }
+
+        // People subject.
+        $sitewide = has_capability('local/beacon:viewall', \context_system::instance()) || is_siteadmin($viewerid);
+        if ($who === 'everyone' && $courseid === null && $sitewide) {
+            return ['', []];
+        }
+        $n1 = self::ph('wn');
+        $n2 = self::ph('wn');
+        $params[$n1] = time();
+        $params[$n2] = time();
+        $sql = "EXISTS (SELECT 1 FROM {user_enrolments} wue
+                         JOIN {enrol} wen ON wen.id = wue.enrolid AND wen.status = 0
+                        WHERE wue.userid = " . $cols['user'] . "
+                          AND wue.status = 0 AND wue.timestart <= :$n1
+                          AND (wue.timeend = 0 OR wue.timeend > :$n2)
+                          AND wen.courseid <> " . SITEID;
+        if ($rolesql !== '') {
+            $sql .= "
+                          AND EXISTS (SELECT 1 FROM {role_assignments} wra
+                                        JOIN {context} wctx ON wctx.id = wra.contextid
+                                             AND wctx.contextlevel = " . CONTEXT_COURSE . "
+                                             AND wctx.instanceid = wen.courseid
+                                       WHERE wra.userid = wue.userid AND wra.roleid $rolesql)";
+        }
+        if ($courseid !== null) {
+            $cph = self::ph('wc');
+            $params[$cph] = $courseid;
+            $sql .= " AND wen.courseid = :$cph";
+        }
+        if (!$sitewide) {
+            $tids = roles::all_roleids();
+            if (!$tids) {
+                return ['1 = 0', []];
+            }
+            [$tin, $tp] = $DB->get_in_or_equal($tids, SQL_PARAMS_NAMED, self::ph('wt'));
+            $vph = self::ph('wv');
+            $params += $tp;
+            $params[$vph] = $viewerid;
+            $sql .= "
+                          AND EXISTS (SELECT 1 FROM {role_assignments} vra
+                                        JOIN {context} vctx ON vctx.id = vra.contextid
+                                             AND vctx.contextlevel = " . CONTEXT_COURSE . "
+                                             AND vctx.instanceid = wen.courseid
+                                       WHERE vra.userid = :$vph AND vra.roleid $tin)";
+        }
+        return [$sql . ")", $params];
+    }
 
     /**
      * The mandatory, non-removable viewer-scope predicate. Site viewers (admins
@@ -655,18 +892,6 @@ class engine {
         return $raw;
     }
 
-    /**
-     * Resolve a catalogue parameter token such as "DAYS:30" to a concrete value.
-     *
-     * @param string $token
-     * @return mixed
-     */
-    private static function resolve_param(string $token) {
-        if (preg_match('/^DAYS:(\d+)$/', $token, $m)) {
-            return time() - ((int) $m[1]) * DAYSECS;
-        }
-        return $token;
-    }
 
     /** @var int Monotonic placeholder counter for unique bound-param names. */
     private static int $phseq = 0;
@@ -707,7 +932,7 @@ class engine {
         $subject = $spec->subject;
         $measure = $subject['measures'][$spec->measureid];
         $a = new \stdClass();
-        $a->measure = \core_text::strtolower($measure['label']);
+        $a->measure = \core_text::strtolower(self::measure_label($measure, $spec->who ?? 'learners'));
         $a->subject = \core_text::strtolower($subject['label']);
         if ($spec->dimensionid) {
             $a->dimension = \core_text::strtolower($subject['dimensions'][$spec->dimensionid]['label']);
@@ -751,7 +976,7 @@ class engine {
 function present_value(float $value, string $format): string {
     switch ($format) {
         case 'percent':
-            return round($value) . '%';
+            return format_float($value, 1) . '%';
         case 'decimal':
             return number_format($value, 1);
         default:

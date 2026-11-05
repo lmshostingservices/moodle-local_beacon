@@ -854,6 +854,7 @@ $string['studio_explain_where'] = 'Filtered to: {$a}.';
 
 // Notes
 $string['studio_note_defaulted'] = 'I wasn\'t certain what you meant, so I defaulted to enrolments. Try an example below.';
+$string['studio_note_nogroup'] = 'Beacon can\'t break this report down by "{$a}" yet, so it shows the overall figure.';
 $string['studio_note_topn'] = 'Showing the top {$a} rows.';
 
 // Filter labels

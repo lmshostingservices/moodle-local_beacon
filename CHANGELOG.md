@@ -2,6 +2,37 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.14.6] - 2026-11-05
+- **Fixed: Report Studio charts ran past the right edge of their panel** on some
+  screen widths, cutting off the last bar or label. Charts now always fit the canvas.
+
+## [v2.14.5] - 2026-11-05
+- **Report Studio correctness rebuild.** Tested against seeded Moodle 4.5, 5.2 and
+  5.3 sites: 54-request main set and 21-request held-out set all match independently
+  computed answers, and per-course learners, teachers and completion rates match
+  Moodle's own enrolment, role and completion APIs.
+- **Roles.** "Learners/students" now means people with a Student-type role in the
+  course; "teachers/trainers/assessors/staff" means Beacon's configured teacher
+  roles; "users/accounts" means every active account. Previously every request
+  counted everyone, so "total teachers" returned the number of enrolments.
+- **Enrolments.** Counted once per person per course (a second enrolment method no
+  longer double-counts); suspended, expired and not-yet-started enrolments are
+  excluded.
+- **Completion rate** is per enrolment, not per distinct person across all courses.
+- **Breakdowns only when asked.** "Course completion rate" is one figure; only
+  "by / per / each …" or "monthly / over time" produces a breakdown.
+- **Quiz scores and pass rates** use each learner's final quiz grade and the quiz's
+  own pass mark (50% when none is set), instead of averaging every attempt against a
+  fixed 50%. Quiz attempts exclude previews and unfinished attempts.
+- **Activity completions** exclude failed completions and activities being deleted.
+- **"Not logged in for N days"** now includes people who never logged in; "dormant"
+  means logged in before but not in N days.
+- **Fixed SQL errors** on "Learners by activity" and similar (duplicate parameter).
+- Percentages show one decimal place. New wording understood: "completion by
+  course", "enrolments in the last N days", "haven't logged in in N days", "the e
+  course". Requests about assignments, groups, cohorts, categories, gradebook or
+  managers now carry a clear "can't build that yet" caveat.
+
 ## [v2.14.4] - 2026-11-05
 - **Fixed: Report Studio filtering every report to the wrong course.** Course names
   in a request now only match whole words, so a short name like "CE" no longer

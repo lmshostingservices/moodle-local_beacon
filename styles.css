@@ -3608,7 +3608,9 @@ textarea.bc-control {
 .bc-studio-view + .bc-studio-view{margin-top:16px;}
 .bc-studio-js .bc-studio-js-hide{display:none;}
 .bc-studio-canvas{position:relative;min-height:340px;}
-.bc-studio-canvas canvas{max-height:460px;}
+.bc-studio-canvas canvas{max-height:460px;max-width:100% !important;}
+.bc-studio-view{min-width:0;overflow:hidden;}
+.bc-studio-canvas .chart-area,.bc-studio-canvas .chart-image{position:relative;width:100% !important;max-width:100%;min-width:0;}
 
 /* Empty canvas */
 .bc-studio-canvaswrap.is-empty{display:grid;place-items:center;}
