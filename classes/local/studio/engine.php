@@ -485,23 +485,33 @@ class engine {
     private static function recognise_course(string $norm, array $subject): ?\stdClass {
         global $DB;
         $courses = $DB->get_records_select('course', 'id <> 1', null, '', 'id, shortname, fullname');
+        $vocab = self::report_vocabulary();
         $bestid = 0; $bestname = ''; $bestscore = 0;
         foreach ($courses as $c) {
-            $short = ' ' . \core_text::strtolower(preg_replace('/[^a-z0-9]+/i', ' ', $c->shortname)) . ' ';
+            $short = trim(\core_text::strtolower(preg_replace('/[^a-z0-9]+/i', ' ', $c->shortname)));
             $full  = \core_text::strtolower(preg_replace('/[^a-z0-9]+/i', ' ', $c->fullname));
             $score = 0;
-            if (trim($short) !== '' && strpos($norm, trim($short)) !== false) {
-                $score += 5;
+            // Short name: whole words only, so "CE" can't match the letters in
+            // "since" or "attendance", and a short name made only of ordinary
+            // report words (e.g. "Course") never counts. One-letter short names
+            // (e.g. "e") are too ambiguous to recognise from text at all.
+            if (\core_text::strlen($short) >= 2 && strpos($norm, ' ' . $short . ' ') !== false) {
+                $shortwords = explode(' ', $short);
+                if (array_diff($shortwords, $vocab)) {
+                    $score += 5;
+                }
             }
             // Fullname tokens: a distinctive word (>=7 chars, e.g. "coxswain",
             // "shipboard", "coastal", "navigation") is worth 2 — enough to resolve
-            // a course on its own — while short/common words count 1. Generic words
-            // are ignored so a quiz named "Safety ..." can't spuriously pick a course.
-            $stop = ['grade', 'near', 'elements', 'and', 'the', 'for', 'of'];
+            // a course on its own — while shorter words count 1. Words Beacon uses
+            // to describe reports ("course", "completion", "learners", ...) never
+            // count, so a course named after them can't capture every request.
+            $seen = [];
             foreach (array_filter(explode(' ', $full), fn($w) => \core_text::strlen($w) >= 5) as $w) {
-                if (in_array($w, $stop, true)) {
+                if (isset($seen[$w]) || in_array($w, $vocab, true)) {
                     continue;
                 }
+                $seen[$w] = true;
                 if (strpos($norm, ' ' . $w . ' ') !== false) {
                     $score += (\core_text::strlen($w) >= 7) ? 2 : 1;
                 }
@@ -525,6 +535,43 @@ class engine {
         }
         $o->params = [$ph => $bestid];
         return $o;
+    }
+
+    /**
+     * Every word Beacon itself uses to describe a report: the catalogue's labels
+     * and synonyms plus common request words. None of these may identify a course.
+     *
+     * @return string[]
+     */
+    private static function report_vocabulary(): array {
+        static $vocab = null;
+        if ($vocab !== null) {
+            return $vocab;
+        }
+        $words = ['grade', 'grades', 'near', 'elements', 'and', 'the', 'for', 'of', 'course', 'courses',
+            'completion', 'completions', 'complete', 'completed', 'incomplete', 'progress', 'started', 'never',
+            'learner', 'learners', 'student', 'students', 'trainee', 'trainees', 'participant', 'participants',
+            'enrolment', 'enrolments', 'enrollment', 'enrollments', 'enrolled', 'activity', 'activities',
+            'quiz', 'quizzes', 'score', 'scores', 'average', 'percent', 'percentage', 'total', 'overall', 'number',
+            'count', 'month', 'monthly', 'months', 'week', 'weeks', 'weekly', 'year', 'years', 'today', 'since',
+            'logged', 'login', 'logins', 'dormant', 'inactive', 'active', 'status', 'report', 'reports', 'which',
+            'every', 'show', 'showing', 'there', 'their', 'about', 'between', 'during', 'without', 'within',
+            'passed', 'failed', 'attempt', 'attempts', 'assessment', 'assessments', 'assignment', 'assignments',
+            'training', 'introduction', 'basics', 'essentials', 'certificate', 'level', 'module', 'modules',
+            'units', 'program', 'programs', 'programme', 'trend', 'compare', 'ranked', 'highest', 'lowest'];
+        foreach (catalog::subjects() as $subject) {
+            array_walk_recursive($subject, function($v, $k) use (&$words) {
+                if (is_string($v) && in_array($k, ['label', 'grain'], true) || (is_int($k) && is_string($v))) {
+                    foreach (explode(' ', \core_text::strtolower(preg_replace('/[^a-z0-9]+/i', ' ', $v))) as $w) {
+                        if ($w !== '') {
+                            $words[] = $w;
+                        }
+                    }
+                }
+            });
+        }
+        $vocab = array_values(array_unique($words));
+        return $vocab;
     }
 
     // ------------------------------------------------------------- query parts --

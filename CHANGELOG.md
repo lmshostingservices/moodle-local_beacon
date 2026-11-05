@@ -2,6 +2,17 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.14.4] - 2026-11-05
+- **Fixed: Report Studio filtering every report to the wrong course.** Course names
+  in a request now only match whole words, so a short name like "CE" no longer
+  matches the letters inside "since" or "attendance", and one-letter short names
+  (e.g. a course called "e", which previously matched almost every request) are
+  ignored. Words Beacon uses to describe
+  reports (course, completion, learners, enrolments, quiz, month and the rest of its
+  vocabulary) no longer count as a course name, so a course called e.g. "Test Course
+  for Learners" can't capture "completion rate by course". Naming a course on
+  purpose still works ("completion in CE", "learners in Coxswain").
+
 ## [v2.14.3] - 2026-11-05
 - **Report Studio redesigned as a workspace.** A compose panel on the left (larger
   prompt box, Enter to build), a "How Beacon read it" recipe that shows each building

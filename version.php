@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026110501;      // 5 Nov 2026 .01 — Report Studio workspace redesign.
+$plugin->version   = 2026110502;      // 5 Nov 2026 .02 — Report Studio course-matching fix.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 503];      // Moodle 4.4 through 5.3 (install-tested on 5.3).
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.14.3';        // Report Studio workspace redesign.
-$plugin->release_prev = '2.14.2';
+$plugin->release   = '2.14.4';        // Report Studio course-matching fix.
+$plugin->release_prev = '2.14.3';
