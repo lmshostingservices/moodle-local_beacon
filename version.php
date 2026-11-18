@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026110504;      // 5 Nov 2026 .04 — Report Studio chart width fix.
+$plugin->version   = 2026111800;      // 18 Nov 2026 .00 — Student feedback report.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 503];      // Moodle 4.4 through 5.3 (install-tested on 5.3).
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.14.6';        // Report Studio chart width fix.
-$plugin->release_prev = '2.14.5';
+$plugin->release   = '2.15.0';        // Student feedback report (AI Knowledge Check surveys by workshop).
+$plugin->release_prev = '2.14.6';

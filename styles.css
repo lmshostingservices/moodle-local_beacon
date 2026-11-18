@@ -3657,3 +3657,335 @@ textarea.bc-control {
 .bc-studio-copy{margin-left:auto;font-size:12px;font-weight:700;color:#cfe0f2;background:transparent;border:1px solid #33445a;border-radius:7px;padding:3px 10px;cursor:pointer;}
 .bc-studio-copy:hover{border-color:#5a7290;}
 .bc-studio-sqlpre{background:transparent;color:#d6e2f0;margin:0;padding:14px 16px;font-size:12.5px;line-height:1.6;overflow:auto;white-space:pre-wrap;word-break:break-word;max-height:360px;}
+
+/* ===== Student feedback (feedback.php) ===== */
+.bc-fb-back {
+    display: inline-block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--bc-ink3);
+    text-decoration: none;
+}
+.bc-fb-back:hover {
+    color: var(--bc-a);
+}
+.bc-fb-date input {
+    min-width: 150px;
+}
+.bc-fb-anon {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--bc-ink2);
+    cursor: pointer;
+}
+.bc-fb-reporthead {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    margin: 22px 0 4px;
+}
+.bc-fb-print-title {
+    display: none;
+}
+.bc-fb-scope {
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--bc-ink);
+    letter-spacing: -.01em;
+}
+.bc-fb-printed {
+    font-size: 12.5px;
+    color: var(--bc-ink3);
+    margin-top: 2px;
+}
+.bc-fb-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.bc-fb-tile-note {
+    font-size: 12px;
+    color: var(--bc-ink3);
+    margin-top: 4px;
+    line-height: 1.35;
+}
+.bc-fb-card {
+    margin-bottom: 18px;
+}
+.bc-fb-up {
+    color: var(--bc-good);
+}
+.bc-fb-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin: 0 0 14px;
+    font-size: 12.5px;
+    color: var(--bc-ink2);
+}
+.bc-fb-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.bc-fb-legend i {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+.bc-fb-q {
+    padding: 10px 0;
+    border-top: 1px solid var(--bc-line2);
+    break-inside: avoid;
+}
+.bc-fb-q:first-of-type {
+    border-top: 0;
+}
+.bc-fb-qtext {
+    font-size: 14px;
+    color: var(--bc-ink);
+    margin-bottom: 7px;
+    line-height: 1.4;
+}
+.bc-fb-qnum {
+    display: inline-block;
+    min-width: 30px;
+    font-weight: 800;
+    font-size: 12px;
+    color: var(--bc-ink3);
+}
+.bc-fb-qrow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.bc-fb-bar {
+    flex: 1 1 auto;
+    display: flex;
+    height: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bc-bg2);
+}
+.bc-fb-bar-empty {
+    align-items: center;
+    padding: 0 10px;
+    font-size: 12.5px;
+    color: var(--bc-ink3);
+}
+.bc-fb-seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    font-variant-numeric: tabular-nums;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+.bc-fb-seg + .bc-fb-seg {
+    border-left: 1px solid rgba(255, 255, 255, .55);
+}
+.bc-fb-fig {
+    flex: 0 0 104px;
+    text-align: right;
+    line-height: 1.15;
+}
+.bc-fb-fig b {
+    display: block;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--bc-ink);
+    font-variant-numeric: tabular-nums;
+}
+.bc-fb-fig span {
+    font-size: 11.5px;
+    color: var(--bc-ink3);
+}
+.bc-fb-comments {
+    list-style: none;
+    margin: 0;
+    padding: 0 6px 0 0;
+    max-height: 460px;
+    overflow-y: auto;
+}
+.bc-fb-comments li {
+    padding: 11px 0;
+    border-top: 1px solid var(--bc-line2);
+    break-inside: avoid;
+}
+.bc-fb-comments li:first-child {
+    border-top: 0;
+}
+.bc-fb-cwho {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--bc-ink2);
+    margin-bottom: 3px;
+}
+.bc-fb-cwho span {
+    font-weight: 500;
+    color: var(--bc-ink3);
+}
+.bc-fb-ctext {
+    font-size: 14px;
+    color: var(--bc-ink);
+    white-space: pre-line;
+    line-height: 1.5;
+}
+.bc-fb-tablewrap {
+    overflow: auto;
+    max-height: 75vh;
+    background: var(--bc-surface);
+    border: 1px solid var(--bc-line);
+    border-radius: var(--bc-r);
+    box-shadow: var(--bc-sh-1);
+}
+.bc-fb-table th {
+    padding: 10px 12px;
+    vertical-align: bottom;
+    white-space: normal;
+    min-width: 150px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--bc-ink2);
+}
+.bc-fb-th {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.bc-fb-table td {
+    padding: 10px 12px;
+    vertical-align: top;
+    font-size: 13.5px;
+}
+.bc-fb-table td.bc-fb-long {
+    min-width: 260px;
+    white-space: pre-line;
+}
+.bc-fb-who {
+    font-weight: 700;
+    color: var(--bc-ink);
+    white-space: nowrap;
+}
+.bc-fb-email {
+    font-weight: 400;
+    font-size: 12px;
+    color: var(--bc-ink3);
+}
+.bc-fb-nowrap {
+    white-space: nowrap;
+}
+@media (max-width: 700px) {
+    .bc-fb-qrow {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    .bc-fb-fig {
+        flex: none;
+        text-align: left;
+    }
+}
+@media print {
+    body.local-beacon .bc-fb-controls,
+    body.local-beacon .bc-fb-actions,
+    body.local-beacon .bc-fb-jump,
+    body.local-beacon .bc-fb .bc-viewtabs,
+    body.local-beacon .bc-fb .bc-head-actions,
+    body.local-beacon .bc-fb .bc-page-head,
+    body.local-beacon .bc-fb .bc-scopebar {
+        display: none !important;
+    }
+    /* Nothing of the site footer after the landscape table, so no blank last page. */
+    body.local-beacon.path-local-beacon #page-footer,
+    body.local-beacon.path-local-beacon .footer-popover,
+    body.local-beacon.path-local-beacon .btn-footer-popover,
+    body.local-beacon.path-local-beacon .footer-content-debugging,
+    body.local-beacon.path-local-beacon #goto-top-link {
+        display: none !important;
+    }
+    body.local-beacon .bc-fb,
+    body.local-beacon .bc-fb .bc-wrap,
+    body.local-beacon .bc-fb-respsec {
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    body.local-beacon .bc-fb-print-title {
+        display: block;
+        font-size: 22px;
+        font-weight: 800;
+        margin-bottom: 2px;
+    }
+    body.local-beacon .bc-fb-card,
+    body.local-beacon .bc-fb .bc-tile {
+        box-shadow: none;
+        break-inside: avoid;
+    }
+    body.local-beacon .bc-fb-comments {
+        max-height: none;
+        overflow: visible;
+    }
+    body.local-beacon .bc-fb-tablewrap {
+        max-height: none;
+        overflow: visible;
+        box-shadow: none;
+    }
+    body.local-beacon .bc-fb-table th {
+        position: static;
+    }
+    /* The participant table prints on its own landscape pages, compact enough to fit. */
+    body.local-beacon .bc-fb-respsec {
+        page: bcfbwide;
+        break-before: page;
+    }
+    body.local-beacon .bc-fb-table {
+        min-width: 0;
+        width: 100%;
+        table-layout: auto;
+        font-size: 8.5px;
+    }
+    body.local-beacon .bc-fb-table th,
+    body.local-beacon .bc-fb-table td {
+        min-width: 0;
+        padding: 4px 5px;
+        font-size: 8.5px;
+    }
+    body.local-beacon .bc-fb-table td.bc-fb-long {
+        min-width: 0;
+    }
+    body.local-beacon .bc-fb-th {
+        display: block;
+        -webkit-line-clamp: unset;
+    }
+    body.local-beacon .bc-fb-who,
+    body.local-beacon .bc-fb-nowrap {
+        white-space: normal;
+    }
+    body.local-beacon .bc-fb-table tr {
+        break-inside: avoid;
+    }
+    body.local-beacon .bc-fb-email,
+    body.local-beacon .bc-fb-table .bc-fb-qnum {
+        font-size: 8px;
+        min-width: 0;
+    }
+}
+@page bcfbwide {
+    size: A4 landscape;
+}

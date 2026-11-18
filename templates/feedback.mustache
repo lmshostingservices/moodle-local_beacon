@@ -1,0 +1,333 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle. If not, see <https://www.gnu.org/licenses/>.
+
+    @template local_beacon/feedback
+
+    Student feedback: survey results by course, workshop, date, customer and cohort.
+
+    Example context (json):
+    {
+        "heading": "Student feedback", "sub": "Survey results.", "hastabs": false, "tabs": [], "backurl": "#",
+        "scoped": false, "nosurveys": false, "hassurvey": true, "scopeline": "Aboriginal Cultural Safety",
+        "printedon": "Printed 18 November 2026", "anon": false, "hasrows": true,
+        "controls": {"iscourse": false, "contextid": 0, "courses": [{"value": 2, "label": "Course", "selected": true}],
+            "surveys": [], "hassurveychoice": false, "workshops": [], "hasworkshops": false, "customers": [],
+            "hascustomers": false, "cohorts": [], "hascohorts": false, "from": "", "to": "", "anon": false, "reseturl": "#"},
+        "tiles": [{"k": "Responses", "v": 12}],
+        "hasbeforeafter": false, "beforeafter": null,
+        "hascharts": true,
+        "chartgroups": [{"title": "Strongly Agree / Strongly Disagree", "rated": false,
+            "legend": [{"label": "Agree", "bg": "#1f8a55"}],
+            "questions": [{"num": 1, "text": "Was the content relevant?", "answered": 12, "hasdata": true,
+                "figure": "92%", "figurenote": "agree or strongly agree",
+                "segs": [{"label": "Agree", "count": 11, "pct": "92%", "width": "91.67", "showpct": true, "bg": "#1f8a55", "fg": "#fff"}]}]}],
+        "hascomments": true,
+        "comments": [{"num": 3, "text": "What could be improved?", "count": 1, "hasitems": true,
+            "items": [{"who": "Sam Lee", "workshop": "WS-1", "text": "More breaks."}]}],
+        "thead": [{"num": 1, "text": "Was the content relevant?"}],
+        "trows": [{"who": "Sam Lee", "email": "sam@example.com", "workshop": "WS-1 · Workshop", "wdate": "1 Nov 2026",
+            "completed": "1 Nov 2026", "cells": [{"v": "Agree", "full": "Agree", "long": false}]}],
+        "xlsxurl": "#", "csvurl": "#"
+    }
+}}
+<div class="bc-root bc-fb" data-region="beacon-feedback">
+  <div class="bc-wrap">
+
+    <div class="bc-page-head">
+      <div>
+        <a class="bc-fb-back" href="{{backurl}}">← {{#str}}backtoreports, local_beacon{{/str}}</a>
+        <h1 class="bc-h1">{{heading}}</h1>
+        <p class="bc-sub">{{sub}}</p>
+      </div>
+      <div class="bc-head-actions">
+        <button type="button" class="bc-btn bc-btn-ghost bc-theme-toggle" data-role="theme-toggle" aria-label="{{#str}}toggletheme, local_beacon{{/str}}" title="{{#str}}toggletheme, local_beacon{{/str}}">
+          <svg class="bc-ico-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg class="bc-ico-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    {{#hastabs}}
+    <nav class="bc-tabs bc-viewtabs" aria-label="{{#str}}pluginname, local_beacon{{/str}}">
+      {{#tabs}}<a class="bc-tab{{#on}} on{{/on}}" href="{{url}}"{{#on}} aria-current="page"{{/on}}>{{label}}</a>{{/tabs}}
+    </nav>
+    {{/hastabs}}
+
+    {{#scoped}}
+    <div class="bc-scopebar">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      {{#str}}chart_scoped, local_beacon{{/str}}
+    </div>
+    {{/scoped}}
+
+    {{#nosurveys}}
+      <div class="bc-empty">
+        <h2>{{#str}}fb_nosurveys_h, local_beacon{{/str}}</h2>
+        <p>{{#str}}fb_nosurveys, local_beacon{{/str}}</p>
+      </div>
+    {{/nosurveys}}
+
+    {{^nosurveys}}
+    {{#controls}}
+    <form class="bc-chart-controls bc-fb-controls" method="get" action="feedback.php" data-region="fb-controls">
+      {{#contextid}}<input type="hidden" name="contextid" value="{{contextid}}">{{/contextid}}
+      <input type="hidden" name="f_touched" value="1">
+      {{^iscourse}}
+      <label class="bc-cc-field bc-cc-wide">
+        <span>{{#str}}fb_f_course, local_beacon{{/str}}</span>
+        <select name="course" class="custom-select" data-fb-reload>
+          {{#courses}}<option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>{{/courses}}
+        </select>
+      </label>
+      {{/iscourse}}
+      {{#hassurveychoice}}
+      <label class="bc-cc-field">
+        <span>{{#str}}fb_f_survey, local_beacon{{/str}}</span>
+        <select name="survey" class="custom-select" data-fb-reload>
+          {{#surveys}}<option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>{{/surveys}}
+        </select>
+      </label>
+      {{/hassurveychoice}}
+      <label class="bc-cc-field bc-cc-wide">
+        <span>{{#str}}fb_f_workshop, local_beacon{{/str}}</span>
+        <select name="workshop" class="custom-select"{{^hasworkshops}} disabled{{/hasworkshops}}>
+          <option value="0">{{#str}}fb_f_allworkshops, local_beacon{{/str}}</option>
+          {{#workshops}}<option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>{{/workshops}}
+        </select>
+      </label>
+      {{#hascustomers}}
+      <label class="bc-cc-field">
+        <span>{{#str}}fb_f_customer, local_beacon{{/str}}</span>
+        <select name="customer" class="custom-select">
+          <option value="">{{#str}}chart_f_all, local_beacon{{/str}}</option>
+          {{#customers}}<option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>{{/customers}}
+        </select>
+      </label>
+      {{/hascustomers}}
+      <label class="bc-cc-field bc-fb-date">
+        <span>{{#str}}fb_f_from, local_beacon{{/str}}</span>
+        <input type="date" name="f_from" value="{{from}}" class="form-control">
+      </label>
+      <label class="bc-cc-field bc-fb-date">
+        <span>{{#str}}fb_f_to, local_beacon{{/str}}</span>
+        <input type="date" name="f_to" value="{{to}}" class="form-control">
+      </label>
+      {{#hascohorts}}
+      <label class="bc-cc-field">
+        <span>{{#str}}chart_f_cohort, local_beacon{{/str}}</span>
+        <select name="f_cohort[]" class="custom-select">
+          <option value="">{{#str}}chart_f_all, local_beacon{{/str}}</option>
+          {{#cohorts}}<option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>{{/cohorts}}
+        </select>
+      </label>
+      {{/hascohorts}}
+      <label class="bc-fb-anon">
+        <input type="checkbox" name="anon" value="1"{{#anon}} checked{{/anon}}>
+        <span>{{#str}}fb_f_anon, local_beacon{{/str}}</span>
+      </label>
+      <div class="bc-cc-actions">
+        <button type="submit" class="bc-btn bc-btn-primary">{{#str}}chart_apply, local_beacon{{/str}}</button>
+        <a class="bc-btn bc-btn-ghost" href="{{reseturl}}">{{#str}}chart_reset, local_beacon{{/str}}</a>
+      </div>
+    </form>
+    {{/controls}}
+
+    {{#hassurvey}}
+    <div class="bc-fb-reporthead">
+      <div>
+        <div class="bc-fb-print-title">{{heading}}</div>
+        <div class="bc-fb-scope">{{scopeline}}</div>
+        <div class="bc-fb-printed">{{printedon}}{{#anon}} · {{#str}}fb_namesdhidden, local_beacon{{/str}}{{/anon}}</div>
+      </div>
+      <div class="bc-fb-actions">
+        <a class="bc-btn bc-btn-ghost bc-btn-sm" href="{{xlsxurl}}">{{#str}}fb_dl_xlsx, local_beacon{{/str}}</a>
+        <a class="bc-btn bc-btn-ghost bc-btn-sm" href="{{csvurl}}">{{#str}}fb_dl_csv, local_beacon{{/str}}</a>
+        <button type="button" class="bc-btn bc-btn-ghost bc-btn-sm" data-fb-print>{{#str}}fb_print, local_beacon{{/str}}</button>
+      </div>
+    </div>
+
+    {{^hasrows}}
+      <div class="bc-empty">
+        <h2>{{#str}}fb_noresponses_h, local_beacon{{/str}}</h2>
+        <p>{{#str}}fb_noresponses, local_beacon{{/str}}</p>
+      </div>
+    {{/hasrows}}
+
+    {{#hasrows}}
+    <div class="bc-tiles bc-fb-tiles">
+      {{#tiles}}
+      <div class="bc-tile">
+        <div class="bc-tile-k">{{k}}</div>
+        <div class="bc-tile-v">{{v}}</div>
+        {{#note}}<div class="bc-fb-tile-note">{{note}}</div>{{/note}}
+      </div>
+      {{/tiles}}
+    </div>
+
+    <nav class="bc-chart-jump bc-fb-jump">
+      {{#hascharts}}<a class="bc-pill" href="#bc-fb-results">{{#str}}fb_sec_results, local_beacon{{/str}}</a>{{/hascharts}}
+      {{#hascomments}}<a class="bc-pill" href="#bc-fb-comments">{{#str}}fb_sec_comments, local_beacon{{/str}}</a>{{/hascomments}}
+      <a class="bc-pill" href="#bc-fb-responses">{{#str}}fb_sec_responses, local_beacon{{/str}}</a>
+    </nav>
+
+    {{#hascharts}}
+    <section class="bc-sec" id="bc-fb-results">
+      <div class="bc-sec-head"><span class="bc-k">{{#str}}fb_sec_results, local_beacon{{/str}}</span><span class="bc-rule"></span></div>
+
+      {{#hasbeforeafter}}{{#beforeafter}}
+      <article class="bc-chart-card bcfam-progress bc-fb-card">
+        <header class="bc-chart-head">
+          <div class="bc-chart-titles">
+            <h3>{{#str}}fb_ba_title, local_beacon{{/str}}</h3>
+            <p>{{improved}}</p>
+          </div>
+          <div class="bc-chart-figure">
+            <div class="bc-chart-value{{#changeup}} bc-fb-up{{/changeup}}">{{change}}</div>
+            <div class="bc-chart-note">{{#str}}fb_ba_change, local_beacon{{/str}}</div>
+          </div>
+        </header>
+        <div class="bc-fb-legend">{{#legend}}<span title="{{full}}"><i style="background:{{bg}}"></i>{{label}}</span>{{/legend}}</div>
+        {{#before}}
+        <div class="bc-fb-q">
+          <div class="bc-fb-qtext"><b>{{#str}}fb_ba_before, local_beacon{{/str}}</b> {{text}}</div>
+          <div class="bc-fb-qrow">
+            <div class="bc-fb-bar" role="img" aria-label="{{text}}">{{#segs}}<span class="bc-fb-seg" style="width:{{width}}%;background:{{bg}};color:{{fg}}" title="{{label}}: {{count}} ({{pct}})">{{#showpct}}{{pct}}{{/showpct}}</span>{{/segs}}</div>
+            <div class="bc-fb-fig"><b>{{avg}}</b><span>{{#str}}fb_average, local_beacon{{/str}}</span></div>
+          </div>
+        </div>
+        {{/before}}
+        {{#after}}
+        <div class="bc-fb-q">
+          <div class="bc-fb-qtext"><b>{{#str}}fb_ba_after, local_beacon{{/str}}</b> {{text}}</div>
+          <div class="bc-fb-qrow">
+            <div class="bc-fb-bar" role="img" aria-label="{{text}}">{{#segs}}<span class="bc-fb-seg" style="width:{{width}}%;background:{{bg}};color:{{fg}}" title="{{label}}: {{count}} ({{pct}})">{{#showpct}}{{pct}}{{/showpct}}</span>{{/segs}}</div>
+            <div class="bc-fb-fig"><b>{{avg}}</b><span>{{#str}}fb_average, local_beacon{{/str}}</span></div>
+          </div>
+        </div>
+        {{/after}}
+      </article>
+      {{/beforeafter}}{{/hasbeforeafter}}
+
+      {{#chartgroups}}
+      <article class="bc-chart-card bcfam-assessment bc-fb-card">
+        <header class="bc-chart-head">
+          <div class="bc-chart-titles"><h3>{{title}}</h3></div>
+        </header>
+        <div class="bc-fb-legend">{{#legend}}<span title="{{full}}"><i style="background:{{bg}}"></i>{{label}}</span>{{/legend}}</div>
+        {{#questions}}
+        <div class="bc-fb-q">
+          <div class="bc-fb-qtext"><span class="bc-fb-qnum">Q{{num}}</span> {{text}}</div>
+          <div class="bc-fb-qrow">
+            {{#hasdata}}
+            <div class="bc-fb-bar" role="img" aria-label="{{text}}">{{#segs}}<span class="bc-fb-seg" style="width:{{width}}%;background:{{bg}};color:{{fg}}" title="{{label}}: {{count}} ({{pct}})">{{#showpct}}{{pct}}{{/showpct}}</span>{{/segs}}</div>
+            {{/hasdata}}
+            {{^hasdata}}<div class="bc-fb-bar bc-fb-bar-empty">{{#str}}fb_noanswers, local_beacon{{/str}}</div>{{/hasdata}}
+            <div class="bc-fb-fig"><b>{{figure}}</b><span>{{figurenote}}</span></div>
+          </div>
+        </div>
+        {{/questions}}
+      </article>
+      {{/chartgroups}}
+    </section>
+    {{/hascharts}}
+
+    {{#hascomments}}
+    <section class="bc-sec" id="bc-fb-comments">
+      <div class="bc-sec-head"><span class="bc-k">{{#str}}fb_sec_comments, local_beacon{{/str}}</span><span class="bc-rule"></span></div>
+      {{#comments}}
+      <article class="bc-chart-card bcfam-engagement bc-fb-card">
+        <header class="bc-chart-head">
+          <div class="bc-chart-titles"><h3><span class="bc-fb-qnum">Q{{num}}</span> {{text}}</h3></div>
+          <div class="bc-chart-figure"><div class="bc-chart-value">{{count}}</div><div class="bc-chart-note">{{#str}}fb_answers, local_beacon{{/str}}</div></div>
+        </header>
+        {{#hasitems}}
+        <ul class="bc-fb-comments">
+          {{#items}}<li><div class="bc-fb-cwho">{{who}}{{#workshop}} <span>· {{workshop}}</span>{{/workshop}}</div><div class="bc-fb-ctext">{{text}}</div></li>{{/items}}
+        </ul>
+        {{/hasitems}}
+        {{^hasitems}}<div class="bc-chart-msg">{{#str}}fb_noanswers, local_beacon{{/str}}</div>{{/hasitems}}
+      </article>
+      {{/comments}}
+    </section>
+    {{/hascomments}}
+
+    <section class="bc-sec bc-fb-respsec" id="bc-fb-responses">
+      <div class="bc-sec-head"><span class="bc-k">{{#str}}fb_sec_responses, local_beacon{{/str}}</span><span class="bc-rule"></span></div>
+      <div class="bc-fb-tablewrap">
+        <table class="bc-data bc-fb-table">
+          <thead>
+            <tr>
+              <th>{{#anon}}{{#str}}fb_col_participant, local_beacon{{/str}}{{/anon}}{{^anon}}{{#str}}col_learner, local_beacon{{/str}}{{/anon}}</th>
+              <th>{{#str}}fb_col_workshop, local_beacon{{/str}}</th>
+              <th>{{#str}}fb_col_workshopdate, local_beacon{{/str}}</th>
+              <th>{{#str}}fb_col_completed, local_beacon{{/str}}</th>
+              {{#thead}}<th title="{{text}}"><span class="bc-fb-qnum">Q{{num}}</span> <span class="bc-fb-th">{{text}}</span></th>{{/thead}}
+            </tr>
+          </thead>
+          <tbody>
+            {{#trows}}
+            <tr>
+              <td class="bc-fb-who">{{who}}{{#email}}<div class="bc-fb-email">{{email}}</div>{{/email}}</td>
+              <td>{{workshop}}</td>
+              <td class="bc-fb-nowrap">{{wdate}}</td>
+              <td class="bc-fb-nowrap">{{completed}}</td>
+              {{#cells}}<td{{#long}} class="bc-fb-long"{{/long}}{{^long}} title="{{full}}"{{/long}}>{{v}}</td>{{/cells}}
+            </tr>
+            {{/trows}}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {{/hasrows}}
+    {{/hassurvey}}
+    {{/nosurveys}}
+
+  </div>
+</div>
+{{#js}}
+require(['local_beacon/ui'], function(UI) {
+    UI.init();
+    var form = document.querySelector('[data-region="fb-controls"]');
+    if (form) {
+        form.querySelectorAll('[data-fb-reload]').forEach(function(sel) {
+            sel.addEventListener('change', function() {
+                // A new course (or survey) has its own workshops: start those filters afresh.
+                var ws = form.querySelector('select[name="workshop"]');
+                if (ws) {
+                    ws.value = '0';
+                }
+                var cu = form.querySelector('select[name="customer"]');
+                if (cu) {
+                    cu.value = '';
+                }
+                if (sel.name === 'course') {
+                    var sv = form.querySelector('select[name="survey"]');
+                    if (sv) {
+                        sv.disabled = true;
+                    }
+                }
+                form.submit();
+            });
+        });
+    }
+    var print = document.querySelector('[data-fb-print]');
+    if (print) {
+        print.addEventListener('click', function() {
+            window.print();
+        });
+    }
+});
+{{/js}}

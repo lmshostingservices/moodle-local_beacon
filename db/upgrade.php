@@ -308,5 +308,23 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026102604, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026111800) {
+        // Version 2.15.0: switch on the new Student feedback report, and the Activity
+        // completion — by activity report (added earlier but never appended), on existing
+        // sites. Every site saves its report selection at install, so a report added later
+        // stays hidden unless it is appended here.
+        $cur = get_config('local_beacon', 'enabledreports');
+        if ($cur !== false && $cur !== '') {
+            foreach (['activity_completion_detail', 'student_feedback'] as $rid) {
+                if (strpos(',' . $cur . ',', ',' . $rid . ',') === false) {
+                    $cur .= ',' . $rid;
+                }
+            }
+            set_config('enabledreports', $cur, 'local_beacon');
+        }
+        \cache::make('local_beacon', 'reports')->purge();
+        upgrade_plugin_savepoint(true, 2026111800, 'local', 'beacon');
+    }
+
     return true;
 }

@@ -55,6 +55,12 @@ if ($type === 'mine') {
     }
 }
 
+// Student feedback has its own page (charts, comments, one column per survey question).
+if ($type === 'report' && $id === 'student_feedback') {
+    redirect(new moodle_url('/local/beacon/feedback.php',
+        $context instanceof context_course ? ['contextid' => $context->id] : []));
+}
+
 $page = new \local_beacon\output\detail($context, $type, $id);
 if (!$page->is_valid()) {
     throw new moodle_exception('itemnotfound', 'local_beacon');

@@ -44,6 +44,8 @@ class report {
     private $runfn;
     /** @var string|null Required table. */
     public ?string $requirestable;
+    /** @var string[] Further tables that must all exist (e.g. two optional plugins). */
+    public array $requirestables = [];
     /** @var string[] Filter types this report offers, in display order. */
     public array $filters;
     /** @var string|null Column-label string key the date range applies to. */
@@ -67,6 +69,7 @@ class report {
         $this->columns       = $d['columns'];
         $this->runfn         = $d['run'];
         $this->requirestable = $d['requirestable'] ?? null;
+        $this->requirestables = $d['requirestables'] ?? [];
         $this->filters       = $d['filters'] ?? [];
         $this->datelabel     = $d['datelabel'] ?? null;
         $this->personal      = $d['personal'] ?? false;
@@ -125,10 +128,13 @@ class report {
      */
     public function is_available(): bool {
         global $DB;
-        if ($this->requirestable === null) {
-            return true;
+        $dbman = $DB->get_manager();
+        foreach (array_merge($this->requirestable === null ? [] : [$this->requirestable], $this->requirestables) as $t) {
+            if (!$dbman->table_exists($t)) {
+                return false;
+            }
         }
-        return $DB->get_manager()->table_exists($this->requirestable);
+        return true;
     }
 
     /**

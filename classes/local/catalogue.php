@@ -901,6 +901,51 @@ class catalogue {
         ];
 
         $defs[] = [
+            // Student feedback: AI Knowledge Check survey results by course / workshop. Its own
+            // page (feedback.php) shows charts, comments and a one-column-per-question table;
+            // this definition gives the card, the enable switch and a flat one-row-per-answer
+            // export for the standard download path.
+            'id' => 'student_feedback', 'family' => 'assessment', 'icon' => 'star', 'grain' => 'answer',
+            'requirestable' => 'aiknowledgecheck_attempts',
+            'requirestables' => feedback::TABLES,
+            'filters' => ['course', 'cohort'], 'schedulable' => false,
+            'columns' => [['learner', 'col_learner', 'text'], ['email', 'col_email', 'text'],
+                          ['course', 'col_course', 'text'], ['workshop', 'fb_col_workshop', 'text'],
+                          ['wdate', 'fb_col_workshopdate', 'date'], ['question', 'fb_col_question', 'text'],
+                          ['answer', 'fb_col_answer', 'text']],
+            'run' => function ($DB, $q, $limit) {
+                $courses = $q->selected('course');
+                $rows = [];
+                $total = 0;
+                $sysctx = \context_system::instance();
+                foreach (feedback::surveys($courses ?: null) as $survey) {
+                    $coursename = format_string($survey->coursename, true, ['context' => $sysctx]);
+                    $questions = feedback::questions((int) $survey->id);
+                    $res = feedback::responses($survey, $questions, $q);
+                    foreach ($res['rows'] as $r) {
+                        foreach ($questions as $qq) {
+                            $v = $r['answers'][$qq['id']] ?? null;
+                            $text = $qq['kind'] === 'freetext' ? (string) $v : ($v === null ? '' : $qq['options'][$v]);
+                            if ($text === '') {
+                                continue;
+                            }
+                            $total++;
+                            if ($limit && count($rows) >= $limit) {
+                                continue;
+                            }
+                            $w = $r['workshop'];
+                            $rows[] = [cell::text($r['fullname']), cell::text($r['email']),
+                                       cell::text($coursename),
+                                       cell::text($w ? trim($w['code'] . ' ' . $w['name']) : ''),
+                                       cell::when($w ? $w['date'] : 0), cell::text($qq['text']), cell::text($text)];
+                        }
+                    }
+                }
+                return [$rows, $total];
+            },
+        ];
+
+        $defs[] = [
             'id' => 'not_started', 'family' => 'engagement', 'icon' => 'moon', 'grain' => 'enrolment',
             'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
             'datelabel' => 'col_enrolled',

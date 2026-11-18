@@ -2,6 +2,31 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.15.0] - 2026-11-18
+- **New: Student feedback report.** Survey results from AI Knowledge Check (survey
+  mode), matched to the workshop each learner was booked into (Workshops plugin,
+  local_workshops). Filter by Moodle course, linked workshop, workshop date range,
+  customer and cohort. The page shows:
+  - headline tiles: responses, response rate (against learners marked Attended),
+    positive answers and knowledge change
+  - a before-and-after chart for the two knowledge self-ratings, with how many
+    participants rated themselves higher
+  - a stacked bar for every rating question, coloured green to red with neutral
+    answers in grey
+  - every comment for each free-text question
+  - a participant table with one column per question.
+  Download as Excel or CSV in the same layout as the previous LMS export, or print or
+  save as PDF (the participant table prints on landscape pages). A **Hide participant
+  names** option replaces names with Participant 1, 2, … on screen and in every
+  download. Teachers see only the learners they teach. The latest finished attempt per
+  learner is reported. Cancelled bookings are ignored, and older bookings without a
+  Moodle account are matched by email. The report only appears when both plugins are
+  installed.
+- **Fixed: Activity completion — by activity was hidden on existing sites.** Sites save
+  their report selection when Beacon is installed, so this report never appeared unless
+  an admin ticked it. The upgrade now switches it on, along with Student feedback.
+- Reports can now require more than one optional plugin (`requirestables`).
+
 ## [v2.14.6] - 2026-11-05
 - **Fixed: Report Studio charts ran past the right edge of their panel** on some
   screen widths, cutting off the last bar or label. Charts now always fit the canvas.
