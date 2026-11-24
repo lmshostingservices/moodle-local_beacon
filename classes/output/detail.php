@@ -663,7 +663,7 @@ class detail implements renderable, templatable {
         'auth' => 'f_auth', 'enrolmethod' => 'f_enrol', 'idle' => 'f_idle',
         'certstatus' => 'f_certstatus', 'policystatus' => 'f_policystatus',
         'proficiency' => 'f_proficiency', 'contextlevel' => 'f_contextlevel',
-        'gradeband' => 'f_gradeband', 'progressband' => 'f_progressband',
+        'gradeband' => 'f_gradeband', 'progressband' => 'f_progressband', 'coursetotal' => 'f_coursetotal',
     ];
 
     /** The string-key suffix (under filter_) each type displays as. */
@@ -673,7 +673,7 @@ class detail implements renderable, templatable {
         'auth' => 'auth',
         'enrolmethod' => 'enrolmethod', 'idle' => 'idle', 'certstatus' => 'certstatus',
         'policystatus' => 'policystatus', 'proficiency' => 'proficiency', 'contextlevel' => 'contextlevel',
-        'gradeband' => 'gradeband', 'progressband' => 'progressband',
+        'gradeband' => 'gradeband', 'progressband' => 'progressband', 'coursetotal' => 'coursetotal',
     ];
 
     /**

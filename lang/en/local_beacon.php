@@ -928,9 +928,9 @@ $string['fb_col_answer'] = 'Answer';
 
 // Marking activity (v2.16.0).
 $string['r_marking_activity'] = 'Marking activity';
-$string['r_marking_activity_desc'] = 'How many assessment tasks each trainer marked: assignments graded, quiz attempts with questions marked by hand, and gradebook items entered. Each learner’s task is counted once per attempt. Automatic recalculations, course totals, auto-marked quiz questions and quiz edits or regrades are not counted. Defaults to the last 30 days; click a total to see the tasks.';
+$string['r_marking_activity_desc'] = 'How many assessment tasks each trainer marked: assignments graded, quiz attempts with questions marked by hand, and gradebook items entered. Each learner’s task is counted once per attempt. Automatic recalculations, auto-marked quiz questions and quiz edits or regrades are not counted. Course total 100% shows how many learners’ Course total reached 100% from that trainer’s marking. Defaults to the last 30 days; click a total to see the tasks.';
 $string['r_marked_assessments'] = 'Marked assessments';
-$string['r_marked_assessments_desc'] = 'Every assessment task a trainer marked, with the learner, unit, attempt, result and date marked. Use the Trainer filter to list one trainer’s marking. Defaults to the last 30 days.';
+$string['r_marked_assessments_desc'] = 'Every assessment task a trainer marked, with the learner, unit, attempt, result, the Course total before and after the marking, and date marked. Use the Course total filter to list only marking that took a learner’s Course total to 100%. Defaults to the last 30 days.';
 $string['grain_trainer'] = 'One row per trainer';
 $string['grain_marked'] = 'One row per task marked';
 $string['col_marker'] = 'Trainer';
@@ -960,3 +960,12 @@ $string['col_datemarked_help'] = 'When the task was marked (for an assignment, w
 $string['marktype_assign'] = 'Assignment';
 $string['marktype_quiz'] = 'Quiz';
 $string['marktype_manual'] = 'Gradebook item';
+
+// Course total on the marking reports (v2.16.1).
+$string['filter_coursetotal'] = 'Course total';
+$string['band_coursetotal_reached'] = 'Reached 100%';
+$string['band_coursetotal_notreached'] = 'Did not reach 100%';
+$string['col_ct100'] = 'Course total 100%';
+$string['col_ct100_help'] = 'How many learners’ Course total went to 100% as a direct result of this trainer’s marking in the period (each learner counted once per course). Click to list those tasks.';
+$string['col_coursetotalmove'] = 'Course total';
+$string['col_coursetotalmove_help'] = 'The learner’s Course total just before and just after this task was marked, e.g. 94% → 100%. Blank when Moodle had not recalculated the Course total at the time (for example when the gradebook was waiting for a full recalculation) or grade history is turned off.';

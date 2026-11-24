@@ -29,6 +29,12 @@ namespace local_beacon\local;
  * validated query. Curated to the metrics Moodle admins actually ask for.
  */
 class catalogue {
+    /** Seconds before a mark that its Course total recalculation may be stamped. */
+    private const CT_BEFORE = 2;
+
+    /** Seconds after a mark within which its Course total recalculation is written. */
+    private const CT_AFTER = 30;
+
     /** @var metric[]|null */
     private static ?array $metrics = null;
     /** @var report[]|null */
@@ -401,6 +407,130 @@ class catalogue {
                        AND gg.usermodified <> gg.userid AND gg.timemodified IS NOT NULL $w";
 
         return ['(' . implode(' UNION ALL ', $parts) . ')', $params];
+    }
+
+    /**
+     * The marking events (see marking_events()) with a `reached100` flag: 1 when the
+     * learner's Course total went from below 100% to 100% as a direct result of that
+     * marking, else 0.
+     *
+     * Moodle recalculates a learner's Course total in the same request that saves
+     * the mark, and records who was logged in on the history row (`loggeduser`).
+     * So a marking event is matched to the Course total history row written by the
+     * same trainer, for the same learner and course, within seconds of the mark.
+     * Needs grade history (on by default); without it the flag is always 0.
+     *
+     * @param \moodle_database $DB Database.
+     * @param int|null $from Earliest time marked, or null.
+     * @param int|null $to Latest time marked, or null.
+     * @return array{0:string,1:array} [sub-select SQL, params]
+     */
+    public static function marking_events_with_coursetotal(\moodle_database $DB, ?int $from, ?int $to): array {
+        [$union, $params] = self::marking_events($DB, $from, $to);
+        $lo = self::CT_BEFORE;
+        $hi = self::CT_AFTER;
+        $sql = "(SELECT mk0.*,
+                        CASE WHEN EXISTS (
+                            SELECT 1
+                              FROM {grade_grades_history} cth
+                              JOIN {grade_items} cti ON cti.id = cth.itemid AND cti.itemtype = 'course'
+                             WHERE cth.userid = mk0.userid AND cti.courseid = mk0.courseid
+                               AND cth.loggeduser = mk0.markerid
+                               AND cth.timemodified >= mk0.ts - $lo AND cth.timemodified <= mk0.ts + $hi
+                               AND cth.finalgrade IS NOT NULL AND cth.rawgrademax > cth.rawgrademin
+                               AND cth.finalgrade >= cth.rawgrademax - 0.00001
+                               AND NOT EXISTS (
+                                   SELECT 1
+                                     FROM {grade_grades_history} ctp
+                                    WHERE ctp.id = (SELECT MAX(ctp2.id)
+                                                      FROM {grade_grades_history} ctp2
+                                                     WHERE ctp2.itemid = cth.itemid AND ctp2.userid = cth.userid
+                                                       AND ctp2.id < cth.id)
+                                      AND ctp.finalgrade IS NOT NULL AND ctp.rawgrademax > ctp.rawgrademin
+                                      AND ctp.finalgrade >= ctp.rawgrademax - 0.00001)
+                        ) THEN 1 ELSE 0 END AS reached100
+                   FROM $union mk0)";
+        return [$sql, $params];
+    }
+
+    /**
+     * The learner's Course total just before and just after each marking event, as
+     * "94% → 100%", keyed by the event's rid. Batched: two queries for the page.
+     *
+     * @param \moodle_database $DB Database.
+     * @param array $recs Marking rows (rid, userid, courseid, markerid, ts).
+     * @return array<string,string>
+     */
+    private static function coursetotal_moves(\moodle_database $DB, array $recs): array {
+        if (!$recs) {
+            return [];
+        }
+        $courses = [];
+        $users = [];
+        $mints = PHP_INT_MAX;
+        $maxts = 0;
+        foreach ($recs as $r) {
+            $courses[(int) $r->courseid] = true;
+            $users[(int) $r->userid] = true;
+            $mints = min($mints, (int) $r->ts);
+            $maxts = max($maxts, (int) $r->ts);
+        }
+        [$cin, $cp] = $DB->get_in_or_equal(array_keys($courses), SQL_PARAMS_NAMED, 'ctc');
+        $items = $DB->get_records_select_menu('grade_items', "itemtype = 'course' AND courseid $cin", $cp,
+            '', 'id, courseid');
+        if (!$items) {
+            return [];
+        }
+        $itemof = array_flip(array_map('intval', $items));
+        [$iin, $ip] = $DB->get_in_or_equal(array_keys($items), SQL_PARAMS_NAMED, 'cti');
+        [$uin, $upar] = $DB->get_in_or_equal(array_keys($users), SQL_PARAMS_NAMED, 'ctu');
+        $lo = $mints - self::CT_BEFORE;
+        $fields = 'id, itemid, userid, loggeduser, finalgrade, rawgrademin, rawgrademax, timemodified';
+        // Rows inside the overall window, plus each learner's last row before it.
+        $win = $DB->get_records_select('grade_grades_history',
+            "itemid $iin AND userid $uin AND timemodified >= :lo AND timemodified <= :hi",
+            $ip + $upar + ['lo' => $lo, 'hi' => $maxts + self::CT_AFTER], 'id', $fields);
+        $pre = $DB->get_records_sql("SELECT $fields FROM {grade_grades_history} WHERE id IN (
+                SELECT MAX(id) FROM {grade_grades_history}
+                 WHERE itemid $iin AND userid $uin AND timemodified < :lo GROUP BY itemid, userid)",
+            $ip + $upar + ['lo' => $lo]);
+        $seq = [];
+        foreach ($pre + $win as $h) {
+            $seq[(int) $h->itemid . '-' . (int) $h->userid][(int) $h->id] = $h;
+        }
+        foreach ($seq as &$list) {
+            ksort($list);
+            $list = array_values($list);
+        }
+        unset($list);
+        $pct = function ($h): string {
+            $range = (float) $h->rawgrademax - (float) $h->rawgrademin;
+            if ($h->finalgrade === null || $range <= 0) {
+                return '—';
+            }
+            return round(100 * ((float) $h->finalgrade - (float) $h->rawgrademin) / $range) . '%';
+        };
+        $out = [];
+        foreach ($recs as $r) {
+            $item = $itemof[(int) $r->courseid] ?? 0;
+            $list = $seq[$item . '-' . (int) $r->userid] ?? [];
+            $first = null;
+            $last = null;
+            foreach ($list as $i => $h) {
+                if ((int) $h->loggeduser === (int) $r->markerid
+                        && (int) $h->timemodified >= (int) $r->ts - self::CT_BEFORE
+                        && (int) $h->timemodified <= (int) $r->ts + self::CT_AFTER) {
+                    $first = $first ?? $i;
+                    $last = $i;
+                }
+            }
+            if ($last === null) {
+                continue;
+            }
+            $before = $first > 0 ? $pct($list[$first - 1]) : '—';
+            $out[$r->rid] = $before . ' → ' . $pct($list[$last]);
+        }
+        return $out;
     }
 
     /**
@@ -1311,19 +1441,20 @@ class catalogue {
         $defs[] = [
             'id' => 'marking_activity', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'trainer',
             'requirestable' => 'assign_grades',
-            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'coursetotal', 'daterange'],
             'datelabel' => 'col_lastmarked',
             'columns' => [['trainer', 'col_marker', 'text'], ['assign', 'col_assignsmarked', 'number'],
                           ['quiz', 'col_quizzesmarked', 'number'], ['manual', 'col_gradebookmarked', 'number'],
                           ['total', 'col_totalmarked', 'number'], ['learners', 'col_learnersmarked', 'number'],
-                          ['last', 'col_lastmarked', 'date']],
+                          ['ct100', 'col_ct100', 'number'], ['last', 'col_lastmarked', 'date']],
             'run' => function ($DB, $q, $limit) {
                 [$from, $to] = self::marking_window($q);
-                [$union, $up] = self::marking_events($DB, $from, $to);
+                [$union, $up] = self::marking_events_with_coursetotal($DB, $from, $to);
                 // The Trainer filter means "marked by"; a teacher's automatic scope
                 // still limits rows to the learners they teach.
                 [$fw, $fp] = $q->where(['cohort' => 'mk.userid', 'group' => 'mk.userid', 'studentemail' => 'u.email',
                     'course' => 'mk.courseid', 'category' => 'mk.courseid',
+                    'coursetotal' => 'mk.reached100',
                     'trainer' => ['marker' => 'mk.markerid', 'user' => 'mk.userid', 'course' => 'mk.courseid']]);
                 $body = "FROM $union mk
                           JOIN {user} u ON u.id = mk.userid AND u.deleted = 0
@@ -1337,6 +1468,9 @@ class catalogue {
                                SUM(CASE WHEN mk.kind = 'quiz' THEN 1 ELSE 0 END) AS nquiz,
                                SUM(CASE WHEN mk.kind = 'manual' THEN 1 ELSE 0 END) AS nmanual,
                                COUNT(*) AS ntotal, COUNT(DISTINCT mk.userid) AS nlearners,
+                               COUNT(DISTINCT CASE WHEN mk.reached100 = 1
+                                     THEN " . $DB->sql_concat($DB->sql_cast_to_char('mk.userid'), "'-'",
+                                         $DB->sql_cast_to_char('mk.courseid')) . " END) AS nct100,
                                MAX(mk.ts) AS lastmarked
                         $body
                       GROUP BY mk.markerid, m.firstname, m.lastname, m.firstnamephonetic,
@@ -1369,9 +1503,18 @@ class catalogue {
                 foreach ($recs as $r) {
                     $url = (new \moodle_url('/local/beacon/view.php', ['type' => 'report', 'id' => 'marked_assessments']
                         + $carry + ['f_trainer[0]' => (int) $r->id]))->out(false);
+                    $ct = $carry;
+                    foreach (array_keys($ct) as $k) {
+                        if (strpos($k, 'f_coursetotal[') === 0) {
+                            unset($ct[$k]);
+                        }
+                    }
+                    $cturl = (new \moodle_url('/local/beacon/view.php', ['type' => 'report', 'id' => 'marked_assessments']
+                        + $ct + ['f_trainer[0]' => (int) $r->id, 'f_coursetotal[0]' => 'reached']))->out(false);
                     $rows[] = [cell::text(self::fullname_of($r)), cell::number((int) $r->nassign),
                                cell::number((int) $r->nquiz), cell::number((int) $r->nmanual),
                                cell::number((int) $r->ntotal, null, $url), cell::number((int) $r->nlearners),
+                               cell::number((int) $r->nct100, null, (int) $r->nct100 > 0 ? $cturl : null),
                                cell::when((int) $r->lastmarked)];
                 }
                 return [$rows, (int) $DB->count_records_sql("SELECT COUNT(DISTINCT mk.markerid) $body", $params)];
@@ -1381,18 +1524,19 @@ class catalogue {
         $defs[] = [
             'id' => 'marked_assessments', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'marked',
             'requirestable' => 'assign_grades',
-            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'coursetotal', 'daterange'],
             'datelabel' => 'col_datemarked',
             'columns' => [['trainer', 'col_marker', 'text'], ['learner', 'col_learner', 'text'],
                           ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
                           ['item', 'col_markeditem', 'text'], ['type', 'col_marktype', 'text'],
                           ['attempt', 'col_attempt', 'number'], ['result', 'col_result', 'text'],
-                          ['marked', 'col_datemarked', 'date']],
+                          ['coursetotal', 'col_coursetotalmove', 'text'], ['marked', 'col_datemarked', 'date']],
             'run' => function ($DB, $q, $limit) {
                 [$from, $to] = self::marking_window($q);
-                [$union, $up] = self::marking_events($DB, $from, $to);
+                [$union, $up] = self::marking_events_with_coursetotal($DB, $from, $to);
                 [$fw, $fp] = $q->where(['cohort' => 'mk.userid', 'group' => 'mk.userid', 'studentemail' => 'u.email',
                     'course' => 'mk.courseid', 'category' => 'mk.courseid',
+                    'coursetotal' => 'mk.reached100',
                     'trainer' => ['marker' => 'mk.markerid', 'user' => 'mk.userid', 'course' => 'mk.courseid']]);
                 $body = "FROM $union mk
                           JOIN {user} u ON u.id = mk.userid AND u.deleted = 0
@@ -1401,7 +1545,7 @@ class catalogue {
                          WHERE 1 = 1 $fw";
                 $params = $up + $fp;
                 $sql = "SELECT mk.rid, mk.kind, mk.markerid, mk.userid, mk.courseid, mk.cmid, mk.refid,
-                               mk.attempt, mk.name, mk.grade, mk.gmin, mk.gmax, mk.scaleid, mk.ts,
+                               mk.attempt, mk.name, mk.grade, mk.gmin, mk.gmax, mk.scaleid, mk.ts, mk.reached100,
                                u.firstname, u.lastname, u.firstnamephonetic, u.lastnamephonetic,
                                u.middlename, u.alternatename, u.email, c.fullname AS course,
                                m.firstname AS mfirstname, m.lastname AS mlastname,
@@ -1441,6 +1585,7 @@ class catalogue {
                     }
                     return rtrim(rtrim(number_format($g, 2, '.', ''), '0'), '.');
                 };
+                $moves = self::coursetotal_moves($DB, $recs);
                 $types = ['assign' => get_string('marktype_assign', 'local_beacon'),
                           'quiz' => get_string('marktype_quiz', 'local_beacon'),
                           'manual' => get_string('marktype_manual', 'local_beacon')];
@@ -1469,7 +1614,7 @@ class catalogue {
                                cell::text($r->email), cell::text($r->course, $courseurl),
                                cell::text($name, $itemurl), cell::text($types[$r->kind] ?? $r->kind),
                                cell::number((int) $r->attempt), cell::text($result($r)),
-                               cell::when((int) $r->ts)];
+                               cell::text($moves[$r->rid] ?? '—'), cell::when((int) $r->ts)];
                 }
                 return [$rows, (int) $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
             },

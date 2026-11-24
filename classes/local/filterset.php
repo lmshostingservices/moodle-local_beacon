@@ -36,7 +36,7 @@ namespace local_beacon\local;
  * a column in its filter map):
  *   entity multi-selects  cohort · group · course · category · role · auth · enrolmethod
  *   date range            daterange (with one-click presets)
- *   single-column bands   idle · certstatus · policystatus · proficiency · contextlevel
+ *   single-column bands   idle · certstatus · policystatus · proficiency · contextlevel · coursetotal
  */
 class filterset {
     /** @var \context The report context. */
@@ -79,6 +79,7 @@ class filterset {
         'contextlevel' => ['10', '40', '50', '70'],
         'gradeband'    => ['high', 'mid', 'low'],
         'progressband' => ['complete', 'inprogress', 'notstarted'],
+        'coursetotal'  => ['reached', 'notreached'],
     ];
 
     /** Preset tokens for the date-range filter. */
@@ -898,6 +899,10 @@ class filterset {
                     } else { // Low.
                         $or[] = "$col < 50";
                     }
+                    break;
+                case 'coursetotal':
+                    // Column $col is a 0/1 flag: did this marking take the Course total to 100%.
+                    $or[] = ($t === 'reached') ? "$col = 1" : "$col = 0";
                     break;
                 case 'progressband':
                     // Column $col is a 0–100 progress expression; thresholds are constants.

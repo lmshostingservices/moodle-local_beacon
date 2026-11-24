@@ -270,4 +270,57 @@ final class marking_activity_test extends \advanced_testcase {
         }
         $this->assertGreaterThan(0, $quizrows);
     }
+
+    /**
+     * The Course total moving to 100% is shown on each marked task, counted per
+     * trainer, and filterable.
+     */
+    public function test_course_total_reaching_100(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $gen = $this->getDataGenerator();
+        $this->setAdminUser();
+        $course = $gen->create_course(['fullname' => 'BSBCRT511']);
+        $t = $gen->create_user(['firstname' => 'Tina', 'lastname' => 'Editing']);
+        $s = $gen->create_user(['firstname' => 'Walter', 'lastname' => 'Learner']);
+        $gen->enrol_user($s->id, $course->id, 'student');
+        $gen->enrol_user($t->id, $course->id, 'editingteacher');
+        $asg = $gen->create_module('assign', ['course' => $course->id, 'name' => 'Assessment Task 2', 'grade' => 100,
+            'attemptreopenmethod' => 'manual', 'maxattempts' => -1]);
+        $cm = get_coursemodule_from_instance('assign', $asg->id);
+        $assign = new \assign(\context_module::instance($cm->id), $cm, $course);
+        $this->setUser($t);
+        $assign->get_user_grade($s->id, true, 0);
+        $assign->save_grade($s->id, (object) ['grade' => 80, 'attemptnumber' => 0, 'applytoall' => 0,
+            'addattempt' => 0, 'sendstudentnotifications' => false]);
+        // Move the first marking an hour into the past, as it would be in real life.
+        $DB->execute("UPDATE {assign_grades} SET timemodified = timemodified - 3600");
+        $DB->execute("UPDATE {grade_grades_history} SET timemodified = timemodified - 3600");
+        $assign->get_user_grade($s->id, true, 1);
+        $assign->save_grade($s->id, (object) ['grade' => 100, 'attemptnumber' => 1, 'applytoall' => 0,
+            'addattempt' => 0, 'sendstudentnotifications' => false]);
+        \cache::make('local_beacon', 'reports')->purge();
+        $ctx = \context_system::instance();
+
+        $sum = catalogue::report('marking_activity')->run(new filterset($ctx, []), 100);
+        $this->assertFalse($sum['error']);
+        $this->assertSame('1', $sum['rows'][0][6]['v'], 'One learner reached a 100% Course total');
+        $this->assertStringContainsString('f_coursetotal', $sum['rows'][0][6]['url']);
+
+        $det = catalogue::report('marked_assessments')->run(new filterset($ctx, []), 100);
+        $moves = [];
+        foreach ($det['rows'] as $r) {
+            $moves[$r[6]['v']] = $r[8]['v'];
+        }
+        $this->assertSame('80% → 100%', $moves['2']);
+        $this->assertStringEndsWith('→ 80%', $moves['1']);
+
+        $reached = catalogue::report('marked_assessments')->run(
+            filterset::from_params($ctx, ['f_coursetotal' => ['reached']]), 100);
+        $this->assertSame(1, $reached['total']);
+        $this->assertSame('2', $reached['rows'][0][6]['v']);
+        $not = catalogue::report('marked_assessments')->run(
+            filterset::from_params($ctx, ['f_coursetotal' => ['notreached']]), 100);
+        $this->assertSame(1, $not['total']);
+    }
 }

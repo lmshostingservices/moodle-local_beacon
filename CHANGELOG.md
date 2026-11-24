@@ -2,6 +2,20 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.16.1] - 2026-11-24
+- **Course total on the marking reports.** Moodle recalculates a learner's Course
+  total the moment a task is marked. Beacon now ties that change to the marking:
+  - **Marked assessments** has a new **Course total** column showing the learner's
+    Course total just before and just after each task was marked (e.g. 94% → 100%).
+  - **Marking activity** has a new **Course total 100%** column: how many learners'
+    Course total reached 100% as a direct result of each trainer's marking in the
+    period. Click it to list those tasks.
+  - New **Course total** filter on both reports: *Reached 100%* or *Did not reach
+    100%*, so result updates can be driven from marking that completed a unit.
+  - Matching uses the grade history row written for the same learner, course and
+    trainer within seconds of the mark. It needs grade history, which is on by
+    default.
+
 ## [v2.16.0] - 2026-11-24
 - **New report: Marking activity.** One row per trainer showing how many assessment
   tasks they marked in the period: assignments graded, quiz attempts with questions
