@@ -326,5 +326,22 @@ function xmldb_local_beacon_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026111800, 'local', 'beacon');
     }
 
+    if ($oldversion < 2026112400) {
+        // Version 2.16.0: switch on the new Marking activity and Marked assessments
+        // reports on existing sites (every site saves its report selection at install,
+        // so a report added later stays hidden unless it is appended here).
+        $cur = get_config('local_beacon', 'enabledreports');
+        if ($cur !== false && $cur !== '') {
+            foreach (['marking_activity', 'marked_assessments'] as $rid) {
+                if (strpos(',' . $cur . ',', ',' . $rid . ',') === false) {
+                    $cur .= ',' . $rid;
+                }
+            }
+            set_config('enabledreports', $cur, 'local_beacon');
+        }
+        \cache::make('local_beacon', 'reports')->purge();
+        upgrade_plugin_savepoint(true, 2026112400, 'local', 'beacon');
+    }
+
     return true;
 }

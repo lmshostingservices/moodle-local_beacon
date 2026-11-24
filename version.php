@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_beacon';
-$plugin->version   = 2026111800;      // 18 Nov 2026 .00 — Student feedback report.
+$plugin->version   = 2026112400;      // 24 Nov 2026 .00 — Marking activity reports.
 $plugin->requires  = 2024042200;      // Moodle 4.4.0.
 $plugin->supported = [404, 503];      // Moodle 4.4 through 5.3 (install-tested on 5.3).
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.15.0';        // Student feedback report (AI Knowledge Check surveys by workshop).
-$plugin->release_prev = '2.14.6';
+$plugin->release   = '2.16.0';        // Marking activity + Marked assessments; Grade changes % fix.
+$plugin->release_prev = '2.15.0';

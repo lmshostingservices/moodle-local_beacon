@@ -2,6 +2,29 @@
 
 All notable changes to the Beacon (local_beacon) plugin are documented here.
 
+## [v2.16.0] - 2026-11-24
+- **New report: Marking activity.** One row per trainer showing how many assessment
+  tasks they marked in the period: assignments graded, quiz attempts with questions
+  marked by hand (e.g. essays), gradebook items entered, the total, how many
+  learners and when they last marked. Each learner's task counts once per attempt,
+  so a resubmission marked again counts again. Automatic recalculations, course
+  totals, auto-marked quiz questions and quiz edits or regrades are not counted.
+  Defaults to the last 30 days. Filter by category, course, group, cohort, date
+  range and Trainer (here Trainer means "marked by"). Teachers see only marking for
+  the learners they teach.
+- **New report: Marked assessments.** Every task behind those counts: trainer,
+  learner, email, course, assessment, type, attempt, result (scale word such as
+  C / NYC, or a percentage) and date marked. Each assessment links to its grading
+  or review page. Click a trainer's total in Marking activity to open this list,
+  carrying the same filters.
+- **Fixed: Grade changes showed impossible results such as 202%** after a quiz was
+  edited. When an activity's settings change (e.g. a quiz's maximum grade),
+  Moodle recalculates every learner's grade and writes extra history rows partway
+  through. Those automatic recalculations are no longer listed for activity and
+  gradebook items. Each remaining result is shown against the maximum grade in
+  force when it changed. Course and category totals are unchanged.
+- The upgrade switches both new reports on for existing sites.
+
 ## [v2.15.0] - 2026-11-18
 - **New: Student feedback report.** Survey results from AI Knowledge Check (survey
   mode), matched to the workshop each learner was booked into (Workshops plugin,

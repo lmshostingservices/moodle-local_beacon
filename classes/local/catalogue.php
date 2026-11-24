@@ -311,6 +311,114 @@ class catalogue {
     }
 
     /**
+     * A UNION of marking events — one row each time a trainer marked an assessment
+     * for a learner — as a sub-select with the columns:
+     *   rid (unique key), kind ('assign' | 'quiz' | 'manual'), markerid, userid,
+     *   courseid, instanceid, cmid, refid, attempt, name, grade, gmin, gmax, scaleid, ts.
+     *
+     * Only deliberate marking counts, never automatic recalculation:
+     *  - assign  — an assignment grade saved by someone other than the learner
+     *              (`assign_grades.grader`), one per learner per attempt;
+     *  - quiz    — questions graded by hand in a quiz attempt (manual-grading
+     *              steps with a mark), one per marker per attempt; auto-marked
+     *              questions, quiz edits and regrades are not marking;
+     *  - manual  — a grade entered in the gradebook for a manual grade item
+     *              (e.g. an observation checklist), one per learner per item.
+     * Course and category totals are never included.
+     *
+     * @param \moodle_database $DB Database.
+     * @param int|null $from Earliest time marked (inclusive), or null.
+     * @param int|null $to Latest time marked (inclusive), or null.
+     * @return array{0:string,1:array} [sub-select SQL, params]
+     */
+    public static function marking_events(\moodle_database $DB, ?int $from, ?int $to): array {
+        $params = [];
+        $bound = function (string $col) use ($from, $to, &$params): string {
+            $sql = '';
+            if ($from !== null) {
+                $p = 'mkf' . count($params);
+                $sql .= " AND $col >= :$p";
+                $params[$p] = $from;
+            }
+            if ($to !== null) {
+                $p = 'mkt' . count($params);
+                $sql .= " AND $col <= :$p";
+                $params[$p] = $to;
+            }
+            return $sql;
+        };
+        $str = fn($s) => $DB->sql_cast_to_char($s);
+        $parts = [];
+        $man = $DB->get_manager();
+
+        if ($man->table_exists('assign_grades')) {
+            $w = $bound('ag.timemodified');
+            $parts[] = "SELECT " . $DB->sql_concat("'a'", $str('ag.id')) . " AS rid, 'assign' AS kind,
+                               ag.grader AS markerid, ag.userid, a.course AS courseid, a.id AS instanceid,
+                               COALESCE(cm.id, 0) AS cmid, ag.id AS refid, ag.attemptnumber + 1 AS attempt,
+                               a.name, ag.grade, 0 AS gmin,
+                               CASE WHEN a.grade > 0 THEN a.grade ELSE 0 END AS gmax,
+                               CASE WHEN a.grade < 0 THEN -a.grade ELSE 0 END AS scaleid,
+                               ag.timemodified AS ts
+                          FROM {assign_grades} ag
+                          JOIN {assign} a ON a.id = ag.assignment
+                     LEFT JOIN {modules} mda ON mda.name = 'assign'
+                     LEFT JOIN {course_modules} cm ON cm.instance = a.id AND cm.module = mda.id
+                         WHERE ag.grader > 0 AND ag.grader <> ag.userid
+                           AND ag.grade IS NOT NULL AND ag.grade >= 0 $w";
+        }
+
+        if ($man->table_exists('quiz_attempts') && $man->table_exists('question_attempt_steps')) {
+            $w = $bound('qas.timecreated');
+            $parts[] = "SELECT " . $DB->sql_concat("'q'", $str('quiza.id'), "'-'", $str('qas.userid')) . " AS rid,
+                               'quiz' AS kind, qas.userid AS markerid, quiza.userid, qz.course AS courseid,
+                               qz.id AS instanceid, COALESCE(MAX(cm.id), 0) AS cmid, quiza.id AS refid,
+                               quiza.attempt, qz.name,
+                               MAX(quiza.sumgrades * qz.grade / " . "NULLIF(qz.sumgrades, 0)) AS grade, 0 AS gmin,
+                               MAX(qz.grade) AS gmax, 0 AS scaleid, MAX(qas.timecreated) AS ts
+                          FROM {question_attempt_steps} qas
+                          JOIN {question_attempts} qa ON qa.id = qas.questionattemptid
+                          JOIN {quiz_attempts} quiza ON quiza.uniqueid = qa.questionusageid AND quiza.preview = 0
+                          JOIN {quiz} qz ON qz.id = quiza.quiz
+                     LEFT JOIN {modules} mdq ON mdq.name = 'quiz'
+                     LEFT JOIN {course_modules} cm ON cm.instance = qz.id AND cm.module = mdq.id
+                         WHERE qas.state IN ('mangrright', 'mangrpartial', 'mangrwrong')
+                           AND qas.userid > 0 AND qas.userid <> quiza.userid $w
+                      GROUP BY quiza.id, qas.userid, quiza.userid, qz.course, qz.id, quiza.attempt, qz.name";
+        }
+
+        $w = $bound('gg.timemodified');
+        $parts[] = "SELECT " . $DB->sql_concat("'g'", $str('gg.id')) . " AS rid, 'manual' AS kind,
+                           gg.usermodified AS markerid, gg.userid, gi.courseid, gi.id AS instanceid,
+                           0 AS cmid, gg.id AS refid, 1 AS attempt, gi.itemname AS name,
+                           gg.finalgrade AS grade, gi.grademin AS gmin, gi.grademax AS gmax,
+                           CASE WHEN gi.gradetype = 2 THEN gi.scaleid ELSE 0 END AS scaleid,
+                           gg.timemodified AS ts
+                      FROM {grade_grades} gg
+                      JOIN {grade_items} gi ON gi.id = gg.itemid AND gi.itemtype = 'manual'
+                           AND gi.gradetype IN (1, 2)
+                     WHERE gg.finalgrade IS NOT NULL AND gg.usermodified > 0
+                       AND gg.usermodified <> gg.userid AND gg.timemodified IS NOT NULL $w";
+
+        return ['(' . implode(' UNION ALL ', $parts) . ')', $params];
+    }
+
+    /**
+     * The date window for the marking reports: the chosen date range, or the last
+     * 30 days when none is chosen.
+     *
+     * @param filterset $q Active filters.
+     * @return array{0:?int,1:?int}
+     */
+    private static function marking_window(filterset $q): array {
+        $dr = $q->daterange();
+        if ($dr === null) {
+            return [time() - 30 * DAYSECS, null];
+        }
+        return [$dr['from'], $dr['to']];
+    }
+
+    /**
      * A UNION of durable, non-purgeable activity records as (userid, courseid, ts).
      *
      * Unlike the standard log (retained only for loglifetime), completion,
@@ -1073,6 +1181,11 @@ class catalogue {
                     $window = ' AND gh.timemodified >= :gcfrom';
                     $params['gcfrom'] = time() - 7 * DAYSECS;
                 }
+                // Recalculations Moodle makes on its own for an activity or gradebook
+                // item (source 'system': e.g. rescaling every grade when a quiz's
+                // maximum grade is edited) are not new results. They are written
+                // mid-edit with a grade already on the new scale but the old maximum,
+                // which showed as figures such as 202%, so they are left out.
                 // Attendance grade items are not assessments — exclude them.
                 $body = "FROM {grade_grades_history} gh
                           JOIN {grade_items} gi ON gi.id = gh.itemid AND gi.gradetype IN (1, 2)
@@ -1084,6 +1197,8 @@ class catalogue {
                                   WHERE ph2.itemid = gh.itemid AND ph2.userid = gh.userid
                                     AND ph2.id < gh.id)
                          WHERE gh.action <> 3 $window
+                           AND NOT (COALESCE(gh.source, '') = 'system'
+                                    AND gi.itemtype NOT IN ('course', 'category'))
                            AND (
                                  (ph.id IS NULL AND gh.finalgrade IS NOT NULL)
                               OR (ph.finalgrade IS NULL AND gh.finalgrade IS NOT NULL)
@@ -1144,11 +1259,26 @@ class catalogue {
                         }
                         return $items[$idx - 1] ?? ('#' . $idx);
                     }
+                    // A history row is a snapshot: its grade was measured against the
+                    // maximum in force at that moment. Every non-calculated row is
+                    // therefore shown against the raw min/max recorded on the history
+                    // row itself, not the item's current maximum. Otherwise a quiz
+                    // whose maximum grade was changed later (or mid-edit) shows
+                    // impossible figures such as 202%.
                     $aggregate = in_array($r->itemtype, ['course', 'category'], true)
                         && ($r->calculation === null || $r->calculation === '');
-                    $usegrade = ($aggregate || !empty($minmaxfromgrade[(int) $r->courseid])) && $rawmax !== null;
+                    $snapshot = $r->calculation === null || $r->calculation === '';
+                    $usegrade = ($aggregate || $snapshot || !empty($minmaxfromgrade[(int) $r->courseid]))
+                        && $rawmax !== null && (float) $rawmax - (float) $rawmin > 0;
                     $min = $usegrade ? (float) $rawmin : (float) $r->grademin;
                     $max = $usegrade ? (float) $rawmax : (float) $r->grademax;
+                    // A grade above its recorded maximum means that maximum is stale
+                    // (e.g. an override written after the item's maximum changed):
+                    // measure it against the item's current range instead.
+                    if (!$aggregate && $usegrade && $fg > $max && (float) $r->grademax - (float) $r->grademin > 0) {
+                        $min = (float) $r->grademin;
+                        $max = (float) $r->grademax;
+                    }
                     if ($max - $min > 0) {
                         return round(100 * ($fg - $min) / ($max - $min)) . '%';
                     }
@@ -1175,6 +1305,173 @@ class catalogue {
                                cell::when((int) $r->changed)];
                 }
                 return [$rows, $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'marking_activity', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'trainer',
+            'requirestable' => 'assign_grades',
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
+            'datelabel' => 'col_lastmarked',
+            'columns' => [['trainer', 'col_marker', 'text'], ['assign', 'col_assignsmarked', 'number'],
+                          ['quiz', 'col_quizzesmarked', 'number'], ['manual', 'col_gradebookmarked', 'number'],
+                          ['total', 'col_totalmarked', 'number'], ['learners', 'col_learnersmarked', 'number'],
+                          ['last', 'col_lastmarked', 'date']],
+            'run' => function ($DB, $q, $limit) {
+                [$from, $to] = self::marking_window($q);
+                [$union, $up] = self::marking_events($DB, $from, $to);
+                // The Trainer filter means "marked by"; a teacher's automatic scope
+                // still limits rows to the learners they teach.
+                [$fw, $fp] = $q->where(['cohort' => 'mk.userid', 'group' => 'mk.userid', 'studentemail' => 'u.email',
+                    'course' => 'mk.courseid', 'category' => 'mk.courseid',
+                    'trainer' => ['marker' => 'mk.markerid', 'user' => 'mk.userid', 'course' => 'mk.courseid']]);
+                $body = "FROM $union mk
+                          JOIN {user} u ON u.id = mk.userid AND u.deleted = 0
+                          JOIN {user} m ON m.id = mk.markerid
+                          JOIN {course} c ON c.id = mk.courseid AND c.id <> 1
+                         WHERE 1 = 1 $fw";
+                $params = $up + $fp;
+                $sql = "SELECT mk.markerid AS id, m.firstname, m.lastname, m.firstnamephonetic,
+                               m.lastnamephonetic, m.middlename, m.alternatename,
+                               SUM(CASE WHEN mk.kind = 'assign' THEN 1 ELSE 0 END) AS nassign,
+                               SUM(CASE WHEN mk.kind = 'quiz' THEN 1 ELSE 0 END) AS nquiz,
+                               SUM(CASE WHEN mk.kind = 'manual' THEN 1 ELSE 0 END) AS nmanual,
+                               COUNT(*) AS ntotal, COUNT(DISTINCT mk.userid) AS nlearners,
+                               MAX(mk.ts) AS lastmarked
+                        $body
+                      GROUP BY mk.markerid, m.firstname, m.lastname, m.firstnamephonetic,
+                               m.lastnamephonetic, m.middlename, m.alternatename
+                      ORDER BY ntotal DESC, m.lastname, m.firstname";
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+
+                // Each count drills into Marked assessments for that trainer, carrying
+                // the current filters. With no date range chosen, the 30-day default
+                // window is passed on explicitly so both reports show the same rows.
+                $carry = $q->url_params();
+                unset($carry['f_preset'], $carry['f_from'], $carry['f_to']);
+                foreach (array_keys($carry) as $k) {
+                    if (strpos($k, 'f_trainer[') === 0) {
+                        unset($carry[$k]);
+                    }
+                }
+                $dr = $q->daterange();
+                if ($dr !== null && $dr['preset'] !== '') {
+                    $carry['f_preset'] = $dr['preset'];
+                } else {
+                    if ($from !== null) {
+                        $carry['f_from'] = userdate($from, '%Y-%m-%d');
+                    }
+                    if ($to !== null) {
+                        $carry['f_to'] = userdate($to, '%Y-%m-%d');
+                    }
+                }
+                $rows = [];
+                foreach ($recs as $r) {
+                    $url = (new \moodle_url('/local/beacon/view.php', ['type' => 'report', 'id' => 'marked_assessments']
+                        + $carry + ['f_trainer[0]' => (int) $r->id]))->out(false);
+                    $rows[] = [cell::text(self::fullname_of($r)), cell::number((int) $r->nassign),
+                               cell::number((int) $r->nquiz), cell::number((int) $r->nmanual),
+                               cell::number((int) $r->ntotal, null, $url), cell::number((int) $r->nlearners),
+                               cell::when((int) $r->lastmarked)];
+                }
+                return [$rows, (int) $DB->count_records_sql("SELECT COUNT(DISTINCT mk.markerid) $body", $params)];
+            },
+        ];
+
+        $defs[] = [
+            'id' => 'marked_assessments', 'family' => 'assessment', 'icon' => 'pen', 'grain' => 'marked',
+            'requirestable' => 'assign_grades',
+            'filters' => ['category', 'course', 'group', 'trainer', 'cohort', 'daterange'],
+            'datelabel' => 'col_datemarked',
+            'columns' => [['trainer', 'col_marker', 'text'], ['learner', 'col_learner', 'text'],
+                          ['email', 'col_email', 'text'], ['course', 'col_course', 'text'],
+                          ['item', 'col_markeditem', 'text'], ['type', 'col_marktype', 'text'],
+                          ['attempt', 'col_attempt', 'number'], ['result', 'col_result', 'text'],
+                          ['marked', 'col_datemarked', 'date']],
+            'run' => function ($DB, $q, $limit) {
+                [$from, $to] = self::marking_window($q);
+                [$union, $up] = self::marking_events($DB, $from, $to);
+                [$fw, $fp] = $q->where(['cohort' => 'mk.userid', 'group' => 'mk.userid', 'studentemail' => 'u.email',
+                    'course' => 'mk.courseid', 'category' => 'mk.courseid',
+                    'trainer' => ['marker' => 'mk.markerid', 'user' => 'mk.userid', 'course' => 'mk.courseid']]);
+                $body = "FROM $union mk
+                          JOIN {user} u ON u.id = mk.userid AND u.deleted = 0
+                          JOIN {user} m ON m.id = mk.markerid
+                          JOIN {course} c ON c.id = mk.courseid AND c.id <> 1
+                         WHERE 1 = 1 $fw";
+                $params = $up + $fp;
+                $sql = "SELECT mk.rid, mk.kind, mk.markerid, mk.userid, mk.courseid, mk.cmid, mk.refid,
+                               mk.attempt, mk.name, mk.grade, mk.gmin, mk.gmax, mk.scaleid, mk.ts,
+                               u.firstname, u.lastname, u.firstnamephonetic, u.lastnamephonetic,
+                               u.middlename, u.alternatename, u.email, c.fullname AS course,
+                               m.firstname AS mfirstname, m.lastname AS mlastname,
+                               m.firstnamephonetic AS mfirstnamephonetic, m.lastnamephonetic AS mlastnamephonetic,
+                               m.middlename AS mmiddlename, m.alternatename AS malternatename
+                        $body
+                      ORDER BY mk.ts DESC, c.fullname, u.lastname";
+                $recs = $DB->get_records_sql($sql, $params, 0, $limit);
+
+                // Scales used by these rows, so C / NYC show as words.
+                $scaleids = [];
+                foreach ($recs as $r) {
+                    if ((int) $r->scaleid > 0) {
+                        $scaleids[(int) $r->scaleid] = true;
+                    }
+                }
+                $scales = [];
+                if ($scaleids) {
+                    foreach ($DB->get_records_list('scale', 'id', array_keys($scaleids)) as $sc) {
+                        $scales[(int) $sc->id] = array_map('trim', explode(',', $sc->scale));
+                    }
+                }
+                $result = function ($r) use ($scales): string {
+                    if ($r->grade === null) {
+                        return '—';
+                    }
+                    $g = (float) $r->grade;
+                    if ((int) $r->scaleid > 0) {
+                        $items = $scales[(int) $r->scaleid] ?? [];
+                        $idx = (int) round($g);
+                        return $idx < 1 ? '—' : ($items[$idx - 1] ?? ('#' . $idx));
+                    }
+                    $min = (float) $r->gmin;
+                    $max = (float) $r->gmax;
+                    if ($max - $min > 0) {
+                        return round(100 * ($g - $min) / ($max - $min)) . '%';
+                    }
+                    return rtrim(rtrim(number_format($g, 2, '.', ''), '0'), '.');
+                };
+                $types = ['assign' => get_string('marktype_assign', 'local_beacon'),
+                          'quiz' => get_string('marktype_quiz', 'local_beacon'),
+                          'manual' => get_string('marktype_manual', 'local_beacon')];
+
+                $rows = [];
+                foreach ($recs as $r) {
+                    $marker = (object) ['firstname' => $r->mfirstname, 'lastname' => $r->mlastname,
+                        'firstnamephonetic' => $r->mfirstnamephonetic, 'lastnamephonetic' => $r->mlastnamephonetic,
+                        'middlename' => $r->mmiddlename, 'alternatename' => $r->malternatename];
+                    $profile = (new \moodle_url('/user/view.php',
+                        ['id' => (int) $r->userid, 'course' => (int) $r->courseid]))->out(false);
+                    $courseurl = (new \moodle_url('/course/view.php', ['id' => (int) $r->courseid]))->out(false);
+                    // The assessment links to where the marking can be checked.
+                    if ($r->kind === 'assign' && (int) $r->cmid > 0) {
+                        $itemurl = (new \moodle_url('/mod/assign/view.php',
+                            ['id' => (int) $r->cmid, 'action' => 'grader', 'userid' => (int) $r->userid]))->out(false);
+                    } else if ($r->kind === 'quiz') {
+                        $itemurl = (new \moodle_url('/mod/quiz/review.php', ['attempt' => (int) $r->refid]))->out(false);
+                    } else {
+                        $itemurl = (new \moodle_url('/grade/report/singleview/index.php',
+                            ['id' => (int) $r->courseid, 'item' => 'user', 'itemid' => (int) $r->userid]))->out(false);
+                    }
+                    $name = ($r->name !== null && $r->name !== '') ? format_string($r->name)
+                        : get_string('col_gradeitem', 'local_beacon');
+                    $rows[] = [cell::text(self::fullname_of($marker)), cell::text(self::fullname_of($r), $profile),
+                               cell::text($r->email), cell::text($r->course, $courseurl),
+                               cell::text($name, $itemurl), cell::text($types[$r->kind] ?? $r->kind),
+                               cell::number((int) $r->attempt), cell::text($result($r)),
+                               cell::when((int) $r->ts)];
+                }
+                return [$rows, (int) $DB->count_records_sql("SELECT COUNT(*) $body", $params)];
             },
         ];
 

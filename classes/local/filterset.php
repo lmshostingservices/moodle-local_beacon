@@ -654,6 +654,18 @@ class filterset {
             // (learner, course) rows to those a selected teacher is responsible
             // for. Binding is ['user' => <userid col>, 'course' => <courseid col>].
             if ($type === 'trainer') {
+                // A report about the trainers themselves (e.g. Marking activity)
+                // binds 'marker' to the column holding the trainer's own user id:
+                // the filter then keeps rows *done by* the selected trainers. The
+                // 'user'/'course' pair is still used for the automatic viewer scope.
+                $mcol = is_array($binding) ? ($binding['marker'] ?? '') : '';
+                if ($mcol !== '') {
+                    [$insql, $inparams] = $DB->get_in_or_equal($this->active[$type], SQL_PARAMS_NAMED,
+                        'bcf' . ($this->seq++) . '_');
+                    $frags[] = "$mcol $insql";
+                    $params += $inparams;
+                    continue;
+                }
                 $ucol = is_array($binding) ? ($binding['user'] ?? '') : '';
                 $ccol = is_array($binding) ? ($binding['course'] ?? '') : '';
                 if ($ucol !== '' && $ccol !== '') {
